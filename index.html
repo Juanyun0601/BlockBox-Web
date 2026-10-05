@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>方块盒子 BlockBox — 现代 Minecraft 启动器，不止于此</title>
-<meta name="description" content="方块盒子 BlockBox 是一款现代跨平台 Minecraft 启动器，支持 Windows / macOS / Linux / HarmonyOS。内置 AI 助手、实例助手、3D 皮肤编辑器与插件生态，MIT 开源，完全免费。">
+<meta name="description" content="方块盒子 BlockBox 是一款现代跨平台 Minecraft 启动器，支持 Windows / Linux / HarmonyOS / Android。内置 AI 助手、实例助手、3D 皮肤编辑器与插件生态，MIT 开源，完全免费。">
 <link rel="icon" href="assets/img/icon.ico">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=20261005b">
 </head>
 <body>
 
@@ -55,13 +55,13 @@
       <div class="hero-cta reveal">
         <a class="btn btn-primary btn-lg" href="#download">
           <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2ZM19 9h-4V3H9v6H5l7 7 7-7Z"/></svg>
-          下载 Windows 版
+          下载
         </a>
         <a class="btn btn-ghost btn-lg" href="#unique">看看有什么不一样</a>
       </div>
       <p class="hero-platforms reveal">
         <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.4v7.1H3V5.5Zm0 13 7.5 1.1v-7H3v5.9Zm8.5 1.2L21 21V11.5h-9.5v8.2Zm0-15.4v7.2H21V3l-9.5 1.3Z"/></svg>
-        Windows <i>/</i> macOS <i>/</i> Linux <i>/</i> HarmonyOS &nbsp;·&nbsp; 基于 C++ / Qt 原生构建
+        Windows <i>/</i> Linux <i>/</i> HarmonyOS <i>/</i> Android &nbsp;·&nbsp; 基于 C++ / Qt 原生构建
       </p>
     </div>
 
@@ -132,7 +132,7 @@
       <article class="card reveal">
         <span class="card-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9.37 5.51A7.35 7.35 0 0 0 9.1 7.5c0 4.28 3.01 7.78 6.82 7.78.71 0 1.4-.13 2.05-.36A8.22 8.22 0 0 1 10.14 20 8.19 8.19 0 0 1 2 11.75 8.2 8.2 0 0 1 9.37 5.51Z"/></svg></span>
         <h3>Java 全自动</h3>
-        <p>自动检测本机 Java，版本不匹配时自动下载适配版本，妈妈再也不用担心环境变量。</p>
+        <p>自动检测本机 Java，版本不匹配时自动下载适配版本，妈妈再也不用担心环境变量啦！</p>
       </article>
       <article class="card reveal">
         <span class="card-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 12h4l3-8 4 16 3-8h4v-2h-5.4l-1.6 4.2L10.7 2 7.4 10H3v2Z"/></svg></span>
@@ -173,7 +173,7 @@
           内置 AI 助手，<strong>云端与本地模型随心切换</strong>；Agent 模式配备
           <strong>19 种工具</strong>，能真的替你动手：查 Mod、读配置、修环境。
           游戏崩溃了？把日志丢给 AI，几秒钟给出定位与修复方案。
-          支持 <strong>Ollama 本地模型</strong>，断网也能用。（AI生成图片）
+          支持 <strong>Ollama 本地模型</strong>，断网也能用。
         </p>
         <ul class="tick-list">
           <li>崩溃日志 AI 分析，一键定位病因</li>
@@ -182,16 +182,39 @@
         </ul>
       </div>
       <div class="show-visual">
-        <div class="chat" id="chat">
+        <div class="chat" id="chat" role="img" aria-label="BlockBox AI 助手窗口演示">
           <div class="chat-bar">
-            <span class="chat-dots"><i></i><i></i><i></i></span>
-            <span class="chat-title">BlockBox AI · Agent 模式</span>
-            <span class="chat-model">云端 / 本地模型可切换</span>
+            <span class="chat-menu" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="chat-live" aria-hidden="true"></span>
+            <span class="chat-title">AI 助手</span>
+            <span class="chat-status">Agent 模式</span>
+            <span class="winbtns" aria-hidden="true"><i></i><i></i><i></i></span>
           </div>
-          <div class="chat-body" id="chatBody" aria-live="polite"></div>
-          <div class="chat-input" aria-hidden="true">
-            <span>随时提问，或直接丢给它一份崩溃日志…</span>
-            <b>发送</b>
+          <div class="chat-shell">
+            <aside class="chat-side" aria-hidden="true">
+              <div class="chat-mode"><b class="on">聊天</b><b>工作</b></div>
+              <div class="chat-new">＋ 新建对话</div>
+              <p class="chat-group">对话</p>
+              <div class="chat-conv on"><i>⚡</i><span>Minecraft 1.20.1 性能优化<em>2 分钟前</em></span></div>
+              <div class="chat-conv"><i>🧩</i><span>Forge 与 Fabric 加载器区别<em>昨天 22:14</em></span></div>
+              <div class="chat-conv"><i>🌇</i><span>光影包画面设置指南<em>3 天前</em></span></div>
+              <div class="chat-quota"><span>模型配额 · 3.2K / 10K</span><i class="qtrack"><i class="qfill"></i></i></div>
+            </aside>
+            <div class="chat-main">
+              <div class="chat-body" id="chatBody" aria-live="polite"></div>
+              <div class="chat-composer" aria-hidden="true">
+                <div class="chat-input">
+                  <span class="ci-ph">输入消息，Enter 发送，Shift+Enter 换行…</span>
+                  <span class="ci-send"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                </div>
+                <div class="chat-chips">
+                  <span class="cchip"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36A5.39 5.39 0 0 1 18 11a5.5 5.5 0 0 1-5.5-5.5c0-1 .28-1.93.75-2.72A8.7 8.7 0 0 0 12 3Z"/></svg>不联网</span>
+                  <span class="cchip cchip-on"><i></i>深度思考</span>
+                  <span class="cchip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>DeepSeek V3</span>
+                  <span class="cchip-hint">Enter 发送</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -207,7 +230,7 @@
         <p class="show-text">
           一个伴读窗口装下整个实例：实时<strong>帧率、CPU / 内存 / GPU 占用</strong>与游玩时长一目了然；
           <strong>中文打字直接生成指令，一键注入正在运行的游戏</strong>；
-          模组、资源包、光影包免退出启用禁用，AI 助手与联机也在手边。（AI生成图片）
+          模组、资源包、光影包免退出启用禁用，AI 助手与联机也在手边。
         </p>
         <ul class="tick-list">
           <li>帧率 / CPU / 内存 / GPU / 游玩时长实时监控</li>
@@ -219,30 +242,130 @@
         <div class="assist-scene" aria-hidden="true">
           <span class="scene-blk a"></span><span class="scene-blk b"></span>
           <span class="scene-blk c"></span><span class="scene-blk d"></span>
-          <div class="assist-card">
-            <div class="assist-head">
-              <span class="live-dot"></span>
-              <b>实例助手</b>
-              <span class="assist-ver">已识别 · Fabric 1.20.1</span>
-            </div>
-            <div class="assist-stats">
-              <div class="as"><i>帧率</i><b>118</b></div>
-              <div class="as"><i>内存</i><b>3.2<em>GB</em></b></div>
-              <div class="as"><i>游玩</i><b>42<em>min</em></b></div>
-            </div>
-            <div class="assist-bars">
-              <i style="--h:58%"></i><i style="--h:72%"></i><i style="--h:64%"></i><i style="--h:80%"></i>
-              <i style="--h:55%"></i><i style="--h:68%"></i><i style="--h:86%"></i><i style="--h:62%"></i>
-              <i style="--h:74%"></i><i style="--h:60%"></i><i style="--h:78%"></i><i style="--h:66%"></i>
-            </div>
-            <div class="assist-cmd">
-              <span class="cmd-tag">中文指令</span>
-              <p class="cmd-cn">给我一把附魔钻石剑</p>
-              <code class="cmd-en">/give @p diamond_sword{Enchantments:[…]}</code>
-              <button class="tip-btn" type="button">一键注入游戏</button>
-            </div>
-            <div class="assist-actions">
-              <span>AI 助手</span><span>模组管理</span><span>联机</span>
+          <div class="assist-stage">
+            <div class="assist-status"><i></i>已识别运行中的游戏 · Fabric 1.20.1</div>
+            <div class="assist-win">
+              <div class="assist-titlebar">
+                <span>实例助手</span>
+                <span class="winbtns"><i></i><i></i><i></i></span>
+              </div>
+              <div class="assist-tabs" id="assistTabs">
+                <span class="atab on" data-page="home">首页</span><span class="atab" data-page="ai">AI 助手</span><span class="atab" data-page="cmd">快捷指令</span><span class="atab" data-page="mp">联机</span><span class="atab" data-page="res">资源管理</span><span class="atab">Java 管理</span>
+                <i class="atab-line"></i>
+              </div>
+              <div class="assist-pages" id="assistPages">
+                <!-- 首页：游玩信息 + 性能监控 -->
+                <div class="apage on" data-page="home">
+                  <div class="ainfo-row">
+                    <div class="ainfo ainfo-time"><i>当前时间</i><b>14:32:08</b></div>
+                    <div class="ainfo ainfo-play"><i>游玩时间</i><b>0:42:17</b></div>
+                    <div class="ainfo ainfo-fps"><i>帧率</i><b>118</b></div>
+                  </div>
+                  <p class="asec">性能监控</p>
+                  <div class="aperf aperf-cpu">
+                    <i class="ap-name">CPU</i>
+                    <b class="ap-val">23%</b>
+                    <div class="ap-track"><i style="width:23%"></i></div>
+                    <svg class="ap-chart" viewBox="0 0 120 36" preserveAspectRatio="none">
+                      <path class="ap-fill" d="M2,34 L2,26.6 L12.5,25.7 L23.1,26.9 L33.6,24.4 L44.2,25.4 L54.7,22.8 L65.3,24.1 L75.8,26.3 L86.4,25 L96.9,26 L107.5,26.6 L118,26.6 L118,34 Z"/>
+                      <polyline class="ap-line" points="2,26.6 12.5,25.7 23.1,26.9 33.6,24.4 44.2,25.4 54.7,22.8 65.3,24.1 75.8,26.3 86.4,25 96.9,26 107.5,26.6 118,26.6"/>
+                      <g class="ap-dots"></g>
+                    </svg>
+                  </div>
+                  <div class="aperf aperf-mem">
+                    <i class="ap-name">内存</i>
+                    <b class="ap-val">46%</b>
+                    <div class="ap-track"><i style="width:46%"></i></div>
+                    <svg class="ap-chart" viewBox="0 0 120 36" preserveAspectRatio="none">
+                      <path class="ap-fill" d="M2,34 L2,19.3 L12.5,18.6 L23.1,19.6 L33.6,17.4 L44.2,18.3 L54.7,16.4 L65.3,17.7 L75.8,19 L86.4,18 L96.9,19.3 L107.5,18.6 L118,19.3 L118,34 Z"/>
+                      <polyline class="ap-line" points="2,19.3 12.5,18.6 23.1,19.6 33.6,17.4 44.2,18.3 54.7,16.4 65.3,17.7 75.8,19 86.4,18 96.9,19.3 107.5,18.6 118,19.3"/>
+                      <g class="ap-dots"></g>
+                    </svg>
+                  </div>
+                  <div class="aperf aperf-gpu">
+                    <i class="ap-name">GPU</i>
+                    <b class="ap-val">31%</b>
+                    <div class="ap-track"><i style="width:31%"></i></div>
+                    <svg class="ap-chart" viewBox="0 0 120 36" preserveAspectRatio="none">
+                      <path class="ap-fill" d="M2,34 L2,24.1 L12.5,22.8 L23.1,25 L33.6,20.6 L44.2,21.8 L54.7,19 L65.3,20.9 L75.8,23.4 L86.4,22.5 L96.9,24.4 L107.5,23.1 L118,24.1 L118,34 Z"/>
+                      <polyline class="ap-line" points="2,24.1 12.5,22.8 23.1,25 33.6,20.6 44.2,21.8 54.7,19 65.3,20.9 75.8,23.4 86.4,22.5 96.9,24.4 107.5,23.1 118,24.1"/>
+                      <g class="ap-dots"></g>
+                    </svg>
+                  </div>
+                </div>
+                <!-- AI 助手：欢迎页（紧凑模式两列快捷卡） -->
+                <div class="apage" data-page="ai">
+                  <div class="ap-ai">
+                    <div class="ai-logo"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 2a3 3 0 0 1 3 3v1h2a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3 3 3 0 0 1-3-3v-1H8a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3h2V5a3 3 0 0 1 3-3z" stroke="#fff" stroke-width="1.6" fill="none"/></svg></div>
+                    <p class="ai-title">你好，我是 <em>BlockBox AI 助手</em></p>
+                    <p class="ai-desc">推荐模组、诊断崩溃、配置光影与服务器，<br>或直接驱动启动器完成复杂任务。</p>
+                    <div class="ai-quick">
+                      <span class="aiq"><i class="qic" style="background:linear-gradient(135deg,#43a047,#1b5e20)">⚡</i><b>性能优化</b><span>推荐 1.20.1 优化模组</span></span>
+                      <span class="aiq"><i class="qic" style="background:linear-gradient(135deg,#5c6bc0,#3949ab)">🌇</i><b>光影配置</b><span>打造电影级画面</span></span>
+                      <span class="aiq"><i class="qic" style="background:linear-gradient(135deg,#fb8c00,#e65100)">🖥️</i><b>崩溃诊断</b><span>分析日志找原因</span></span>
+                      <span class="aiq"><i class="qic" style="background:linear-gradient(135deg,#ec407a,#ad1457)">🎁</i><b>搭服指南</b><span>Fabric 服务器搭建</span></span>
+                    </div>
+                  </div>
+                </div>
+                <!-- 快捷指令：上下文 + 中文输入 + 候选 + 指令输出 -->
+                <div class="apage" data-page="cmd">
+                  <div class="cmdbar">
+                    <span class="ctx">版本: 1.20.1 | 单机 | OP: 0</span>
+                    <span class="cbtn">切换服务端</span>
+                    <span class="cbtn">重新检测</span>
+                  </div>
+                  <div class="cinput">给我一把附魔钻石剑</div>
+                  <div class="clist">
+                    <span class="cand on"><b>给予</b><i>/give</i></span>
+                    <span class="cand"><b>附魔钻石剑</b><i>diamond_sword</i></span>
+                    <span class="cand"><b>锋利</b><i>sharpness</i></span>
+                    <span class="cand"><b>经验给予</b><i>/xp give</i></span>
+                  </div>
+                  <div class="coutrow">
+                    <code class="cmd-en">/give @p diamond_sword{Enchantments:[…]}</code>
+                    <span class="cbtn">复制</span>
+                    <span class="cbtn primary">一键注入</span>
+                    <span class="cbtn">预设</span>
+                    <span class="cbtn">历史</span>
+                    <span class="cbtn">指令包</span>
+                  </div>
+                </div>
+                <!-- 联机：陶瓦联机核心 + 房间操作 -->
+                <div class="apage" data-page="mp">
+                  <div class="mp-top">
+                    <span class="mp-core">陶瓦联机 ▾</span>
+                    <span class="cbtn">更新</span>
+                  </div>
+                  <p class="mp-status"><i></i>联机核心就绪</p>
+                  <p class="mp-desc">一键创建房间，把朋友拉进同一片方块世界，无需端口转发与复杂设置。</p>
+                  <div class="mp-btns">
+                    <span class="mp-btn">加入房间</span>
+                    <span class="mp-btn primary">创建房间</span>
+                  </div>
+                </div>
+                <!-- 资源管理：模组列表免退出启停 -->
+                <div class="apage" data-page="res">
+                  <div class="res-tabs"><span class="on">模组</span><span>存档</span><span>截图</span><span>资源包</span><span>光影包</span></div>
+                  <div class="res-search">搜索模组名称...<span class="res-count">共 3 个模组</span></div>
+                  <div class="res-list">
+                    <div class="res-item">
+                      <i class="ric" style="background:linear-gradient(135deg,#43a047,#1b5e20)">S</i>
+                      <div class="rinfo"><b>Sodium</b><span class="rchips"><span class="rchip">1.20.1</span><span class="rchip">Fabric</span><span class="rchip">1.9 MB</span></span></div>
+                      <i class="rtoggle on"></i>
+                    </div>
+                    <div class="res-item">
+                      <i class="ric" style="background:linear-gradient(135deg,#5c6bc0,#3949ab)">L</i>
+                      <div class="rinfo"><b>Lithium</b><span class="rchips"><span class="rchip">1.20.1</span><span class="rchip">Fabric</span><span class="rchip">680 KB</span></span></div>
+                      <i class="rtoggle on"></i>
+                    </div>
+                    <div class="res-item">
+                      <i class="ric" style="background:linear-gradient(135deg,#78909c,#455a64)">W</i>
+                      <div class="rinfo"><b>WorldEdit</b><span class="rchips"><span class="rchip">1.20.1</span><span class="rchip">已禁用</span></span></div>
+                      <i class="rtoggle"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -308,30 +431,49 @@
     <div class="sec-head reveal">
       <p class="kicker">横向对比</p>
       <h2>别人没想的，我们替你想了</h2>
-      <p class="sec-sub">与两款主流开源启动器 PCL2、HMCL 的能力对照（基于 2026-08 公开资料整理）。</p>
+      <p class="sec-sub">与 PCL2、HMCL、Verse、Axolotl 美西螈、LauncherX 的 20 项能力逐项对照（新兴启动器于 2026-10 核实）。</p>
     </div>
     <div class="table-wrap reveal">
       <table class="cmp">
         <thead>
           <tr>
-            <th>独有能力</th>
+            <th>能力对照</th>
             <th class="hl"><img src="assets/img/cube-sm.png" alt="">方块盒子</th>
             <th>PCL2</th>
             <th>HMCL</th>
+            <th>Verse</th>
+            <th>Axolotl 美西螈</th>
+            <th>LauncherX</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td>AI 助手（多模型可切换）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>AI Agent 模式（19 种工具）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>崩溃日志 AI 分析</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="mid">手动</span></td></tr>
-          <tr><td>皮肤编辑器（2D + 3D）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>基岩版完整支持 + 命令助手</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>插件系统（官方插件 9 款）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>硬件性能监控</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr class="group"><td colspan="7">AI 智能</td></tr>
+          <tr><td>AI 助手</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>AI Agent 模式（19 种工具真的动手）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>AI 技能系统（.skill 可扩展）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>本地 AI 模型（Ollama，断网可用）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>AI 模组翻译工具包</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>崩溃日志 AI 分析，一键定位病因</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr class="group"><td colspan="7">特色功能</td></tr>
+          <tr><td>皮肤编辑器（2D 画布 + 3D 实时预览）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>基岩版完整支持 + 命令助手</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>插件系统</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>多人联机（一键建房开黑）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr>
+          <tr class="group"><td colspan="7">基础能力</td></tr>
+          <tr><td>多实例管理 + 版本隔离</td><td class="hl"><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr>
+          <tr><td>跨启动器实例导入（PCL2 / HMCL / BakaXL / MultiMC / 官方）</td><td class="hl"><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="yes">✓</span></td><td><span class="no">—</span></td><td><span class="yes">✓</span></td><td><span class="no">—</span></td></tr>
+          <tr><td>Forge / NeoForge / Fabric / OptiFine 一键安装</td><td class="hl"><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr>
+          <tr><td>CurseForge / Modrinth 资源中心</td><td class="hl"><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr>
+          <tr><td>MCMod 中文百科聚合</td><td class="hl"><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr>
+          <tr><td>微软正版 / 离线 / 多账户切换</td><td class="hl"><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr>
+          <tr><td>Java 自动检测与下载</td><td class="hl"><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr>
+          <tr><td>整合包导入 / 导出</td><td class="hl"><span class="yes">✓</span></td><td><span class="mid">有限</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="mid">有限</span></td></tr>
+          <tr><td>新用户引导</td><td class="hl"><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr>
+          <tr><td>运行平台</td><td class="hl"><span class="tag" title="Windows / Linux / HarmonyOS / Android">4 大平台</span></td><td><span class="tag">仅 Windows</span></td><td><span class="tag" title="Windows / macOS / Linux 等">桌面全平台</span></td><td><span class="tag" title="Windows / macOS / Linux / Android">桌面 + Android</span></td><td><span class="tag" title="Windows / macOS / Linux">桌面全平台</span></td><td><span class="tag">仅 Windows</span></td></tr>
         </tbody>
       </table>
     </div>
-    <p class="footnote reveal">经典能力（实例管理、Forge / Fabric 安装、CurseForge / Modrinth 资源、微软登录、Java 自动下载……）方块盒子同样齐备，详见 <a href="#features">核心功能</a>。</p>
+    <p class="footnote reveal">各启动器迭代都很快：老牌对照基于 2026-08 公开资料，新兴启动器于 2026-10 核实；如有出入，欢迎在 <a href="https://github.com/Juanyun0601/BlockBox/issues">GitHub Issues</a> 指正。基础能力之外，方块盒子还有 <a href="#features">更多细节</a> 等你发现。</p>
   </div>
 </section>
 
@@ -342,7 +484,7 @@
       <div class="dl-head">
         <p class="kicker kicker-light">公测下载</p>
         <h2>现在，打开你的方块盒子</h2>
-        <p class="dl-sub">公测阶段完全免费，欢迎下载体验并反馈问题，帮助我们把它打磨得更好。</p>
+        <p class="dl-sub">方块盒子完全免费，欢迎下载体验并反馈问题，帮助我们把它打磨得更好。</p>
       </div>
       <a class="btn btn-white btn-xl dl-btn" href="https://icna5xkz6qxe.feishu.cn/wiki/HzUiwnFYmihLX1kufKQcU4sknBf" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2ZM19 9h-4V3H9v6H5l7 7 7-7Z"/></svg>
@@ -363,7 +505,7 @@
         </li>
         <li class="plat">
           <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M17.6 9.48l1.84-3.18c.16-.31.04-.7-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24a11.46 11.46 0 0 0-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48A10.81 10.81 0 0 0 1 18h22a10.81 10.81 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg>
-          Android<em>新增</em>
+          Android
         </li>
         <li class="plat plat-later">
           <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M16 12a4 4 0 0 1-7.89.94L4 11V9l4.11.94A4 4 0 0 1 16 12Zm5 0a9 9 0 0 1-.6 3.24L18 14v-4l2.4-1.24A9 9 0 0 1 21 12Z"/></svg>
@@ -410,6 +552,6 @@
   </div>
 </footer>
 
-<script src="assets/main.js"></script>
+<script src="assets/main.js?v=20261005a"></script>
 </body>
 </html>
