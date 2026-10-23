@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>下载方块盒子 — 方块盒子 BlockBox</title>
+<meta name="description" content="方块盒子 BlockBox 官方下载页：永久下载链接，随时获取最新版本。支持 123 盘免登录高速下载、夸克网盘与 GitHub，另附各平台安装包、历史版本与官方插件包。">
+<link rel="icon" href="assets/img/icon.ico">
+<link rel="stylesheet" href="assets/style.css?v=20261023c">
+</head>
+<body>
+
+<!-- ======================= 导航 ======================= -->
+<header class="nav" id="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html" aria-label="方块盒子首页">
+      <img class="brand-logo" src="assets/img/logo.png" alt="方块盒子 BlockBox" width="319" height="111">
+    </a>
+    <nav class="nav-links" id="navLinks" aria-label="主导航">
+      <a href="index.html">方块盒子</a>
+      <a href="index.html#navCoding">编码方块</a>
+      <a href="docs.html">开发文档</a>
+      <a class="btn btn-ghost btn-sm" href="https://github.com/Juanyun0601/BlockBox/" aria-label="GitHub 仓库">
+        <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.47v-1.64c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02a9.56 9.56 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.71 1.03 1.62 1.03 2.71 0 3.84-2.35 4.68-4.58 4.93.36.31.68.92.68 1.85V21c0 .27.16.59.67.49C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg>
+        GitHub
+      </a>
+      <a class="btn btn-primary btn-sm" href="download.html" aria-current="page">免费下载</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="打开菜单" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+
+<!-- ======================= 页头 ======================= -->
+<section class="dlp-hero" id="top">
+  <div class="container">
+    <p class="kicker reveal">下载中心</p>
+    <h1 class="reveal">下载方块盒子</h1>
+    <p class="dlp-lead reveal">此为永久内容下载链接，您可以在这里随时获取最新版本。推荐使用 123 盘，免登录即可高速下载，请先确认你的系统再下载。</p>
+    <p class="dlp-detect reveal" id="dlpDetect" role="status" hidden>
+      <span class="detect-dot" aria-hidden="true"></span>
+      <span>当前系统 <strong id="dlpDetectName">—</strong><span class="detect-arch" id="dlpDetectArch"></span></span>
+      <span class="detect-note" id="dlpDetectNote"></span>
+    </p>
+    <ul class="dlp-os reveal" aria-label="支持的系统">
+      <li data-os="windows"><svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.4v7.2H3V5.5Zm0 13 7.5 1.1v-7.2H3v6.1Zm8.6 1.3L21 21V12.6h-9.4v7.2Zm0-15.6v7.3H21V3l-9.4 1.2Z"/></svg>Windows</li>
+      <li data-os="linux"><svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M12 2c2.2 0 3.6 1.5 3.6 3.5 0 1-.4 1.9-1.1 2.6l2 2c.8-.6 1.8-1 2.9-1 2.4 0 4.2 1.7 4.2 3.9 0 2-1.4 3.5-3.2 3.8v.4c0 3.1-2.9 5.8-7.4 5.8S5 21.3 5 18.2v-.4C3.2 17.5 1.8 16 1.8 14c0-2.2 1.8-3.9 4.2-3.9 1.1 0 2.1.4 2.9 1l2-2c-.7-.7-1.1-1.6-1.1-2.6C9.8 3.5 11.2 2 13.4 2H12Zm0 2c-.9 0-1.6.7-1.6 1.6S11.1 7.2 12 7.2s1.6-.7 1.6-1.6S12.9 4 12 4Zm0 6.4c-2.9 0-5 1.9-5 4.1s2.1 4.1 5 4.1 5-1.9 5-4.1-2.1-4.1-5-4.1Z"/></svg>Linux</li>
+      <li data-os="harmony"><svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M3 7h4v10H3V7Zm5.5 2H13v6H8.5V9ZM14 7h4v10h-4V7Zm5.5 2H21v6h-1.5V9Z"/></svg>HarmonyOS</li>
+      <li data-os="android"><svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M7.2 9.6h-1.9a1 1 0 0 0-1 1v3.8a1 1 0 0 0 1 1h1.9V9.6Zm11.5 0h-1.9v5.8h1.9a1 1 0 0 0 1-1v-3.8a1 1 0 0 0-1-1ZM8.6 8.2h6.8v-1c0-.6-.4-1-1-1H9.6c-.6 0-1 .4-1 1v1Zm-1 7.4h8.8v3.1a1 1 0 0 1-1 1h-.6v1.8a1.1 1.1 0 0 1-2.2 0v-1.8h-1.2v1.8a1.1 1.1 0 0 1-2.2 0v-1.8h-.6a1 1 0 0 1-1-1v-3.1Zm-1.1-6.4h10.9v6.4H6.5V9.2Z"/></svg>Android</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ======================= 正文 ======================= -->
+<section class="section dlp-body">
+  <div class="container">
+
+    <!-- 提示 -->
+    <div class="dlp-tips">
+      <div class="tip reveal">
+        <div class="tip-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+        </div>
+        <div>
+          <h3>优先走 123 盘</h3>
+          <p>123 盘支持<strong>免登录高速下载</strong>，单个文件限 30MB，请确认你的系统与架构后再下载。</p>
+        </div>
+      </div>
+      <div class="tip tip-warn reveal">
+        <div class="tip-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm-3 8V6a3 3 0 0 1 6 0v3H9Z"/></svg>
+        </div>
+        <div>
+          <h3>正版登录暂不可用</h3>
+          <p>当前暂不支持正版登录，已向 Mojang 提交申请，预计一个月内可成功上线。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 最新版本 -->
+    <div class="dlp-latest reveal">
+      <div class="latest-main">
+        <div class="latest-badge"><span class="dot"></span>最新版本</div>
+        <h2>beta5 <small>公测版</small></h2>
+        <p>面向所有玩家的最新公测版本，Windows、Linux、HarmonyOS 与 Android 安装包均已上传，请按你的系统选择对应文件下载。</p>
+        <p class="latest-hint" id="dlpLatestHint" hidden></p>
+        <div class="latest-links">
+          <a class="btn btn-white btn-lg" href="https://1846072559.share.123pan.cn/123pan/iZqqTd-PyLAH" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2ZM19 9h-4V3H9v6H5l7 7 7-7Z"/></svg>
+            123 盘下载（推荐）
+          </a>
+          <a class="btn btn-line btn-lg" href="https://pan.quark.cn/s/e73fd1fb3b16" target="_blank" rel="noopener">夸克网盘</a>
+          <a class="btn btn-line btn-lg" href="https://github.com/Juanyun0601/BlockBox/releases/tag/beta5" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.47v-1.64c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02a9.56 9.56 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.71 1.03 1.62 1.03 2.71 0 3.84-2.35 4.68-4.58 4.93.36.31.68.92.68 1.85V21c0 .27.16.59.67.49C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+      <aside class="latest-side">
+        <h3>下载前请确认</h3>
+        <p class="latest-fact"><svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span><strong>支持系统</strong><br>Windows 10/11 · Linux · HarmonyOS · Android</span></p>
+        <p class="latest-fact"><svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span><strong>完全免费</strong><br>MIT 开源，无广告、无内购</span></p>
+        <p class="latest-fact"><svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span><strong>遇到问题？</strong><br>到 GitHub Issues 反馈，或在插件生态里寻找扩展</span></p>
+      </aside>
+    </div>
+
+    <!-- 历史版本 -->
+    <div class="ver-head">
+      <div>
+        <p class="kicker">历史版本</p>
+        <h2>需要旧版本？</h2>
+        <p class="ver-sub">前几个公测版本仍保留在网盘与 GitHub 上，适合做兼容测试或回退使用。</p>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="https://github.com/Juanyun0601/BlockBox/releases" target="_blank" rel="noopener">全部版本记录</a>
+    </div>
+
+    <div class="ver-list">
+      <div class="ver-row reveal">
+        <div class="ver-meta"><span class="ver-name">beta4</span><span class="ver-tag">公测版</span></div>
+        <div class="ver-links">
+          <a class="btn btn-ghost" href="https://1846072559.share.123pan.cn/123pan/iZqqTd-bEbAH" target="_blank" rel="noopener">123 盘</a>
+          <a class="btn btn-ghost" href="https://pan.quark.cn/s/019011a8ce23" target="_blank" rel="noopener">夸克网盘</a>
+          <a class="btn btn-ghost" href="https://github.com/Juanyun0601/BlockBox/releases/tag/beta4" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </div>
+      <div class="ver-row reveal">
+        <div class="ver-meta"><span class="ver-name">beta3</span><span class="ver-tag">公测版</span></div>
+        <div class="ver-links">
+          <a class="btn btn-ghost" href="https://1846072559.share.123pan.cn/123pan/iZqqTd-ENE9H" target="_blank" rel="noopener">123 盘</a>
+          <a class="btn btn-ghost" href="https://pan.quark.cn/s/ef88f3e6e88c" target="_blank" rel="noopener">夸克网盘</a>
+          <a class="btn btn-ghost" href="https://github.com/Juanyun0601/BlockBox/releases/tag/beta3" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </div>
+      <div class="ver-row reveal">
+        <div class="ver-meta"><span class="ver-name">beta2</span><span class="ver-tag">公测版</span></div>
+        <div class="ver-links">
+          <a class="btn btn-ghost" href="https://1846072559.share.123pan.cn/123pan/iZqqTd-5SgAH" target="_blank" rel="noopener">123 盘</a>
+          <a class="btn btn-ghost" href="https://pan.quark.cn/s/93e02eb5a06d" target="_blank" rel="noopener">夸克网盘</a>
+          <a class="btn btn-ghost" href="https://github.com/Juanyun0601/BlockBox/releases/tag/beta2" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </div>
+      <div class="ver-row reveal">
+        <div class="ver-meta">
+          <span class="ver-name">beta1</span>
+          <span class="ver-tag">早期版本</span>
+          <span class="ver-tag ver-tag-warn">安卓版存在已知问题</span>
+        </div>
+        <div class="ver-links">
+          <a class="btn btn-ghost" href="https://1846072559.share.123pan.cn/123pan/iZqqTd-iMf9H" target="_blank" rel="noopener">123 盘</a>
+          <a class="btn btn-ghost" href="https://github.com/Juanyun0601/BlockBox/releases/tag/beta" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 插件 -->
+    <section class="plug reveal" id="plugins" aria-labelledby="plugTitle">
+      <div class="plug-head">
+        <p class="kicker">其他资源</p>
+        <h2 id="plugTitle">官方插件包</h2>
+        <p>选中想要的 blockbox 文件拖入方块盒子，即可完成安装。安装后可在插件列表中查看已装插件。</p>
+      </div>
+      <div class="plug-cta">
+        <a class="btn btn-primary" href="https://1846072559.share.123pan.cn/123pan/iZqqTd-2EbAH" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2ZM19 9h-4V3H9v6H5l7 7 7-7Z"/></svg>
+          123 盘下载插件包
+        </a>
+        <span class="plug-note">插件由社区与官方共同维护，安装前请确认来源可信。</span>
+      </div>
+      <div class="plug-table-wrap">
+        <table class="plug-table">
+          <thead>
+            <tr><th scope="col">插件文件</th><th scope="col">功能说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>world_converter</code></td><td>存档互转</td></tr>
+            <tr><td><code>website_nav</code></td><td>网站导航</td></tr>
+            <tr><td><code>style_demo</code></td><td>样式演示 <span class="ver-tag">不必理会</span></td></tr>
+            <tr><td><code>shutdown_timer</code></td><td>定时关机</td></tr>
+            <tr><td><code>server_finder</code></td><td>服务器导航</td></tr>
+            <tr><td><code>projection_editor</code></td><td>投影方块编辑器 <span class="ver-tag ver-tag-warn">存在已知问题</span></td></tr>
+            <tr><td><code>multi_thread_downloader</code></td><td>多线程下载</td></tr>
+            <tr><td><code>memory_optimizer</code></td><td>内存优化</td></tr>
+            <tr><td><code>github_accelerator</code></td><td>GitHub 加速</td></tr>
+            <tr><td><code>disk_cleaner</code></td><td>磁盘清理</td></tr>
+            <tr><td><code>syntax_parser</code></td><td>语法解析器 <span class="ver-tag">不必理会</span></td></tr>
+            <tr><td><code>sdk_demo</code></td><td>SDK 示例插件 <span class="ver-tag">不必理会</span></td></tr>
+            <tr><td><code>nether_coords</code></td><td>下界坐标转换器</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</section>
+
+</main>
+
+<!-- ======================= 页脚 ======================= -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <a class="brand" href="index.html">
+        <img class="brand-logo" src="assets/img/logo.png" alt="方块盒子 BlockBox" width="319" height="111">
+      </a>
+      <p>一个盒子，装下整个方块世界<br>现代 · 开源 · 免费 · 跨平台。</p>
+    </div>
+    <nav class="footer-col" aria-label="产品">
+      <h4>产品</h4>
+      <a href="index.html#features">核心功能</a>
+      <a href="index.html#unique">独特魅力</a>
+      <a href="download.html">下载体验</a>
+      <a href="https://github.com/Juanyun0601/BlockBox/releases">更新日志</a>
+    </nav>
+    <nav class="footer-col" aria-label="社区">
+      <h4>社区</h4>
+      <a href="https://github.com/Juanyun0601/BlockBox/">GitHub 仓库</a>
+      <a href="https://github.com/Juanyun0601/BlockBox/issues">问题反馈</a>
+    </nav>
+    <nav class="footer-col" aria-label="相关链接">
+      <h4>相关站点</h4>
+      <a href="https://www.minecraft.net" target="_blank" rel="noopener">Minecraft 官网</a>
+      <a href="https://www.curseforge.com" target="_blank" rel="noopener">CurseForge</a>
+      <a href="https://modrinth.com" target="_blank" rel="noopener">Modrinth</a>
+      <a href="https://www.mcmod.cn" target="_blank" rel="noopener">MCMod 百科</a>
+    </nav>
+  </div>
+  <div class="container footer-base">
+    <p>© <span id="year">2026</span> BlockBox · 以 MIT 协议开源</p>
+    <p>Minecraft 为 Mojang Synergies AB 的商标；本站为社区项目，与 Mojang / 微软无隶属关系。</p>
+  </div>
+</footer>
+
+<script src="assets/main.js?v=20261011a"></script>
+<script>
+/* 当前系统识别：显示访问者的系统与架构，并高亮对应平台入口 */
+(function () {
+  var pill = document.getElementById('dlpDetect');
+  if (!pill) return;
+
+  var nameEl = document.getElementById('dlpDetectName');
+  var archEl = document.getElementById('dlpDetectArch');
+  var noteEl = document.getElementById('dlpDetectNote');
+  var hintEl = document.getElementById('dlpLatestHint');
+
+  var ua = navigator.userAgent || '';
+  var uad = navigator.userAgentData || null;
+  var platform = (uad && uad.platform) || navigator.platform || '';
+
+  var NAMES = {
+    windows: 'Windows', linux: 'Linux', harmony: 'HarmonyOS',
+    android: 'Android', macos: 'macOS'
+  };
+  var ARCHS = { x64: 'x64', arm64: 'ARM64', arm32: 'ARMv7', x86: 'x86' };
+
+  /* --- 系统 --- */
+  var os = '';
+  if (/HarmonyOS|OpenHarmony/i.test(ua)) os = 'harmony';
+  else if (/Android/i.test(ua)) os = 'android';
+  else if (/Windows/i.test(ua)) os = 'windows';
+  else if (/Mac OS X|Macintosh|iPhone|iPad/i.test(ua)) os = 'macos';
+  else if (/Linux|X11|CrOS/i.test(ua)) os = 'linux';
+  else if (/^Win/i.test(platform)) os = 'windows';
+  else if (/^Mac/i.test(platform)) os = 'macos';
+  else if (/^Linux|^X11/i.test(platform)) os = 'linux';
+
+  /* --- 架构：优先 Client Hints，其次 UA 字符串 --- */
+  function archFromUA() {
+    if (/aarch64|arm64/i.test(ua)) return 'arm64';
+    if (/win64|x86_64|x64|amd64|wow64/i.test(ua)) return 'x64';
+    if (/armv7|arm/i.test(ua)) return 'arm32';
+    if (/i[3-6]86/i.test(ua)) return 'x86';
+    return '';
+  }
+
+  function detectArch() {
+    return new Promise(function (resolve) {
+      if (uad && typeof uad.getHighEntropyValues === 'function') {
+        uad.getHighEntropyValues(['architecture', 'bitness']).then(function (v) {
+          var a = (v.architecture || '').toLowerCase();
+          if (a === 'arm') resolve(v.bitness === '32' ? 'arm32' : 'arm64');
+          else if (a === 'x86') resolve(v.bitness === '32' ? 'x86' : 'x64');
+          else resolve(archFromUA());
+        }).catch(function () { resolve(archFromUA()); });
+      } else {
+        resolve(archFromUA());
+      }
+    });
+  }
+
+  /* --- 各「系统 + 架构」应选的安装包（* 为架构未知时的兜底） --- */
+  var PKG = {
+    'windows|x64': 'BlockBox-beta5-win64-setup.exe（安装版）或 win64-portable.zip（免安装）',
+    'windows|arm64': 'BlockBox-beta5-winarm64-setup.exe（安装版）或 winarm64-portable.zip（免安装）',
+    'windows|*': 'win64-*（x64 设备）或 winarm64-*（ARM64 设备）安装包',
+    'linux|x64': 'linux-x64.deb（Debian / Ubuntu）或 linux-x64.tar.gz（通用压缩包）',
+    'linux|*': 'Linux 版目前只提供 x64 安装包，ARM 设备暂无法直接安装',
+    'harmony|x64': 'harmony-arm64-v8a.hap（直装）或 harmony-arm64-v8a.zip',
+    'harmony|arm64': 'harmony-arm64-v8a.hap（直装）或 harmony-arm64-v8a.zip',
+    'harmony|*': 'harmony-arm64-v8a.hap（直装）或 harmony-arm64-v8a.zip',
+    'android|arm64': 'android-arm64-v8a.apk',
+    'android|x64': 'android-x86_64.apk（模拟器或 x86 平板）',
+    'android|x86': 'android-x86_64.apk（模拟器或 x86 平板）',
+    'android|*': 'android-arm64-v8a.apk（多数手机）或 android-x86_64.apk（x86 设备）'
+  };
+
+  detectArch().then(function (arch) {
+    var label = NAMES[os] || '未能识别';
+
+    nameEl.textContent = label;
+    if (archEl && arch && os) archEl.textContent = '· ' + ARCHS[arch];
+
+    if (!os) {
+      noteEl.textContent = '· 请手动选择对应系统';
+    } else if (os === 'macos') {
+      noteEl.textContent = '· macOS 版本暂未发布，可先关注更新日志';
+    } else if (os === 'linux' && arch === 'arm64') {
+      noteEl.textContent = '· 目前仅提供 x64 安装包';
+    }
+
+    if (os && os !== 'macos') {
+      var chip = document.querySelector('.dlp-os li[data-os="' + os + '"]');
+      if (chip) {
+        chip.classList.add('is-current');
+        var tag = document.createElement('span');
+        tag.className = 'cur-tag';
+        tag.textContent = '当前';
+        chip.appendChild(tag);
+      }
+      var pkg = PKG[os + '|' + arch] || PKG[os + '|*'];
+      if (hintEl && pkg) {
+        hintEl.textContent = '已识别 ' + label + (arch ? ' · ' + ARCHS[arch] : '') +
+          '，请选择 ' + pkg + '。';
+        hintEl.hidden = false;
+      }
+    }
+
+    pill.hidden = false;
+  });
+})();
+</script>
+</body>
+</html>

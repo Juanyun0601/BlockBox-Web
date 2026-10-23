@@ -77,6 +77,33 @@
     });
   }
 
+  /* ---------- 编码方块「正在开发」弹窗 ---------- */
+  var codingNav = document.getElementById("navCoding");
+  var devModal = document.getElementById("devModal");
+  if (codingNav && devModal) {
+    var closeDevModal = function () {
+      devModal.classList.remove("show");
+      devModal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+    };
+    codingNav.addEventListener("click", function (e) {
+      e.preventDefault();
+      devModal.classList.add("show");
+      devModal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    });
+    devModal.addEventListener("click", function (e) {
+      if (e.target === devModal || e.target.classList.contains("modal-backdrop")) closeDevModal();
+    });
+    var devClose = document.getElementById("devModalClose");
+    var devOk = document.getElementById("devModalOk");
+    if (devClose) devClose.addEventListener("click", closeDevModal);
+    if (devOk) devOk.addEventListener("click", closeDevModal);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeDevModal();
+    });
+  }
+
   /* ============================================================
      AI 聊天演示 — 打字机循环（对齐客户端 AiChatPage 排版：
      无气泡整行消息 + 引用标签 + 模组推荐卡 + 回答操作条）

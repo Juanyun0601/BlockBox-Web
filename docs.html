@@ -1,0 +1,1478 @@
+<!-- AI生成 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文档 - 方块盒子开发者平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:">
+</head>
+<body>
+<p data-aigc-mark="1" style="margin:0 0 8px;font-size:10px;line-height:1.3;color:#6b6560;font-weight:400;">AI生成</p>
+
+    <header class="nav" id="nav">
+        <div class="nav-inner">
+            <a class="brand" href="index.html" aria-label="方块盒子首页">
+                <img class="brand-logo" src="assets/img/logo.png" alt="方块盒子 BlockBox" width="319" height="111">
+            </a>
+            <nav class="nav-links" id="navLinks" aria-label="主导航">
+                <a href="index.html">方块盒子</a>
+                <a href="index.html">编码方块</a>
+                <a href="docs.html" class="is-active" aria-current="page">开发文档</a>
+                <a class="btn btn-ghost btn-sm" href="https://github.com/Juanyun0601/BlockBox/" aria-label="GitHub 仓库">
+                    <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.47v-1.64c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02a9.56 9.56 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.71 1.03 1.62 1.03 2.71 0 3.84-2.35 4.68-4.58 4.93.36.31.68.92.68 1.85V21c0 .27.16.59.67.49C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg>
+                    GitHub
+                </a>
+                <a class="btn btn-primary btn-sm" href="download.html">免费下载</a>
+            </nav>
+            <button class="nav-toggle" id="navToggle" aria-label="打开菜单" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <div class="docs-page">
+        <div class="docs-layout">
+            <div class="docs-inner">
+                <aside class="docs-sidebar">
+                    <div class="docs-sidebar-header">
+                        <h3>目录</h3>
+                    </div>
+                    <nav class="docs-nav">
+                        <div class="nav-group">
+                            <button class="nav-group-header" aria-expanded="true" type="button">
+                                <span>入门</span>
+                                <span class="caret">▼</span>
+                            </button>
+                            <div class="nav-group-content">
+                                <a href="#intro" class="nav-item active">平台概览</a>
+                                <a href="#plugin-types" class="nav-item">插件类型</a>
+                                <a href="#quick-start" class="nav-item">快速开始</a>
+                                <a href="#lifecycle" class="nav-item">安装与生命周期</a>
+                            </div>
+                        </div>
+
+                        <div class="nav-group">
+                            <button class="nav-group-header" aria-expanded="true" type="button">
+                                <span>插件开发</span>
+                                <span class="caret">▼</span>
+                            </button>
+                            <div class="nav-group-content">
+                                <a href="#plugin-manifest" class="nav-item">plugin.json 参考</a>
+                                <a href="#permissions" class="nav-item">权限系统</a>
+                                <a href="#commands" class="nav-item">命令声明</a>
+                                <a href="#ui-fields" class="nav-item">UI 表单字段</a>
+                                <a href="#ui-actions" class="nav-item">UI 动作与参数</a>
+                                <a href="#settings" class="nav-item">插件设置</a>
+                                <a href="#scripts" class="nav-item">脚本编写</a>
+                                <a href="#progress-protocol" class="nav-item">进度协议</a>
+                            </div>
+                        </div>
+
+                        <div class="nav-group">
+                            <button class="nav-group-header" aria-expanded="true" type="button">
+                                <span>内置插件</span>
+                                <span class="caret">▼</span>
+                            </button>
+                            <div class="nav-group-content">
+                                <a href="#builtin-plugins" class="nav-item">插件总览</a>
+                                <a href="#memory-optimizer" class="nav-item">内存优化器</a>
+                                <a href="#disk-cleaner" class="nav-item">磁盘清理</a>
+                                <a href="#shutdown-timer" class="nav-item">定时关机</a>
+                                <a href="#downloader" class="nav-item">多线程下载</a>
+                                <a href="#github-accelerator" class="nav-item">GitHub 加速</a>
+                                <a href="#nether-coords" class="nav-item">下界坐标转换</a>
+                                <a href="#server-finder" class="nav-item">服务器浏览器</a>
+                                <a href="#world-converter" class="nav-item">存档互转</a>
+                                <a href="#website-nav" class="nav-item">网站导航</a>
+                                <a href="#projection-editor" class="nav-item">投影编辑器</a>
+                            </div>
+                        </div>
+
+                        <div class="nav-group">
+                            <button class="nav-group-header" aria-expanded="true" type="button">
+                                <span>高级主题</span>
+                                <span class="caret">▼</span>
+                            </button>
+                            <div class="nav-group-content">
+                                <a href="#native-plugins" class="nav-item">原生插件（内置模块）</a>
+                                <a href="#native-sdk" class="nav-item">原生插件 SDK</a>
+                                <a href="#ui-styles" class="nav-item">界面样式定制</a>
+                                <a href="#skills" class="nav-item">AI 技能（.skill）</a>
+                                <a href="#security" class="nav-item">安全机制详解</a>
+                                <a href="#api-reference" class="nav-item">宿主 API 与脚本约定</a>
+                            </div>
+                        </div>
+
+                        <div class="nav-group">
+                            <button class="nav-group-header" aria-expanded="true" type="button">
+                                <span>工具资源</span>
+                                <span class="caret">▼</span>
+                            </button>
+                            <div class="nav-group-content">
+                                <a href="#packing" class="nav-item">插件打包与更新</a>
+                                <a href="#template" class="nav-item">项目模板</a>
+                                <a href="#troubleshooting" class="nav-item">故障排查</a>
+                                <a href="#glossary" class="nav-item">术语表</a>
+                            </div>
+                        </div>
+                    </nav>
+                </aside>
+
+                <div class="docs-content-wrapper">
+                    <article class="docs-content">
+
+                        <!-- ========== 入门 ========== -->
+                        <h1 id="intro">方块盒子开发者平台概览</h1>
+                        <p>方块盒子（BlockBox）插件平台是基于 Qt 启动器宿主的扩展系统。插件以 <code>.BlockBox</code> 包分发（本质是 zip 改后缀），包内用 <code>plugin.json</code> 声明元数据、权限、命令与界面，用 PowerShell 脚本或宿主内置原生模块实现业务逻辑。</p>
+
+                        <div class="callout">
+                            <strong>当前宿主 API 版本：</strong><code>1.0</code>（见 <code>PluginManager::hostApiVersion()</code>）。插件可通过 <code>apiVersion</code> / <code>minApiVersion</code> 声明兼容范围。
+                        </div>
+
+                        <h2>平台特征</h2>
+                        <ul>
+                            <li><strong>声明式清单</strong>：一份 <code>plugin.json</code> 描述 ID、版本、权限、命令、表单、设置与样式贡献</li>
+                            <li><strong>脚本驱动</strong>：PowerShell（<code>.ps1</code>，UTF-8 BOM）实现逻辑，无需编译即可运行</li>
+                            <li><strong>内嵌 UI</strong>：通过 <code>ui.fields</code> + <code>ui.actions</code> 在插件详情页渲染表单与按钮，输出回显到结果区</li>
+                            <li><strong>安全风控</strong>：权限声明 + 脚本危险模式扫描 + 越权检测 + 导入时信任确认</li>
+                            <li><strong>原生扩展</strong>：<code>kind: "native"</code> 挂载宿主内置模块，或通过 C++ SDK 加载 DLL</li>
+                            <li><strong>样式贡献</strong>：声明 <code>style</code> 后追加到全局 QSS 末尾，停用自动恢复</li>
+                        </ul>
+
+                        <h2 id="plugin-types">插件类型</h2>
+                        <p>方块盒子目前支持三类扩展形态：</p>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>类型</th>
+                                    <th>声明方式</th>
+                                    <th>实现</th>
+                                    <th>适用场景</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>脚本插件</strong>（默认）</td>
+                                    <td>省略 <code>kind</code> 或 <code>"kind": "script"</code></td>
+                                    <td><code>scripts/*.ps1</code> + <code>commands</code> / <code>ui</code></td>
+                                    <td>系统工具、下载、清理、表单型工具</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>内置原生模块</strong></td>
+                                    <td><code>"kind": "native"</code> + <code>entry: "native://…"</code></td>
+                                    <td>宿主编译界面（如投影编辑器）</td>
+                                    <td>3D 编辑器等需要 Qt/OpenGL 的复杂 UI</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>SDK 原生 DLL</strong></td>
+                                    <td><code>"kind": "native"</code> + <code>nativeLibrary</code></td>
+                                    <td>C++ 继承 <code>IBlockBoxPlugin</code></td>
+                                    <td>需要本机性能/系统 API 的扩展</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p>另有独立的 <strong>AI 技能</strong>（<code>.skill</code> / <code>SKILL.md</code>），供 AI 助手调用脚本工具，与插件体系并行，见 <a href="#skills">AI 技能</a>。</p>
+
+                        <h2 id="quick-start">快速开始</h2>
+                        <p>推荐路径：启动器「插件 → 制作插件」生成模板，或手工创建如下目录：</p>
+
+                        <pre class="code-block"><code>my_plugin/
+├── plugin.json        # 插件清单（包内必需）
+├── README.md          # 说明（可选）
+├── scripts/
+│   └── main.ps1       # 业务脚本（UTF-8 BOM）
+└── assets/
+    └── icon.png       # 图标（建议 128×128）</code></pre>
+
+                        <p>最小可用清单：</p>
+                        <pre class="code-block"><code>{
+  "id": "my_plugin",
+  "name": "我的插件",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "description": "示例：点击按钮执行脚本",
+  "icon": "assets/icon.png",
+  "apiVersion": "1.0",
+  "category": "工具",
+  "permissions": [],
+  "commands": [
+    {
+      "id": "run",
+      "label": "执行",
+      "kind": "command",
+      "target": "run:scripts/main.ps1",
+      "risk": "low",
+      "riskNote": "仅输出示例文本"
+    }
+  ]
+}</code></pre>
+
+                        <p>对应脚本 <code>scripts/main.ps1</code>：</p>
+                        <pre class="code-block"><code># 保存为 UTF-8 with BOM
+param([switch]$Silent)
+
+Write-Output "BBSTATUS:正在执行…"
+Write-Output "BBPROGRESS:50"
+Write-Output "BBRESULT:你好，来自 my_plugin"
+Write-Output "BBPROGRESS:100"
+Write-Output "BBRESULT:完成"</code></pre>
+
+                        <ol>
+                            <li>将目录压缩为 <code>my_plugin.BlockBox</code>（zip 改后缀）</li>
+                            <li>在方块盒子「插件页」导入，阅读信任确认后添加</li>
+                            <li>点击命令按钮，在结果区查看 <code>BBRESULT</code> 输出</li>
+                        </ol>
+
+                        <h2 id="lifecycle">安装与生命周期</h2>
+                        <p>插件文件存放在<strong>启动器可执行文件同级</strong>的 <code>BlockBox/</code> 目录（不存在时自动创建）。状态（启用/禁用、设置值）持久化在 <code>QSettings("BlockBox","Plugins")</code>。</p>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>阶段</th>
+                                    <th>行为</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>导入</td>
+                                    <td><code>inspectPluginFile</code> 解析包内清单 → 信任确认 → 复制到插件目录 → <code>refresh()</code></td>
+                                </tr>
+                                <tr>
+                                    <td>启用 / 停用</td>
+                                    <td>默认启用；停用后命令入口与样式贡献一并隐藏/移除</td>
+                                </tr>
+                                <tr>
+                                    <td>执行命令 / UI 动作</td>
+                                    <td>解包到 <code>%TEMP%/BlockBox/&lt;id&gt;</code>，按扩展名选择解释器执行</td>
+                                </tr>
+                                <tr>
+                                    <td>更新</td>
+                                    <td>清单 <code>updateUrl</code> 指向新 <code>.BlockBox</code>，异步下载替换本地文件</td>
+                                </tr>
+                                <tr>
+                                    <td>删除</td>
+                                    <td>移除包文件与图标缓存；设置项可一并清除</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- ========== 清单 ========== -->
+                        <h1 id="plugin-manifest">plugin.json 参考</h1>
+                        <p>清单为 UTF-8 JSON。必填字段保证插件可被识别；其余字段均可选，用于商店展示、兼容检查与扩展能力。</p>
+
+                        <h2>必填字段</h2>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>字段</th>
+                                    <th>类型</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>id</code></td>
+                                    <td>string</td>
+                                    <td>唯一标识：英文、数字、下划线；用于目录名、设置分区、依赖引用</td>
+                                </tr>
+                                <tr>
+                                    <td><code>name</code></td>
+                                    <td>string</td>
+                                    <td>显示名称</td>
+                                </tr>
+                                <tr>
+                                    <td><code>version</code></td>
+                                    <td>string</td>
+                                    <td>语义化版本，如 <code>1.2.0</code>（更新时会与远端比较）</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h2>推荐 / 可选字段</h2>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>字段</th>
+                                    <th>类型</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>author</code> / <code>description</code></td>
+                                    <td>string</td>
+                                    <td>作者与描述（信任确认弹窗会展示）</td>
+                                </tr>
+                                <tr>
+                                    <td><code>icon</code></td>
+                                    <td>string</td>
+                                    <td>包内图标路径，如 <code>assets/icon.png</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>entry</code></td>
+                                    <td>string</td>
+                                    <td>入口：脚本路径、空字符串，或 <code>native://module</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>kind</code></td>
+                                    <td>string</td>
+                                    <td><code>script</code>（默认）/ <code>native</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>nativeLibrary</code></td>
+                                    <td>string</td>
+                                    <td>SDK 原生插件 DLL 相对路径，如 <code>build/sdk_demo.dll</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>apiVersion</code> / <code>minApiVersion</code></td>
+                                    <td>string</td>
+                                    <td>适配 / 最低宿主 API 版本；当前宿主为 <code>1.0</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>homepage</code> / <code>license</code></td>
+                                    <td>string</td>
+                                    <td>主页与许可证（如 <code>MIT</code>）</td>
+                                </tr>
+                                <tr>
+                                    <td><code>tags</code> / <code>category</code></td>
+                                    <td>array / string</td>
+                                    <td>标签与分类（工具 / 美化 / 功能 / 其他）</td>
+                                </tr>
+                                <tr>
+                                    <td><code>updateUrl</code></td>
+                                    <td>string</td>
+                                    <td>指向新版本 <code>.BlockBox</code> 的下载地址</td>
+                                </tr>
+                                <tr>
+                                    <td><code>dependencies</code></td>
+                                    <td>array</td>
+                                    <td>依赖插件 ID，可带版本要求：<code>"other@&gt;=1.2"</code>；依赖须已安装且启用</td>
+                                </tr>
+                                <tr>
+                                    <td><code>permissions</code></td>
+                                    <td>array</td>
+                                    <td>能力权限 token 列表，见 <a href="#permissions">权限系统</a></td>
+                                </tr>
+                                <tr>
+                                    <td><code>settings</code></td>
+                                    <td>array</td>
+                                    <td>设置项定义，宿主生成「插件设置」表单</td>
+                                </tr>
+                                <tr>
+                                    <td><code>commands</code></td>
+                                    <td>array</td>
+                                    <td>命令/动作列表，见 <a href="#commands">命令声明</a></td>
+                                </tr>
+                                <tr>
+                                    <td><code>ui</code></td>
+                                    <td>object</td>
+                                    <td><code>{ fields, actions, style? }</code> 内嵌表单与按钮</td>
+                                </tr>
+                                <tr>
+                                    <td><code>style</code></td>
+                                    <td>string | object</td>
+                                    <td>启动器 QSS 贡献；需同时声明 <code>ui:style</code>，见 <a href="#ui-styles">界面样式定制</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h2>完整示例（节选）</h2>
+                        <pre class="code-block"><code>{
+  "id": "multi_thread_downloader",
+  "name": "多线程下载",
+  "version": "1.0.1",
+  "author": "BlockBox Team",
+  "description": "多线程分片加速下载直链文件",
+  "icon": "assets/icon.png",
+  "entry": "scripts/multi_download.ps1",
+  "apiVersion": "1.0",
+  "minApiVersion": "1.0",
+  "license": "MIT",
+  "category": "工具",
+  "tags": ["工具", "下载", "加速"],
+  "permissions": ["network"],
+  "settings": [
+    { "key": "defaultThreads", "label": "默认线程数", "type": "number", "default": "8" }
+  ],
+  "commands": [
+    {
+      "id": "run",
+      "label": "新建下载任务",
+      "kind": "command",
+      "target": "run:scripts/multi_download.ps1"
+    }
+  ],
+  "ui": {
+    "fields": [
+      {
+        "key": "url",
+        "label": "下载链接",
+        "type": "text",
+        "required": true,
+        "placeholder": "http(s)://直链文件地址"
+      },
+      { "key": "savePath", "label": "保存位置", "type": "path" },
+      { "key": "threads", "label": "线程数", "type": "number", "default": "8" }
+    ],
+    "actions": [
+      {
+        "id": "run",
+        "label": "开始下载",
+        "script": "scripts/multi_download.ps1",
+        "args": {
+          "Silent": "true",
+          "Url": "url",
+          "SavePath": "savePath",
+          "Threads": "threads"
+        }
+      }
+    ]
+  }
+}</code></pre>
+
+                        <!-- ========== 权限 ========== -->
+                        <h1 id="permissions">权限系统</h1>
+                        <p>插件在清单顶层通过 <code>permissions</code> 声明所需能力。宿主在<strong>导入信任确认</strong>时展示权限列表与风险说明，并结合脚本扫描做综合风控。</p>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>权限 Token</th>
+                                    <th>含义</th>
+                                    <th>最低风险</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>file:read</code></td>
+                                    <td>读取方块盒子（启动器）目录文件</td>
+                                    <td>低</td>
+                                </tr>
+                                <tr>
+                                    <td><code>file:write</code></td>
+                                    <td>修改方块盒子文件/代码（config.ini、资源等）</td>
+                                    <td>中</td>
+                                </tr>
+                                <tr>
+                                    <td><code>registry</code></td>
+                                    <td>读写 Windows 注册表</td>
+                                    <td>中</td>
+                                </tr>
+                                <tr>
+                                    <td><code>network</code></td>
+                                    <td>访问网络</td>
+                                    <td>低</td>
+                                </tr>
+                                <tr>
+                                    <td><code>admin</code></td>
+                                    <td>请求管理员权限（UAC 提权）</td>
+                                    <td>高</td>
+                                </tr>
+                                <tr>
+                                    <td><code>system</code></td>
+                                    <td>系统级操作（服务、关机、格式化等）</td>
+                                    <td>高</td>
+                                </tr>
+                                <tr>
+                                    <td><code>ui:style</code></td>
+                                    <td>修改启动器界面样式（仅外观）</td>
+                                    <td>低</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h2>声明示例</h2>
+                        <pre class="code-block"><code>{
+  "id": "my_modifier",
+  "name": "修改方块盒子",
+  "permissions": ["file:read", "file:write", "registry"]
+}</code></pre>
+
+                        <div class="callout callout-warning">
+                            <strong>最佳实践：</strong>只声明真正需要的权限。未声明却执行敏感操作会触发<strong>越权检测</strong>，综合风险自动升为「高」，用户必须勾选「我已了解风险」才能继续。
+                        </div>
+
+                        <!-- ========== 命令 ========== -->
+                        <h1 id="commands">命令声明</h1>
+                        <p><code>commands[]</code> 在插件详情页渲染为按钮行。<code>kind</code> 决定点击后的行为：</p>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>kind</th>
+                                    <th>target / 行为</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>command</code></td>
+                                    <td><code>run:scripts/xxx.ps1</code></td>
+                                    <td>解包后执行包内脚本（按扩展名选解释器）</td>
+                                </tr>
+                                <tr>
+                                    <td><code>command</code></td>
+                                    <td>无 <code>run:</code> 前缀</td>
+                                    <td>交给系统 shell 执行</td>
+                                </tr>
+                                <tr>
+                                    <td><code>script</code></td>
+                                    <td>包内脚本路径</td>
+                                    <td>以系统默认方式打开该脚本（查看/编辑）</td>
+                                </tr>
+                                <tr>
+                                    <td><code>url</code></td>
+                                    <td>完整 URL</td>
+                                    <td>用系统浏览器打开链接</td>
+                                </tr>
+                                <tr>
+                                    <td><code>label</code></td>
+                                    <td>标题文本（用 <code>label</code> 字段）</td>
+                                    <td>分类标题，独占一行，不执行动作</td>
+                                </tr>
+                                <tr>
+                                    <td><code>native</code></td>
+                                    <td><code>native://…</code></td>
+                                    <td>原生插件动作，由宿主界面处理</td>
+                                </tr>
+                                <tr>
+                                    <td><code>server-list</code></td>
+                                    <td><code>data/servers.json</code></td>
+                                    <td>内嵌服务器列表（延迟检测、一键加入）</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h2>字段说明</h2>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>字段</th>
+                                    <th>必填</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>id</code></td><td>是</td><td>命令唯一标识</td></tr>
+                                <tr><td><code>label</code></td><td>是</td><td>按钮/标题显示文本</td></tr>
+                                <tr><td><code>kind</code></td><td>是</td><td>见上表</td></tr>
+                                <tr><td><code>target</code></td><td>视 kind</td><td>脚本路径 / URL / 标题等</td></tr>
+                                <tr><td><code>risk</code></td><td>否</td><td><code>low</code> / <code>medium</code> / <code>high</code>，默认 <code>medium</code></td></tr>
+                                <tr><td><code>riskNote</code></td><td>否</td><td>风险说明，展示在信任确认中</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h2>示例：分组命令 + 风险分级</h2>
+                        <pre class="code-block"><code>{
+  "commands": [
+    {
+      "id": "lbl_system",
+      "label": "🧹 系统垃圾清理",
+      "kind": "label",
+      "target": ""
+    },
+    {
+      "id": "sys_quick",
+      "label": "快速清理（推荐）",
+      "kind": "command",
+      "target": "run:scripts/sys_quick.ps1",
+      "risk": "medium",
+      "riskNote": "清理临时文件、预读取缓存、回收站（安全可恢复）"
+    },
+    {
+      "id": "sys_deep",
+      "label": "深度清理",
+      "kind": "command",
+      "target": "run:scripts/sys_deep.ps1",
+      "risk": "high",
+      "riskNote": "额外清理 Windows 更新缓存、系统日志、缩略图缓存"
+    },
+    {
+      "id": "open_docs",
+      "label": "查看文档",
+      "kind": "url",
+      "target": "https://example.com/docs"
+    }
+  ]
+}</code></pre>
+
+                        <!-- ========== UI 字段 ========== -->
+                        <h1 id="ui-fields">UI 表单字段</h1>
+                        <p>声明 <code>ui.fields[]</code> 后，宿主在插件详情卡片下方渲染表单，不再弹出独立 PowerShell 窗口。</p>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>type</th>
+                                    <th>控件</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>text</code></td><td>单行输入</td><td>默认类型</td></tr>
+                                <tr><td><code>path</code></td><td>路径输入 + 浏览</td><td>打开文件/目录选择对话框</td></tr>
+                                <tr><td><code>number</code></td><td>数字输入</td><td>可配合 min/max 类约束在脚本侧校验</td></tr>
+                                <tr><td><code>bool</code></td><td>复选框</td><td>值映射为 <code>true</code> / <code>false</code></td></tr>
+                                <tr><td><code>select</code></td><td>下拉框</td><td><code>options</code> 为候选项</td></tr>
+                                <tr><td><code>time</code></td><td>时间输入</td><td>如 <code>22:30</code>（部分插件已使用）</td></tr>
+                                <tr><td><code>color</code></td><td>颜色选择</td><td>设置项类型中亦支持</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h2>字段属性</h2>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>属性</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>key</code></td><td>字段键名，供 <code>ui.actions.args</code> 引用</td></tr>
+                                <tr><td><code>label</code></td><td>显示名称</td></tr>
+                                <tr><td><code>type</code></td><td>控件类型，缺省 <code>text</code></td></tr>
+                                <tr><td><code>default</code></td><td>默认值</td></tr>
+                                <tr><td><code>placeholder</code></td><td>占位提示</td></tr>
+                                <tr><td><code>required</code></td><td>为 <code>true</code> 时，执行前校验非空</td></tr>
+                                <tr><td><code>options</code></td><td><code>select</code> 选项；支持两种写法（见下）</td></tr>
+                            </tbody>
+                        </table>
+
+                        <p><code>options</code> 写法：</p>
+                        <pre class="code-block"><code>// 写法 A：纯字符串数组（显示值即提交值）
+"options": ["查看", "放置", "破坏", "填充"]
+
+// 写法 B：value|label（提交 value，界面显示 label）
+"options": [
+  "overworld_to_nether|主世界 → 下界（X、Z ÷ 8）",
+  "nether_to_overworld|下界 → 主世界（X、Z × 8）"
+]</code></pre>
+
+                        <!-- ========== UI 动作 ========== -->
+                        <h1 id="ui-actions">UI 动作与参数映射</h1>
+                        <p><code>ui.actions[]</code> 渲染为按钮。点击后宿主：</p>
+                        <ol>
+                            <li>校验 <code>required</code> 字段</li>
+                            <li>按 <code>args</code> 组装命令行参数</li>
+                            <li>解包插件并执行 <code>script</code> 指定的脚本</li>
+                            <li>捕获 stdout/stderr 显示在结果区</li>
+                        </ol>
+
+                        <h2>动作字段</h2>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>字段</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>id</code> / <code>label</code></td><td>标识与按钮文字</td></tr>
+                                <tr><td><code>script</code></td><td>包内相对路径，如 <code>scripts/main.ps1</code></td></tr>
+                                <tr><td><code>args</code></td><td>映射对象：PowerShell 参数名 → 字段 key 或字面量</td></tr>
+                                <tr><td><code>risk</code> / <code>riskNote</code></td><td>与命令相同的可选风险声明</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h2>参数组装规则</h2>
+                        <p>宿主按 <code>args</code> 生成 PowerShell 命令行：</p>
+                        <ul>
+                            <li>字面值 <code>"true"</code> → 开关 <code>-Name</code></li>
+                            <li>字面值 <code>"false"</code> → <code>-Name:$false</code></li>
+                            <li>其他值：先取对应字段当前值，再生成 <code>-Name value</code></li>
+                        </ul>
+
+                        <pre class="code-block"><code>// 清单
+"args": {
+  "Silent": "true",
+  "Action": "action",
+  "Hours": "hours",
+  "Deep": "deep"
+}
+
+// 用户选择 action=shutdown, hours=1, deep=false 时，等价执行：
+// powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden ^
+//   -File scripts\shutdown_timer.ps1 -Silent -Action shutdown -Hours 1 -Deep:$false</code></pre>
+
+                        <p>脚本侧对应声明：</p>
+                        <pre class="code-block"><code>param(
+    [switch]$Silent,
+    [string]$Action = '',
+    [int]$Hours = 0,
+    [switch]$Deep
+)</code></pre>
+
+                        <div class="callout">
+                            <strong>约定：</strong>内嵌 UI 动作请始终接受 <code>-Silent</code>，静默模式下用 <code>Write-Output</code> 输出协议行/结果，不要弹 WinForms 窗口，否则与宿主结果区体验冲突。
+                        </div>
+
+                        <!-- ========== 设置 ========== -->
+                        <h1 id="settings">插件设置</h1>
+                        <p><code>settings[]</code> 与 <code>ui.fields</code> 不同：设置是<strong>持久化偏好</strong>，由「插件设置」对话框编辑，保存在 <code>QSettings</code> 的 <code>&lt;pluginId&gt;/&lt;key&gt;</code> 下；UI 字段是<strong>单次表单输入</strong>。</p>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>属性</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>key</code></td><td>设置键名</td></tr>
+                                <tr><td><code>label</code></td><td>设置界面显示名</td></tr>
+                                <tr><td><code>type</code></td><td><code>text</code> / <code>bool</code> / <code>number</code> / <code>select</code> / <code>color</code> / <code>time</code></td></tr>
+                                <tr><td><code>default</code></td><td>未保存时的默认值</td></tr>
+                                <tr><td><code>options</code></td><td><code>select</code> 候选项</td></tr>
+                            </tbody>
+                        </table>
+
+                        <pre class="code-block"><code>{
+  "settings": [
+    { "key": "defaultProjection", "label": "默认投影文件", "type": "text", "default": "" },
+    { "key": "showAir", "label": "默认显示空气方块", "type": "bool", "default": "false" },
+    {
+      "key": "defaultTool",
+      "label": "默认工具",
+      "type": "select",
+      "default": "查看",
+      "options": ["查看", "放置", "破坏", "填充"]
+    }
+  ]
+}</code></pre>
+
+                        <p>脚本若需读取设置，可在开发阶段通过约定路径或由 UI 动作把设置值映射进 <code>args</code>；宿主 C++ 侧使用 <code>PluginManager::pluginSetting()</code> / <code>setPluginSetting()</code>。</p>
+
+                        <!-- ========== 脚本 ========== -->
+                        <h1 id="scripts">脚本编写指南</h1>
+                        <h2>编码与启动方式</h2>
+                        <ul>
+                            <li>PowerShell 脚本使用 <strong>UTF-8 with BOM</strong> 编码（避免中文乱码）</li>
+                            <li>宿主启动参数固定为：<br>
+                                <code>powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File &lt;script&gt; …</code></li>
+                            <li>按扩展名选择解释器：<code>.ps1</code> → PowerShell；<code>.bat</code>/<code>.cmd</code> → cmd</li>
+                            <li>包内路径相对于 <code>plugin.json</code> 所在根目录</li>
+                        </ul>
+
+                        <h2>推荐脚本骨架</h2>
+                        <pre class="code-block"><code># ============================================================
+# 示例工具 - BlockBox 插件脚本
+# 静默: powershell -NoProfile -ExecutionPolicy Bypass -File main.ps1 -Silent -Name value
+# ============================================================
+param(
+    [switch]$Silent,
+    [string]$Name = '',
+    [switch]$Deep
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Write-BbProgress([int]$Percent) {
+    if ($Percent -lt 0) { $Percent = 0 }
+    if ($Percent -gt 100) { $Percent = 100 }
+    Write-Output "BBPROGRESS:$Percent"
+}
+function Write-BbStatus([string]$Text) {
+    Write-Output "BBSTATUS:$Text"
+}
+function Write-BbResult([string]$Text) {
+    Write-Output "BBRESULT:$Text"
+}
+
+try {
+    Write-BbStatus "开始执行…"
+    Write-BbProgress 10
+
+    # —— 业务逻辑 ——
+    Write-BbResult "处理参数 Name=$Name Deep=$Deep"
+
+    Write-BbProgress 100
+    Write-BbResult "完成"
+    exit 0
+}
+catch {
+    Write-BbResult "错误: $($_.Exception.Message)"
+    exit 1
+}</code></pre>
+
+                        <h2>交互模式与静默模式</h2>
+                        <p>内置工具普遍支持两种模式：无 <code>-Silent</code> 时可弹自研窗体做交互；有 <code>-Silent</code> 时只输出到 stdout，供宿主捕获。</p>
+                        <pre class="code-block"><code># 交互
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\clean_system.ps1
+
+# 静默（宿主 UI 动作常用）
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\scan_large.ps1 `
+  -Silent -Path "D:\" -MinSizeMB 200</code></pre>
+
+                        <h2 id="progress-protocol">进度协议（PluginRunnerDialog）</h2>
+                        <p>当脚本在<strong>命令执行进度对话框</strong>中运行时，可用以下协议行驱动 UI：</p>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>协议行</th>
+                                    <th>效果</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>BBPROGRESS:&lt;0-100&gt;</code></td>
+                                    <td>更新进度条（超出范围会被钳制到 0–100）</td>
+                                </tr>
+                                <tr>
+                                    <td><code>BBSTATUS:&lt;text&gt;</code></td>
+                                    <td>更新状态标签文案</td>
+                                </tr>
+                                <tr>
+                                    <td><code>BBRESULT:&lt;text&gt;</code></td>
+                                    <td>向结果/日志区追加一行</td>
+                                </tr>
+                                <tr>
+                                    <td>其他普通行</td>
+                                    <td>原样追加到详细日志</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <pre class="code-block"><code>Write-Output "BBSTATUS:正在清理临时文件"
+Write-Output "BBPROGRESS:40"
+Write-Output "BBRESULT:已删除 128 个文件"
+Write-Output "BBPROGRESS:100"
+Write-Output "BBRESULT:清理完成"</code></pre>
+
+                        <p>内嵌 UI 结果区会直接显示 stdout/stderr 全文；进度对话框会解析上述协议行。两者可同时兼容：始终用 <code>Write-Output</code> 输出协议行即可。</p>
+
+                        <!-- ========== 内置插件 ========== -->
+                        <h1 id="builtin-plugins">内置插件总览</h1>
+                        <p>以下插件源码位于仓库 <code>插件/</code> 目录，可作为参考实现直接阅读或二次打包。</p>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>类型</th>
+                                    <th>要点</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>memory_optimizer</code></td><td>内存优化</td><td>脚本</td><td>EmptyWorkingSet + DNS 刷新，支持深度多轮</td></tr>
+                                <tr><td><code>disk_cleaner</code></td><td>磁盘清理</td><td>脚本</td><td>系统垃圾 / 浏览器缓存 / 大文件 / 重复文件四专项</td></tr>
+                                <tr><td><code>shutdown_timer</code></td><td>定时关机</td><td>脚本</td><td>倒计时或指定时间，可关机/重启/取消</td></tr>
+                                <tr><td><code>multi_thread_downloader</code></td><td>多线程下载</td><td>脚本</td><td>Range 探测 + 分片并行 + 断点能力降级</td></tr>
+                                <tr><td><code>github_accelerator</code></td><td>GitHub 加速</td><td>脚本</td><td>改 hosts + 刷新 DNS，可一键移除</td></tr>
+                                <tr><td><code>nether_coords</code></td><td>下界坐标转换</td><td>脚本</td><td>主世界/下界 8:1 换算，纯表单无弹窗</td></tr>
+                                <tr><td><code>server_finder</code></td><td>服务器浏览器</td><td>数据</td><td><code>server-list</code> 内嵌列表 + 延迟检测</td></tr>
+                                <tr><td><code>website_nav</code></td><td>网站导航</td><td>数据</td><td>大量 <code>url</code> 命令分类平铺</td></tr>
+                                <tr><td><code>world_converter</code></td><td>存档互转</td><td>脚本</td><td>Java ↔ 基岩（Chunker），需 <code>file:read/write</code></td></tr>
+                                <tr><td><code>style_demo</code></td><td>样式演示</td><td>样式</td><td>演示 <code>style</code> + <code>ui:style</code></td></tr>
+                                <tr><td><code>projection_editor</code></td><td>投影方块编辑器</td><td>原生</td><td>3D 编辑 .litematic，宿主内置界面</td></tr>
+                                <tr><td><code>sdk_demo</code> / <code>syntax_parser</code></td><td>SDK / 语法解析示例</td><td>SDK 原生</td><td>DLL + <code>IBlockBoxPlugin</code></td></tr>
+                            </tbody>
+                        </table>
+
+                        <h2 id="memory-optimizer">内存优化器 <span class="badge">memory_optimizer</span></h2>
+                        <p>遍历进程调用 <code>EmptyWorkingSet</code> 释放工作集，对比优化前后可用内存；可选深度模式多轮清理，并刷新 DNS 缓存。</p>
+                        <pre class="code-block"><code># UI 字段
+"deep": bool  # 深度优化
+
+# 映射到脚本
+param([switch]$Silent, [switch]$Deep)</code></pre>
+                        <ul>
+                            <li>权限：无特殊敏感权限（进程工作集操作）</li>
+                            <li>参考：<code>插件/memory_optimizer/scripts/optimize.ps1</code></li>
+                        </ul>
+
+                        <h2 id="disk-cleaner">磁盘清理 <span class="badge">disk_cleaner</span></h2>
+                        <p>四类专项，命令区用 <code>label</code> 分组：</p>
+                        <table class="doc-table">
+                            <thead>
+                                <tr><th>专项</th><th>脚本</th><th>风险</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>系统垃圾快速/深度清理</td><td><code>sys_quick.ps1</code> / <code>sys_deep.ps1</code></td><td>中 / 高</td></tr>
+                                <tr><td>浏览器缓存（Edge/Chrome/Firefox）</td><td><code>clean_browser.ps1</code></td><td>低</td></tr>
+                                <tr><td>大文件扫描（C/D 盘）</td><td><code>scan_large_*.ps1</code></td><td>低（只读）</td></tr>
+                                <tr><td>重复文件检测（SHA256）</td><td><code>find_dup_*.ps1</code></td><td>低（只读）</td></tr>
+                            </tbody>
+                        </table>
+                        <ul>
+                            <li>权限声明：<code>["system"]</code>（高风险，导入需勾选确认）</li>
+                            <li>扫描类操作<strong>不会删除文件</strong>，可在 <code>riskNote</code> 中写明以降低用户顾虑</li>
+                        </ul>
+
+                        <h2 id="shutdown-timer">定时关机 <span class="badge">shutdown_timer</span></h2>
+                        <p>表单驱动：操作类型（关机/重启/取消、倒计时或指定时间）、时长、执行时间。</p>
+                        <pre class="code-block"><code>"fields": [
+  { "key": "action", "type": "select", "options": [
+      "shutdown|多久后关机",
+      "restart|多久后重启",
+      "shutdownAt|指定时间关机",
+      "restartAt|指定时间重启",
+      "cancel|取消定时任务"
+  ]},
+  { "key": "hours", "type": "number" },
+  { "key": "minutes", "type": "number" },
+  { "key": "atTime", "type": "time", "default": "22:30" }
+]</code></pre>
+
+                        <h2 id="downloader">多线程下载 <span class="badge">multi_thread_downloader</span></h2>
+                        <ul>
+                            <li>HEAD + Range 探测是否支持断点/分片；不支持则降级单线程</li>
+                            <li>表单：<code>url</code>（必填）、<code>savePath</code>、<code>threads</code></li>
+                            <li>设置项 <code>defaultThreads</code> 可作为默认线程数</li>
+                            <li>权限建议：<code>["network"]</code></li>
+                            <li>注意：网盘分享链不是直链，需用户自行获取真实下载地址</li>
+                        </ul>
+
+                        <h2 id="github-accelerator">GitHub 加速 <span class="badge">github_accelerator</span></h2>
+                        <p>修改本地 hosts 添加 GitHub 域名映射，并刷新 DNS；提供「启用加速 / 移除加速」两个 UI 动作（共用同一脚本，用 <code>Remove</code> 参数区分）。</p>
+                        <pre class="code-block"><code>"actions": [
+  { "id": "enable",  "label": "启用加速", "script": "scripts/github_accelerate.ps1",
+    "args": { "Silent": "true" } },
+  { "id": "disable", "label": "移除加速", "script": "scripts/github_accelerate.ps1",
+    "args": { "Silent": "true", "Remove": "true" } }
+]</code></pre>
+                        <ul>
+                            <li>hosts 修改属敏感操作，导入时可能升为高风险；建议声明 <code>file:write</code> 或 <code>system</code> 并在 <code>riskNote</code> 说明可回滚</li>
+                        </ul>
+
+                        <h2 id="nether-coords">下界坐标转换 <span class="badge">nether_coords</span></h2>
+                        <p>纯表单工具：选择方向，填 X/Y/Z，点击「转换坐标」在结果区显示。适合学习 <code>select</code> 的 <code>value|label</code> 写法与只读计算类插件（无破坏性操作，<code>risk: "low"</code>）。</p>
+
+                        <h2 id="server-finder">服务器浏览器 <span class="badge">server_finder</span></h2>
+                        <pre class="code-block"><code>{
+  "permissions": ["network"],
+  "commands": [
+    {
+      "id": "server_list",
+      "label": "服务器列表",
+      "kind": "server-list",
+      "target": "data/servers.json",
+      "risk": "low",
+      "riskNote": "访问网络检测服务器状态；加入服务器时使用当前实例启动游戏。"
+    }
+  ]
+}</code></pre>
+                        <p>包内需提供 <code>data/servers.json</code>；宿主并发检测延迟与在线人数，并支持「加入」启动当前实例。</p>
+
+                        <h2 id="website-nav">网站导航 <span class="badge">website_nav</span></h2>
+                        <p>大量 <code>kind: "url"</code> 命令，配合 <code>label</code> 分类标题平铺展示，点击用系统默认浏览器打开。权限：<code>["network"]</code>（或按需省略，若宿主仅外开浏览器）。</p>
+
+                        <h2 id="world-converter">存档互转 <span class="badge">world_converter</span></h2>
+                        <ul>
+                            <li>基于 HiveGamesOSS/Chunker（MIT）；Java ↔ 基岩双向</li>
+                            <li>权限：<code>["file:read", "file:write"]</code></li>
+                            <li>命令与动作均建议 <code>risk: "medium"</code> + 提醒用户<strong>先备份存档</strong></li>
+                            <li>UI 含路径选择、版本 select、多项 bool/开关，是复杂表单的完整范例</li>
+                        </ul>
+
+                        <h2 id="projection-editor">投影方块编辑器 <span class="badge">projection_editor</span> <span class="badge badge-native">native</span></h2>
+                        <pre class="code-block"><code>{
+  "id": "projection_editor",
+  "kind": "native",
+  "entry": "native://projection_editor",
+  "settings": [
+    { "key": "defaultProjection", "type": "text", "label": "默认投影文件" },
+    { "key": "showAir", "type": "bool", "label": "默认显示空气方块" },
+    { "key": "useTextures", "type": "bool", "label": "启用实例材质" },
+    { "key": "sourceInstance", "type": "text", "label": "材质来源实例目录" },
+    { "key": "useShapes", "type": "bool", "label": "真实形状渲染（活板门等）" }
+  ],
+  "commands": [
+    {
+      "id": "select_projection",
+      "label": "选择投影并编辑…",
+      "kind": "native",
+      "target": "native://select_projection"
+    }
+  ]
+}</code></pre>
+                        <ul>
+                            <li>宿主提供 <code>SchematicDocument</code> 读写核心；界面在 <code>ProjectionBlockEditorDialog</code> + <code>VoxelViewWidget</code></li>
+                            <li>停用插件后，投影管理页「编辑投影方块」入口自动隐藏</li>
+                        </ul>
+
+                        <!-- ========== 高级 ========== -->
+                        <h1 id="native-plugins">原生插件开发（内置模块）</h1>
+                        <p>当功能必须以 Qt 控件形式嵌入启动器时，使用 <code>kind: "native"</code> 并将 <code>entry</code> 指到宿主已注册的模块：</p>
+                        <pre class="code-block"><code>{
+  "id": "my_native",
+  "name": "我的原生插件",
+  "kind": "native",
+  "entry": "native://module_name",
+  "apiVersion": "1.0"
+}</code></pre>
+                        <ul>
+                            <li>宿主按 <code>id</code> / <code>entry</code> 映射到内置功能</li>
+                            <li>仍遵循启停生命周期与信任导入流程</li>
+                            <li>通用能力（文件读写、文档模型）放宿主核心；插件专有交互放插件侧</li>
+                        </ul>
+
+                        <h1 id="native-sdk">原生插件 SDK（C++ DLL）</h1>
+                        <p>头文件位于启动器源码 <code>sdk/</code>：<code>BlockBoxPlugin.h</code>、<code>BlockBoxHostAPI.h</code>、<code>BlockBoxTypes.h</code>。</p>
+
+                        <h2>必须导出的符号</h2>
+                        <pre class="code-block"><code>#include "BlockBoxPlugin.h"
+
+class MyPlugin : public IBlockBoxPlugin {
+public:
+    const char* name() const override { return "My Plugin"; }
+    const char* version() const override { return "1.0.0"; }
+    const char* author() const override { return "Me"; }
+    const char* description() const override { return "示例"; }
+
+    bool initialize(IBlockBoxHostAPI* host) override {
+        // 保存 host，注册命令、读设置、连日志
+        return true;
+    }
+    void shutdown() override { /* 释放资源 */ }
+
+    int commandCount() const override { return 1; }
+    PluginCommandInfo command(int index) const override { /* … */ }
+    bool executeCommand(const char* cmdId, const char** args, int argCount) override {
+        // 处理命令
+        return true;
+    }
+};
+
+extern "C" {
+    BB_PLUGIN_EXPORT IBlockBoxPlugin* createBlockBoxPlugin() {
+        return new MyPlugin();
+    }
+    BB_PLUGIN_EXPORT void destroyBlockBoxPlugin(IBlockBoxPlugin* p) {
+        delete p;
+    }
+}</code></pre>
+
+                        <h2>清单挂载</h2>
+                        <pre class="code-block"><code>{
+  "id": "sdk_demo",
+  "kind": "native",
+  "entry": "native://sdk_demo",
+  "nativeLibrary": "build/sdk_demo.dll",
+  "permissions": ["file:read"],
+  "settings": [ /* … */ ],
+  "commands": [
+    { "id": "show_info", "label": "查看系统信息", "kind": "native", "risk": "low" }
+  ]
+}</code></pre>
+
+                        <h2>宿主服务（IBlockBoxHostAPI）</h2>
+                        <table class="doc-table">
+                            <thead>
+                                <tr><th>服务</th><th>能力</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>ISettingsService</code></td><td>读写插件设置（持久化）</td></tr>
+                                <tr><td><code>ILogService</code></td><td>写入启动器日志</td></tr>
+                                <tr><td><code>IUIService</code></td><td>添加操作按钮、通知、状态栏消息</td></tr>
+                                <tr><td><code>IDownloadService</code></td><td>复用宿主下载引擎，支持取消</td></tr>
+                                <tr><td><code>IPluginService</code></td><td>查询其他插件信息</td></tr>
+                                <tr><td><code>ICoreService</code></td><td>启动游戏、获取实例路径等核心能力</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h1 id="ui-styles">界面样式定制</h1>
+                        <p>清单顶层声明 <code>style</code>，并请求权限 <code>ui:style</code>。启用时样式追加到全局 QSS <strong>末尾</strong>（可覆盖内置主题）；停用/删除后自动恢复。</p>
+
+                        <h2>两种写法</h2>
+                        <pre class="code-block"><code>// 1) 内联字符串
+{
+  "id": "my_skin",
+  "permissions": ["ui:style"],
+  "style": "TopBar { background-color: @PRIMARY@; }"
+}
+
+// 2) 对象：内联 + 包内文件叠加
+{
+  "permissions": ["ui:style"],
+  "style": {
+    "qss": "/* 可选内联 */",
+    "file": "styles/theme.qss"
+  }
+}</code></pre>
+
+                        <h2>@TOKEN@ 占位符</h2>
+                        <p>与主样式相同，随当前主题/主题色解析，常见包括：</p>
+                        <ul>
+                            <li><code>@PRIMARY@</code>、<code>@PRIMARY_DARK@</code>、<code>@PRIMARY_HOVER@</code>、<code>@PRIMARY_PRESSED@</code></li>
+                            <li><code>@PRIMARY_GRAD1@</code>、<code>@PRIMARY_LIGHT@</code>、<code>@PRIMARY_LIGHTER@</code></li>
+                            <li><code>@BG_CARD@</code>、<code>@TEXT_PRIMARY@</code>、<code>@BORDER@</code></li>
+                            <li><code>@WHITE_RGBA_30@</code> 等半透明衍生色</li>
+                        </ul>
+
+                        <p>示例（摘自 <code>style_demo/styles/theme.qss</code>）：</p>
+                        <pre class="code-block"><code>TopBar {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 @PRIMARY_DARK@,
+        stop:1 @PRIMARY@);
+    border-bottom: 2px solid @PRIMARY_PRESSED@;
+}
+
+QPushButton#cardPrimaryBtn,
+QPushButton#launchGameBtn {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 @PRIMARY_GRAD1@,
+        stop:1 @PRIMARY@);
+    color: #ffffff;
+    font-weight: 700;
+}</code></pre>
+
+                        <div class="callout callout-warning">
+                            必须同时声明 <code>"permissions": ["ui:style"]</code>，否则视为未声明样式能力。
+                        </div>
+
+                        <h1 id="skills">AI 技能（.skill / SKILL.md）</h1>
+                        <p>技能供方块盒子 AI 助手调用，与插件并行存放于 <code>插件/skills/&lt;name&gt;/</code>，包含 YAML front matter 与说明正文。</p>
+
+                        <pre class="code-block"><code>---
+name: 系统信息查询
+description: 查询本机系统信息（操作系统、CPU、内存、磁盘、Java 环境）
+version: 1.0.0
+author: BlockBox Team
+permissions:
+  - file:read
+tools:
+  - name: get_system_info
+    description: 获取本机系统信息，包括操作系统、CPU、内存、磁盘使用情况。无参数。
+    parameters:
+      type: object
+      properties: {}
+      required: []
+    script: scripts/get_system_info.ps1
+    timeout: 30
+---
+
+# 系统信息查询技能
+
+正文说明使用场景与输出含义……</code></pre>
+                        <ul>
+                            <li><code>tools[].script</code>：技能包内脚本相对路径</li>
+                            <li><code>timeout</code>：秒级超时</li>
+                            <li><code>parameters</code>：JSON Schema 风格参数描述</li>
+                            <li>管理入口：启动器「AI 技能管理」对话框（查看/启停/导入/删除/信任确认）</li>
+                        </ul>
+
+                        <h1 id="security">安全机制详解</h1>
+                        <p>核心组件：<code>PluginSafetyGuard</code> + 导入时信任确认。</p>
+
+                        <h2>风险等级</h2>
+                        <table class="doc-table">
+                            <thead>
+                                <tr><th>等级</th><th>含义</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>低</td><td>常规只读或几乎无副作用</td></tr>
+                                <tr><td>中</td><td>可能影响系统/启动器设置（默认）</td></tr>
+                                <tr><td>高</td><td>可能删除数据、改系统、不可逆</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h2>综合风险计算</h2>
+                        <ol>
+                            <li>取<strong>清单声明</strong>与<strong>脚本扫描</strong>的较高者</li>
+                            <li>声明了敏感权限：升级底线<br>
+                                （<code>admin</code>/<code>system</code> → 高；<code>file:write</code>/<code>registry</code> → 至少中）</li>
+                            <li>存在<strong>越权</strong>（脚本命中敏感操作但未声明对应权限）→ 高</li>
+                        </ol>
+
+                        <h2>脚本危险模式扫描</h2>
+                        <p>对去除注释后的行匹配典型危险模式，例如：</p>
+                        <ul>
+                            <li><code>Remove-Item</code>、递归删除、格式化卷</li>
+                            <li><code>shutdown</code>、服务控制</li>
+                            <li>hosts 修改、注册表写入</li>
+                        </ul>
+                        <p>扫描在<strong>导入前</strong>读取包内 <code>ps1/bat/cmd/vbs/js/py/sh</code> 文本汇总完成。</p>
+
+                        <h2>信任确认流程</h2>
+                        <ol>
+                            <li>展示名称 / 作者 / 版本</li>
+                            <li>展示请求的能力权限列表（中文说明）</li>
+                            <li>展示综合风险等级、<code>riskNote</code>、扫描发现</li>
+                            <li>越权则明确警告并升为高风险</li>
+                            <li>高风险（或 <code>admin</code>/<code>system</code>）必须勾选「我已了解风险…」才能导入</li>
+                            <li>批量导入可「全部信任（仅低/中）」或「逐个确认」</li>
+                        </ol>
+
+                        <div class="callout">
+                            <strong>信任时机：</strong>信任确认在<strong>添加/导入插件</strong>时进行一次；常规动作执行阶段不再重复弹窗（信任已建立）。请在 <code>riskNote</code> 中诚实描述副作用。
+                        </div>
+
+                        <h1 id="api-reference">宿主 API 与脚本约定</h1>
+                        <h2>宿主侧 C++ API（摘要）</h2>
+                        <table class="doc-table">
+                            <thead>
+                                <tr><th>组件</th><th>职责</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>PluginManager</code></td><td>扫描/导入/导出/解包、启停、依赖与 API 兼容、设置读写、样式收集、异步更新、模板与打包</td></tr>
+                                <tr><td><code>PluginInfo</code></td><td>清单数据结构（见源码字段注释）</td></tr>
+                                <tr><td><code>PluginSafetyGuard</code></td><td>风险解析、脚本扫描、越权检测、信任弹窗</td></tr>
+                                <tr><td><code>PluginZip</code></td><td>目录 ↔ .BlockBox 压缩</td></tr>
+                                <tr><td><code>NativePluginLoader</code></td><td>加载 SDK DLL</td></tr>
+                                <tr><td><code>PluginRunnerDialog</code></td><td>解析 BB* 协议行的执行进度 UI</td></tr>
+                                <tr><td><code>CreatePluginDialog</code></td><td>制作插件：生成模板并一键打包</td></tr>
+                                <tr><td><code>PluginSettingsDialog</code></td><td>按 settings 动态表单并持久化</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h2>脚本侧常用 PowerShell 能力</h2>
+                        <pre class="code-block"><code># 路径与文件
+Test-Path $path
+Get-ChildItem $path -Recurse
+Get-Content / Set-Content / Remove-Item
+
+# 网络
+Invoke-WebRequest -Uri $url -OutFile $dest
+Start-BitsTransfer -Source $url -Destination $dest
+
+# 系统
+Get-CimInstance Win32_OperatingSystem
+shutdown.exe /s /t $seconds
+ipconfig /flushdns
+
+# 进度输出
+Write-Output "BBPROGRESS:42"
+Write-Output "BBSTATUS:处理中"
+Write-Output "BBRESULT:已完成一项"</code></pre>
+
+                        <!-- ========== 工具 ========== -->
+                        <h1 id="packing">插件打包与更新</h1>
+                        <h2>包格式</h2>
+                        <ul>
+                            <li>扩展名：<code>.BlockBox</code></li>
+                            <li>内容：标准 zip（根目录含 <code>plugin.json</code>）</li>
+                            <li>安装目录：启动器旁 <code>BlockBox/&lt;id&gt;.BlockBox</code></li>
+                        </ul>
+
+                        <h2>打包方式</h2>
+                        <ol>
+                            <li><strong>启动器内</strong>：「插件 → 制作插件」→ 生成模板或选择目录 →「打包为 BlockBox 文件」</li>
+                            <li><strong>PowerShell</strong>：</li>
+                        </ol>
+                        <pre class="code-block"><code># 在插件源码根目录执行
+Compress-Archive -Path .\* -DestinationPath .\my_plugin.zip -Force
+Move-Item .\my_plugin.zip .\my_plugin.BlockBox -Force
+
+# 或显式列出
+Compress-Archive -Path .\plugin.json, .\scripts, .\assets, .\styles `
+  -DestinationPath .\my_plugin.zip -Force
+Rename-Item .\my_plugin.zip my_plugin.BlockBox</code></pre>
+                        <ol start="3">
+                            <li><strong>批量脚本</strong>：仓库中可使用类似 <code>pack_plugins.py</code> 的脚本遍历 <code>插件/*/</code> 打包到 <code>packaged/</code></li>
+                        </ol>
+
+                        <h2>在线更新</h2>
+                        <ul>
+                            <li>清单填写 <code>updateUrl</code> → 指向新版本 <code>.BlockBox</code> 的直链</li>
+                            <li>宿主 <code>updatePluginAsync</code> 下载后校验版本更高再替换</li>
+                            <li>结果通过 <code>pluginUpdateFinished(id, success, error)</code> 信号返回</li>
+                        </ul>
+
+                        <h2>依赖与 API 兼容</h2>
+                        <ul>
+                            <li><code>dependencies</code>：缺失或未启用的依赖会阻止正常使用</li>
+                            <li><code>minApiVersion</code>：高于当前宿主 <code>1.0</code> 则判定不兼容</li>
+                            <li>版本比较为语义化比较；非法版本按 <code>0</code> 处理</li>
+                        </ul>
+
+                        <h1 id="template">项目模板</h1>
+                        <p>调用 <code>PluginManager::createTemplate()</code> 或 UI「制作插件」会生成：</p>
+                        <pre class="code-block"><code>&lt;id&gt;/
+├── plugin.json     # 含示例 settings、扩展元数据字段
+├── main.js         # 入口示例（onEnable/onDisable 钩子注释）
+├── README.md       # 打包说明
+└── assets/
+    └── icon.png    # 128×128 默认图标（首字母）</code></pre>
+                        <p>生成后修改为 <code>scripts/*.ps1</code> + <code>commands</code>/<code>ui</code>，再用「打包为 BlockBox 文件」输出到插件目录并自动刷新列表。</p>
+
+                        <h1 id="troubleshooting">故障排查</h1>
+                        <table class="doc-table">
+                            <thead>
+                                <tr><th>现象</th><th>排查</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>导入失败 / 清单损坏</td>
+                                    <td>校验 JSON 语法；根目录必须有 <code>plugin.json</code>；必填 <code>id</code>/<code>name</code>/<code>version</code></td>
+                                </tr>
+                                <tr>
+                                    <td>中文乱码</td>
+                                    <td><code>.ps1</code> 保存为 <strong>UTF-8 with BOM</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>按钮无反应 / 找不到脚本</td>
+                                    <td><code>target</code> 是否为 <code>run:scripts/...</code>；路径大小写与包内一致</td>
+                                </tr>
+                                <tr>
+                                    <td>UI 动作参数未传入</td>
+                                    <td><code>args</code> 值是否指向 <code>fields[].key</code>；脚本 <code>param()</code> 名称是否与 <code>args</code> 键一致</td>
+                                </tr>
+                                <tr>
+                                    <td>结果区空白</td>
+                                    <td>是否用了 <code>Write-Output</code>；是否误弹窗且 <code>-Silent</code> 分支未实现</td>
+                                </tr>
+                                <tr>
+                                    <td>信任确认判为高风险</td>
+                                    <td>补全 <code>permissions</code>；为只读命令标注 <code>risk: "low"</code> + 说明；避免注释外的敏感命令误用</td>
+                                </tr>
+                                <tr>
+                                    <td>越权警告</td>
+                                    <td>脚本行为与 <code>permissions</code> 对齐（写文件→<code>file:write</code>，改 hosts→<code>system</code> 等）</td>
+                                </tr>
+                                <tr>
+                                    <td>样式不生效</td>
+                                    <td>是否声明 <code>ui:style</code>；插件是否启用；选择器/objectName 是否匹配当前主题控件</td>
+                                </tr>
+                                <tr>
+                                    <td>原生插件不出现</td>
+                                    <td><code>kind</code> 是否为 <code>native</code>；宿主是否注册对应 <code>entry</code>；DLL 位数与 Qt 构建是否一致</td>
+                                </tr>
+                                <tr>
+                                    <td>更新失败</td>
+                                    <td><code>updateUrl</code> 是否直链 zip；新版本 <code>version</code> 是否更高</td>
+                                </tr>
+                                <tr>
+                                    <td>插件列表不刷新</td>
+                                    <td>文件是否在启动器旁 <code>BlockBox/</code>；手动触发刷新或重启启动器</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h1 id="glossary">术语表</h1>
+                        <table class="doc-table">
+                            <thead>
+                                <tr><th>术语</th><th>说明</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>宿主 / Host</td><td>方块盒子启动器本体（Qt 应用）</td></tr>
+                                <tr><td>.BlockBox</td><td>插件分发包（zip 改后缀）</td></tr>
+                                <tr><td>plugin.json</td><td>插件清单</td></tr>
+                                <tr><td>commands</td><td>详情页命令按钮声明</td></tr>
+                                <tr><td>ui.fields / ui.actions</td><td>内嵌表单与动作按钮</td></tr>
+                                <tr><td>settings</td><td>持久化插件设置</td></tr>
+                                <tr><td>style</td><td>对启动器全局 QSS 的贡献</td></tr>
+                                <tr><td>kind: native</td><td>原生/内置模块型插件</td></tr>
+                                <tr><td>BBPROGRESS / BBSTATUS / BBRESULT</td><td>脚本输出协议行</td></tr>
+                                <tr><td>run: 前缀</td><td>命令 target 表示执行包内脚本</td></tr>
+                                <tr><td>信任确认</td><td>导入插件时的「你信任该插件吗？」流程</td></tr>
+                                <tr><td>越权</td><td>脚本做了敏感操作但未声明对应权限</td></tr>
+                            </tbody>
+                        </table>
+
+                        <div class="callout">
+                            <strong>文档来源：</strong>本页内容与仓库实现对齐（<code>C-BlockBox/utils/plugin/*</code>、<code>sdk/*</code>、<code>插件/*/plugin.json</code>、<code>插件/README.md</code>）。实现演进时请同步更新本页与源码注释。
+                        </div>
+
+                    </article>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p class="footer-text">
+                © 2024–2026 BlockBox. 此平台仅供插件开发者使用。
+            </p>
+        </footer>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navHeaders = document.querySelectorAll('.nav-group-header');
+            const navItems = document.querySelectorAll('.nav-item');
+            const main = document.querySelector('.docs-content-wrapper');
+            const headerHeight = 68;
+
+            navHeaders.forEach(header => {
+                header.addEventListener('click', function() {
+                    const expanded = this.getAttribute('aria-expanded') === 'true';
+                    this.setAttribute('aria-expanded', String(!expanded));
+                    const caret = this.querySelector('.caret');
+                    if (caret) caret.textContent = expanded ? '▶' : '▼';
+                    const content = this.nextElementSibling;
+                    if (content) content.classList.toggle('collapsed', expanded);
+                });
+            });
+
+            function setActiveItem(hash) {
+                navItems.forEach(n => {
+                    const href = n.getAttribute('href');
+                    n.classList.toggle('active', href === hash);
+                });
+            }
+
+            navItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const hash = this.getAttribute('href');
+                    setActiveItem(hash);
+                    const targetId = hash.substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        const offset = headerHeight + 20;
+                        const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - offset;
+                        window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                        history.replaceState(null, '', hash);
+                    }
+                });
+            });
+
+            const headings = Array.from(document.querySelectorAll('.docs-content [id]'));
+            function updateActiveOnScroll() {
+                const offset = headerHeight + 32;
+                let current = headings[0] ? '#' + headings[0].id : null;
+                for (const h of headings) {
+                    if (h.getBoundingClientRect().top - offset <= 0) {
+                        current = '#' + h.id;
+                    }
+                }
+                if (current) setActiveItem(current);
+            }
+            window.addEventListener('scroll', updateActiveOnScroll, { passive: true });
+            if (location.hash) setActiveItem(location.hash);
+
+            const codeBlocks = document.querySelectorAll('pre.code-block code');
+            codeBlocks.forEach(function(block) {
+                const pre = block.parentNode;
+                if (pre.classList.contains('code-block-wrapper')) return;
+                pre.classList.add('code-block-wrapper');
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = '复制';
+                copyBtn.setAttribute('aria-label', '复制代码');
+                copyBtn.type = 'button';
+                copyBtn.onclick = function() {
+                    navigator.clipboard.writeText(block.textContent).then(function() {
+                        copyBtn.textContent = '已复制';
+                        copyBtn.classList.add('active');
+                        setTimeout(function() {
+                            copyBtn.textContent = '复制';
+                            copyBtn.classList.remove('active');
+                        }, 2000);
+                    });
+                };
+                pre.parentNode.insertBefore(copyBtn, pre);
+            });
+
+            function adjustFooterSpacing() {
+                if (!main) return;
+                const contentHeight = main.scrollHeight;
+                const windowHeight = window.innerHeight;
+                if (contentHeight < windowHeight - headerHeight) {
+                    main.style.minHeight = 'calc(100vh - ' + headerHeight + 'px - 5rem)';
+                }
+            }
+            adjustFooterSpacing();
+            window.addEventListener('resize', adjustFooterSpacing);
+        });
+    </script>
+</body>
+</html>
