@@ -104,6 +104,29 @@
     });
   }
 
+  /* ---------- 官方宣传片：点击封面就地加载 B 站播放器 ---------- */
+  var videoFrame = document.getElementById("videoFrame");
+  if (videoFrame) {
+    videoFrame.addEventListener("click", function (e) {
+      /* 按住 Ctrl / Cmd / Shift 时仍按原生链接在新窗口打开 B 站原页 */
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      videoFrame.removeAttribute("href");
+      videoFrame.removeAttribute("target");
+      videoFrame.removeAttribute("aria-label");
+      videoFrame.classList.add("playing");
+      videoFrame.innerHTML = "";
+      var iframe = document.createElement("iframe");
+      iframe.src = "https://player.bilibili.com/player.html?bvid=BV1Uin86XEYQ&page=1&high_quality=1&danmaku=1&autoplay=1";
+      iframe.title = "我的世界方块盒子宣传片";
+      iframe.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
+      iframe.setAttribute("allowfullscreen", "true");
+      iframe.setAttribute("frameborder", "0");
+      iframe.setAttribute("scrolling", "no");
+      videoFrame.appendChild(iframe);
+    });
+  }
+
   /* ============================================================
      AI 聊天演示 — 打字机循环（对齐客户端 AiChatPage 排版：
      无气泡整行消息 + 引用标签 + 模组推荐卡 + 回答操作条）
