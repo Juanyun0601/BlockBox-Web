@@ -118,7 +118,7 @@
       videoFrame.innerHTML = "";
       var iframe = document.createElement("iframe");
       iframe.src = "https://player.bilibili.com/player.html?bvid=BV1Uin86XEYQ&page=1&high_quality=1&danmaku=1&autoplay=1";
-      iframe.title = "我的世界方块盒子宣传片";
+      iframe.title = (window.BB && window.BB.t) ? window.BB.t("我的世界方块盒子宣传片") : "我的世界方块盒子宣传片";
       iframe.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
       iframe.setAttribute("allowfullscreen", "true");
       iframe.setAttribute("frameborder", "0");
@@ -134,28 +134,30 @@
   var chatBody = document.getElementById("chatBody");
   if (chatBody) {
     var reduced = window.innerWidth < 760;
+    /* 多语言：文案先过一遍 BB.t()，未提供译文时回退中文原文 */
+    var T = (window.BB && window.BB.t) ? function (s) { return window.BB.t(s); } : function (s) { return s; };
     var script = [
       {
-        user: "游戏闪退了，日志在这儿 🙃",
+        user: T("游戏闪退了，日志在这儿 🙃"),
         time: "14:32",
-        refs: ["📎 latest.log", "📎 实例: 系统探索"],
-        ai: "已读完崩溃日志，定位到 <code>java.lang.OutOfMemoryError: Java heap space</code>。\n\n「系统探索」实例默认内存只有 <b>1024MB</b>，建议调到 <b>4096MB</b>。要我直接改好吗？",
-        agent: "✓ 已自动完成：内存调整 + 参数校验",
-        meta: "14:32 · Agent · 3 次工具调用"
+        refs: ["📎 latest.log", T("📎 实例: 系统探索")],
+        ai: T("已读完崩溃日志，定位到 <code>java.lang.OutOfMemoryError: Java heap space</code>。\n\n「系统探索」实例默认内存只有 <b>1024MB</b>，建议调到 <b>4096MB</b>。要我直接改好吗？"),
+        agent: T("✓ 已自动完成：内存调整 + 参数校验"),
+        meta: T("14:32 · Agent · 3 次工具调用")
       },
       {
-        user: "帮我推荐几个 1.20.1 Fabric 的性能优化 Mod",
+        user: T("帮我推荐几个 1.20.1 Fabric 的性能优化 Mod"),
         time: "14:35",
-        refs: ["📎 实例: 1.20.1-Fabric"],
-        ai: "针对 <b>1.20.1 · Fabric</b>，下面是兼顾帧率与内存的经典组合，已按你的实例完成版本匹配：",
+        refs: [T("📎 实例: 1.20.1-Fabric")],
+        ai: T("针对 <b>1.20.1 · Fabric</b>，下面是兼顾帧率与内存的经典组合，已按你的实例完成版本匹配："),
         mods: [
-          ["S", "linear-gradient(135deg, #43a047, #1b5e20)", "Sodium", "渲染管线重写 · 帧率提升 40%+"],
-          ["L", "linear-gradient(135deg, #5c6bc0, #3949ab)", "Lithium", "游戏逻辑优化 · 明显减少卡顿"],
-          ["F", "linear-gradient(135deg, #fb8c00, #e65100)", "FerriteCore", "内存占用优化 · 降低 25% 左右"]
+          ["S", "linear-gradient(135deg, #43a047, #1b5e20)", "Sodium", T("渲染管线重写 · 帧率提升 40%+")],
+          ["L", "linear-gradient(135deg, #5c6bc0, #3949ab)", "Lithium", T("游戏逻辑优化 · 明显减少卡顿")],
+          ["F", "linear-gradient(135deg, #fb8c00, #e65100)", "FerriteCore", T("内存占用优化 · 降低 25% 左右")]
         ],
-        ai2: "三者组合约可提升 <b>50% 帧率</b> 并降低 <b>30% 内存占用</b>。需要我一键装进当前实例吗？",
+        ai2: T("三者组合约可提升 <b>50% 帧率</b> 并降低 <b>30% 内存占用</b>。需要我一键装进当前实例吗？"),
         agent: null,
-        meta: "14:35 · Agent · 搜索资源 × 2"
+        meta: T("14:35 · Agent · 搜索资源 × 2")
       }
     ];
 
@@ -204,7 +206,7 @@
           info.lastChild.textContent = m[3];
           var btn = document.createElement("em");
           btn.className = "m-btn";
-          btn.textContent = "下载";
+          btn.textContent = T("下载");
           mod.appendChild(ic); mod.appendChild(info); mod.appendChild(btn);
           box.appendChild(mod);
           if (!instant) { mod.style.animationDelay = (0.15 + idx * 0.35) + "s"; }
@@ -221,7 +223,7 @@
 
       var tools = document.createElement("div");
       tools.className = "cm-tools";
-      ["👍 赞同", "⧉ 复制", "↻ 重新生成"].forEach(function (t) {
+      [T("👍 赞同"), T("⧉ 复制"), T("↻ 重新生成")].forEach(function (t) {
         var sp = document.createElement("span");
         sp.textContent = t;
         tools.appendChild(sp);

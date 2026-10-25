@@ -1114,3 +1114,45 @@ body {
         display: flex;
     }
 }
+
+/* ============================================================
+   语言切换器（assets/i18n.js 注入到导航里）
+   ============================================================ */
+.lang-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: var(--shadow);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.lang-switch:hover { border-color: var(--green-dark); color: var(--green-dark); }
+.lang-switch .lang-ic {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: -.5px;
+    color: var(--green-dark);
+}
+.lang-switch select {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    padding: 0 2px;
+    outline: none;
+}
+.lang-switch select:focus-visible { outline: 2px solid var(--green); border-radius: 6px; }
+@media (max-width: 860px) {
+    .lang-switch { align-self: flex-start; margin: 8px 0 2px; height: 42px; }
+}
