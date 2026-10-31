@@ -238,6 +238,34 @@
 
   /* ---------------- 语言切换器 ---------------- */
 
+  var MOBILE_BP = "(max-width: 760px)";
+
+  function isNarrow() {
+    if (window.matchMedia) return window.matchMedia(MOBILE_BP).matches;
+    return window.innerWidth <= 760;
+  }
+
+  /**
+   * 桌面端：贴着导航栏最右边（主题按钮之后、汉堡按钮之前）；
+   * 窄屏：放进折叠菜单里，避免顶部空间不够。
+   */
+  function placeSwitcher() {
+    var wrap = document.getElementById("langSwitch");
+    if (!wrap) return;
+    var links = document.getElementById("navLinks");
+    var bar = document.querySelector(".nav-inner");
+    if (isNarrow()) {
+      if (links && links.firstChild !== wrap) links.insertBefore(wrap, links.firstChild);
+      return;
+    }
+    if (!bar) return;
+    var theme = bar.querySelector(".theme-switch");
+    var toggle = bar.querySelector(".nav-toggle");
+    var ref = theme ? theme.nextSibling : (toggle && toggle.parentNode === bar ? toggle : null);
+    if (wrap.parentNode === bar && wrap.nextSibling === ref) return;
+    bar.insertBefore(wrap, ref);
+  }
+
   function setupSwitcher() {
     var host = document.getElementById("navLinks");
     if (!host || document.getElementById("langSwitch")) return;
@@ -265,12 +293,20 @@
     wrap.appendChild(globe);
     wrap.appendChild(sel);
     host.insertBefore(wrap, host.firstChild);
+    placeSwitcher();
     // 移动端菜单：选完就收起
     sel.addEventListener("change", function () {
       host.classList.remove("open");
       var tg = document.getElementById("navToggle");
       if (tg) { tg.classList.remove("open"); tg.setAttribute("aria-expanded", "false"); }
     });
+    // 跨断点时换个位置
+    if (window.matchMedia) {
+      var mq = window.matchMedia(MOBILE_BP);
+      if (mq.addEventListener) mq.addEventListener("change", placeSwitcher);
+      else if (mq.addListener) mq.addListener(placeSwitcher);
+    }
+    window.addEventListener("load", placeSwitcher);
   }
 
   function setLang(code) {
