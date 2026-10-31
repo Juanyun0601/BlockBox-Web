@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方块盒子论坛 · 官方玩家社区</title>
+<meta name="description" content="方块盒子的官方玩家社区：使用求助、玩法分享、插件开发、建议反馈，都能在这里找到人聊。">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="home">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <section class="hero">
+      <h1>方块盒子的玩家交流地</h1>
+      <p>装不上、跑不动、模组冲突、想分享点什么——发个帖子，社区里的老玩家会搭把手。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/new.html">发个帖子</a>
+        <a class="btn btn-ghost" href="/search.html">搜索旧帖</a>
+      </div>
+    </section>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="home-grid">
+      <div>
+        <div class="section-head" id="boards">
+          <h2>板块</h2>
+        </div>
+        <div class="board-grid" id="boardGrid">
+          <div class="skeleton">正在加载板块…</div>
+        </div>
+
+        <div class="section-head" style="margin-top: 26px">
+          <h2>最新讨论</h2>
+          <a class="more" href="/board.html?slug=general">看看别的</a>
+        </div>
+        <div class="card thread-list" id="latestThreads">
+          <div class="skeleton">正在加载主题…</div>
+        </div>
+      </div>
+
+      <aside>
+        <div class="card side-card">
+          <h3>社区情况</h3>
+          <div id="sideStats" class="tips"></div>
+        </div>
+        <div class="card side-card">
+          <h3>热门标签</h3>
+          <div class="tag-cloud" id="tagCloud">
+            <span class="muted small">加载中…</span>
+          </div>
+        </div>
+        <div class="card side-card">
+          <h3>发帖小提示</h3>
+          <ul class="tips">
+            <li>标题写清现象，比如「1.20.4 启动报 Java 找不到」</li>
+            <li>求助时带上系统、Java 版本和报错截图</li>
+            <li>支持 Markdown：<code>**加粗**</code>、<code>`代码`</code>、<code>&gt; 引用</code></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261031f"></script>
+<script src="/assets/page-home.js?v=20261031f"></script>
+</body>
+</html>

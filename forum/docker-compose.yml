@@ -1,0 +1,25 @@
+# 用法（在 方块盒子论坛/ 目录里）：
+#   mkdir -p data && sudo chown -R 1000:1000 data   # 容器内用 uid 1000 运行
+#   docker compose up -d --build
+#   docker compose logs -f
+# 反向代理（Caddy/Nginx）指到 127.0.0.1:3210 即可，HTTPS 由反向代理负责。
+
+services:
+  forum:
+    build: .
+    image: blockbox-forum:latest
+    container_name: blockbox-forum
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3210:3210"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3210"
+      PUBLIC_ORIGIN: http://127.0.0.1:3210
+      SITE_NAME: 方块盒子论坛
+      TRUST_PROXY: "1"
+      SECURE_COOKIE: "0"
+      REGISTER_OPEN: "1"
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data:/app/data

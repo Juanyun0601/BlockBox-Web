@@ -1,0 +1,543 @@
+# 方块盒子论坛 · 接口文档
+
+- 基础地址：本站根路径（例如 `http://127.0.0.1:3210`）
+- 除 `/api/health`、`/api/me`、`/api/boards`、`/api/threads*`（GET）、`/api/search` 外，其余接口都需要登录
+- 登录态用 Cookie（`bbf_sid`，HttpOnly）。用脚本调用时把 `set-cookie` 里的值带到后续请求的 `Cookie` 头即可
+- 请求体统一 `application/json; charset=utf-8`（上传头像除外，见下）
+- 时间字段都是 **Unix 秒**
+- 出错时 HTTP 状态码非 2xx，响应体：
+
+```json
+{ "error": "用户名或密码不正确", "code": "bad_credentials" }
+```
+
+常见状态码：`400` 参数不对 / 业务拒绝，`401` 未登录，`403` 没权限或被禁言，`404` 不存在，
+`413` 内容太大，`415` 请求体类型不对，`429` 太频繁。
+
+---
+
+## 认证
+
+### POST /api/auth/register · 注册
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `username` | 是 | 2–20 位，中文 / 字母 / 数字 / 下划线 / 短横线，不能纯数字 |
+| `password` | 是 | 6–72 位 |
+| `email` | 否 | 只做记录，不发验证邮件 |
+
+成功返回 `{ "user": {...}, "first_user": true }` 并写入登录 Cookie。
+**站点第一个注册的账号自动是管理员。** 限流：同一 IP 每小时 6 次。
+
+### POST /api/auth/login · 登录
+
+```json
+{ "username": "admin", "password": "admin123" }
+```
+
+返回 `{ "user": {...} }` 并写入 Cookie。同一 IP 15 分钟内 30 次、同一账号 10 次。
+
+### POST /api/auth/logout · 退出
+
+清掉会话与 Cookie，返回 `{ "ok": true }`。
+
+### GET /api/me · 当前登录用户
+
+```json
+{
+  "user": { "id": 1, "username": "admin", "display_name": "admin", "role": "admin", "avatar": "" },
+  "unread": 3,
+  "site": { "name": "方块盒子论坛", "desc": "…", "register_open": true }
+}
+```
+
+未登录时 `user` 为 `null`（注意不是 401，方便前端判断），`unread` 为 0。
+
+---
+
+## 个人资料
+
+### PATCH /api/me
+
+`display_name`（≤24 字）、`bio`（≤300 字）、`email`，都可选，传什么改什么。
+
+### POST /api/me/password
+
+```json
+{ "current_password": "旧密码", "new_password": "新密码" }
+```
+
+改完后除当前设备外的会话全部失效。
+
+### POST /api/me/avatar · 上传头像
+
+请求体是**图片原始字节**，`Content-Type` 为 `image/png` / `image/jpeg` / `image/webp` / `image/gif`，
+最大 512 KB。返回 `{ "avatar": "/uploads/u1-1793426400000.png" }`。
+
+```bash
+curl -b cookie.txt -X POST http://127.0.0.1:3210/api/me/avatar \
+  -H "Content-Type: image/png" --data-binary @avatar.png
+```
+
+### DELETE /api/me/avatar · 删除头像
+
+---
+
+## 站内图床
+
+### POST /api/upload · 上传帖子图片
+
+请求体和头像一样是**图片原始字节**，`Content-Type` 给 `image/png` 等即可（服务端按文件头校验，
+只认 PNG / JPG / WebP / GIF）。默认上限 4 MB（`.env` 里的 `MAX_IMAGE_BYTES`）。
+
+```json
+{
+  "url": "/uploads/img-1-1793426400000-a1b2c3.png",
+  "thumb": "/uploads/thumbs/img-1-1793426400000-a1b2c3.png",
+  "width": 1600, "height": 1000,
+  "size": 183975, "original_size": 183975,
+  "optimized": false, "engine": "builtin-png", "mime": "image/png"
+}
+```
+
+- **压缩**：长边超过 `MAX_IMAGE_DIMENSION`（默认 2560）会被等比缩到上限内；
+  装了 `sharp` 时还会按格式重压（JPEG 82%、PNG 调色板、WebP 82%）
+- **缩略图**：长边超过 `THUMB_SIZE`（默认 520）时生成到 `/uploads/thumbs/`，
+  前端渲染正文时把 `![](原图)` 自动换成缩略图，点开才是原图（缩略图缺失时服务端自动回退原图，不会 404）
+- `engine`：`builtin-png`（内置 PNG 处理）或 `sharp`（装了 sharp 的全格式处理）
+
+返回的 `url` 直接放进正文的 Markdown 里：`![](/uploads/img-1-....png)`。
+限流：每账号每小时 40 张。
+
+```bash
+curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
+  -H "Content-Type: image/png" --data-binary @shot.png
+```
+
+---
+
+## 通知
+
+### GET /api/notifications?page=1&per_page=20
+
+**按「同一主题 + 同一类型」折叠**：一个人连回三句只占一行，`count` 是条数、`actors` 是去重后的人。
+
+```json
+{
+  "items": [
+    {
+      "id": 12, "type": "reply", "target_kind": "thread",
+      "thread_id": 4, "post_id": 9,
+      "thread_title": "分享一个 1.20.4 的整合包配置",
+      "excerpt": "Sodium 那几项在 1.20.4 上确实稳…",
+      "count": 3, "actor_count": 2,
+      "actors": [ { "id": 2, "username": "红石工程师", "display_name": "红石工程师", "avatar": "" } ],
+      "ids": [12, 11, 10],
+      "unread": true, "unread_count": 3,
+      "created_at": 1793428700
+    }
+  ],
+  "unread": 3,
+  "pagination": { "page": 1, "per_page": 20, "total": 1, "pages": 1 }
+}
+```
+
+- `type`：`reply` / `mention` / `system`
+- `target_kind`：`thread`（回复我的主题）或 `post`（回复我的楼层 / 楼中楼），前端据此显示不同文案
+- `ids`：这一组里所有通知的 id，点开时一次性标记已读
+- `pagination.total` 是**分组后**的条数
+
+### POST /api/notifications/read · 标记已读
+
+```json
+{ "ids": [12, 13] }     // 只标记指定几条（通知组传整组 ids）
+{}                      // 不传 ids 表示全部标为已读
+```
+
+返回 `{ "ok": true, "changed": 2, "unread": 0 }`。
+
+### DELETE /api/notifications/:id · 删除一条通知
+
+返回 `{ "ok": true, "unread": 0 }`。
+
+---
+
+## 我的相册
+
+### GET /api/me/uploads?page=1&per_page=24
+
+```json
+{
+  "uploads": [
+    { "id": 7, "url": "/uploads/img-1-....png", "thumb": "/uploads/thumbs/img-1-....png",
+      "mime": "image/png", "width": 900, "height": 600, "size": 48123, "kind": "img",
+      "created_at": 1793428700 }
+  ],
+  "pagination": { "page": 1, "per_page": 24, "total": 1, "pages": 1 }
+}
+```
+
+### DELETE /api/me/uploads/:id · 删除相册图片
+
+同时删除原图与缩略图文件（帖子里的引用会变成裂图，前端会二次确认）。
+
+---
+
+## 举报
+
+### POST /api/reports · 举报楼层
+
+```json
+{ "post_id": 9, "reason": "广告 / 人身攻击 / 刷屏…" }
+```
+
+- 不能举报自己，同一人对同一楼层重复举报只更新理由，不会重复入队
+- `reason` 最多 200 字
+- 限流：每账号每小时 10 次
+
+返回 `{ "ok": true }`，重复提交时带 `"duplicated": true`。
+
+---
+
+## 用户
+
+### GET /api/users/search?q=关键词
+
+给「@ 自动补全」用的轻量搜索，按用户名 / 昵称匹配，最多 8 个，已封禁用户不返回。
+
+```json
+{ "users": [ { "id": 2, "username": "红石工程师", "display_name": "红石工程师", "avatar": "", "role": "user" } ] }
+```
+
+### GET /api/users/:id
+
+```json
+{
+  "user": { "id": 2, "username": "小白玩家", "display_name": "小白玩家", "bio": "", "role": "user",
+            "status": "active", "thread_count": 1, "post_count": 1, "created_at": 1793426400 },
+  "threads": [ /* 最近 8 个主题 */ ],
+  "replies": [ { "thread_id": 3, "thread_title": "…", "snippet": "…" } ],
+  "thread_total": 1
+}
+```
+
+### GET /api/users/:id/threads?page=1&per_page=20
+
+用户发过的主题，带 `threads` 与 `pagination`。
+
+### GET /api/users/:id/posts?page=1&per_page=20
+
+用户发过的回复（不含 1 楼），带所属主题标题、`total` 与分页信息。
+
+---
+
+## 板块
+
+### GET /api/boards
+
+```json
+{
+  "boards": [
+    { "id": 1, "slug": "general", "name": "综合讨论", "description": "…", "icon": "💬",
+      "thread_count": 12, "post_count": 34, "last_thread": { "id": 7, "title": "…" } }
+  ],
+  "stats": { "users": 4, "threads": 3, "posts": 3, "online": 4, "new_users": 4, "newest_user": {…} }
+}
+```
+
+`online` 指 15 分钟内活跃过的用户数。
+
+### GET /api/boards/:slug?sort=latest|new|hot&tag=优化&page=1&per_page=25
+
+返回 `{ "board": {...}, "threads": [...], "pagination": {...} }`。默认板块 slug：
+`general` `help` `guide` `plugin` `feedback` `chat`。
+
+---
+
+## 主题
+
+### GET /api/threads?sort=latest|new|hot&tag=优化&page=1&per_page=20
+
+全站主题列表（首页用）。`tag` 可选，按标签筛选。
+
+### GET /api/tags
+
+标签云：管理员设为「推荐」的标签排在前面（`featured: true`），其余按使用次数排序，最多 20 个。
+
+```json
+{ "tags": [ { "tag": "优化", "n": 3, "featured": true } ] }
+```
+
+### GET /api/threads/:id?page=1&per_page=20
+
+```json
+{
+  "thread": {
+    "id": 1, "title": "…", "pinned": false, "locked": false, "views": 3, "reply_count": 4,
+    "board": {…}, "author": {…}, "created_at": 1793426400,
+    "tags": ["优化", "1.20.4"], "bookmarked": true
+  },
+  "posts": [
+    {
+      "id": 1, "floor": 1, "parent_post_id": null, "content": "原文（Markdown）",
+      "likes": 3, "liked": true, "children_count": 2,
+      "children": [
+        { "id": 8, "floor": 2, "parent_post_id": 1, "content": "楼中楼内容", "likes": 1, "liked": false }
+      ],
+      "author": {…}, "deleted": false
+    }
+  ],
+  "pagination": { "page": 1, "per_page": 20, "total": 2, "pages": 1 }
+}
+```
+
+- `posts` 只含**顶层楼层**（`parent_post_id: null`），分页按顶层楼层算
+- 楼中楼放在父楼层的 `children` 里；`children_count` 是不含已删除楼层的数量
+- `liked` / `bookmarked` 需要带登录 Cookie，未登录时是 `false`
+- 同一 IP 对同一主题 10 分钟内只计一次浏览量
+
+### POST /api/threads · 发主题
+
+```json
+{ "board": "help", "title": "启动报 Java 找不到", "content": "正文，支持 Markdown", "tags": ["优化", "1.20.4"] }
+```
+
+`board` 可以写 slug 或板块 id，不写默认 `general`；标题 2–80 字，正文 2–20000 字；
+`tags` 最多 4 个、每个最多 12 字。返回 `{ "id": 12, "thread": {...} }`。限流：每账号每小时 6 帖。
+
+### PATCH /api/threads/:id · 改标题 / 改标签
+
+```json
+{ "title": "新标题", "tags": "优化,低配" }
+```
+
+传 `tags`（数组或逗号分隔字符串）会整体替换标签。作者本人或管理员可用。
+
+### DELETE /api/threads/:id · 删主题（软删除）
+
+作者本人或管理员可用，同时清掉搜索索引、通知和待处理举报，并重算板块计数。
+
+### POST /api/threads/:id/bookmark · 收藏 / 取消收藏
+
+不传 body 就是切换，返回 `{ "bookmarked": true }`。
+
+### GET /api/me/bookmarks?page=1&per_page=20
+
+我收藏的主题，返回 `{ "threads": [...], "pagination": {...} }`。
+
+---
+
+## 回复
+
+### POST /api/threads/:id/posts
+
+```json
+{ "content": "回复内容" }
+{ "content": "这是楼中楼", "reply_to": 12 }
+```
+
+- `reply_to` 传父楼层 id 就是**楼中楼**；如果回复的是别人的楼中楼，会挂到同一个父楼层下（固定两层结构）
+- 不传 `reply_to` 是普通楼层，楼层号照常递增
+- 返回 `{ "post": { "parent_post_id": 12, ... }, "thread_id": 1 }`
+- 帖子锁定后只有管理员能回复。限流：每账号 5 分钟 12 条
+
+### POST /api/posts/:id/like · 点赞 / 取消点赞
+
+不传 body 就是切换，返回 `{ "liked": true, "likes": 3 }`。
+
+### GET /api/me/likes?page=1&per_page=20 · 我赞过的
+
+```json
+{
+  "likes": [
+    { "post_id": 9, "thread_id": 4, "floor": 2,
+      "thread_title": "…", "board": { "slug": "guide", "name": "教程与分享" },
+      "snippet": "被点赞楼层的摘要", "liked_at": 1793428700, "post_created_at": 1793428600,
+      "author": { "id": 2, "username": "红石工程师", "display_name": "红石工程师", "avatar": "" } }
+  ],
+  "pagination": { "page": 1, "per_page": 20, "total": 1, "pages": 1 }
+}
+```
+
+### PATCH /api/posts/:id · 改回复
+
+`{ "content": "新内容" }`，作者本人或管理员，会累加 `edit_count`（前端显示“已编辑”）。
+
+### DELETE /api/posts/:id · 删回复（软删除）
+
+楼层保留占位，不会跳号。删顶层楼层时，它下面的楼中楼一起不再展示。
+
+---
+
+## 搜索
+
+### GET /api/search?q=关键词&board=help&page=1&per_page=20
+
+```json
+{
+  "query": "Java",
+  "results": [ { "id": 1, "title": "…", "board": {…}, "snippet": "…命中片段…" } ],
+  "pagination": { "page": 1, "per_page": 20, "total": 1, "pages": 1 }
+}
+```
+
+匹配标题与正文，`q` 最长 60 字符，支持中文两字检索；`board` 可选，用于限定板块。限流：每 IP 每分钟 40 次。
+
+---
+
+## 管理（都需要管理员）
+
+### GET /api/admin/overview
+
+站点统计、全部板块、最近 10 个用户 / 主题 / 回复。
+
+### GET /api/admin/users?q=&page=1&per_page=30
+
+用户列表（含邮箱与状态）。
+
+### PATCH /api/admin/users/:id
+
+```json
+{ "role": "admin" }                          // 设为管理员（"user" 降回成员）
+{ "status": "muted", "mute_hours": 24 }      // 禁言，到点自动恢复
+{ "status": "banned" }                       // 封禁，同时踢下线
+{ "status": "active" }                       // 恢复正常
+```
+
+不能修改自己的角色。
+
+### GET /api/admin/reports?status=open
+
+审核队列。`status` 取 `open`（默认）/ `resolved` / `ignored`。
+
+```json
+{
+  "status": "open",
+  "reports": [
+    {
+      "id": 3, "post_id": 9, "thread_id": 4, "floor": 2,
+      "reason": "广告", "status": "open", "created_at": 1793428700,
+      "thread_title": "…", "post_deleted": false, "thread_deleted": false,
+      "excerpt": "被举报楼层的正文摘要",
+      "author": { "id": 2, "username": "红石工程师" },
+      "reporter": { "id": 3, "username": "整合包爱好者" }
+    }
+  ],
+  "counts": { "open": 1, "resolved": 0 }
+}
+```
+
+### PATCH /api/admin/reports/:id · 处理举报
+
+```json
+{ "status": "resolved", "delete_post": true }   // 删掉被举报楼层并标记已处理
+{ "status": "ignored" }                          // 只是忽略
+{ "status": "open" }                             // 重新打开
+```
+
+`delete_post` 会软删除该楼层、减掉主题回复数、重算板块计数，并清掉指向它的通知。
+
+### PATCH /api/admin/threads/:id
+
+```json
+{ "pinned": true }        // 置顶 / 取消
+{ "locked": true }        // 锁定 / 解锁
+{ "board": "chat" }       // 换板块
+```
+
+### POST /api/admin/boards · 新增板块
+
+```json
+{ "slug": "modpack", "name": "整合包", "description": "整合包相关", "icon": "📦", "sort_order": 70 }
+```
+
+`slug` 只能是小写字母 / 数字 / 短横线，2–31 位且唯一。
+
+### PATCH /api/admin/boards/:id
+
+`name`、`description`、`icon`、`sort_order` 任选。
+
+### DELETE /api/admin/boards/:id
+
+板块里还有主题时会被拒绝。
+
+### POST /api/admin/rescan
+
+按实际数据重算板块与用户计数（数据看着不对时用）。
+
+### GET /api/admin/tags · 标签管理列表
+
+```json
+{
+  "tags": [ { "tag": "优化", "count": 3, "featured": true, "sort_order": 0 } ],
+  "featured": ["优化"]
+}
+```
+
+### POST /api/admin/tags/feature · 推荐 / 取消推荐
+
+```json
+{ "tag": "优化", "featured": true, "sort_order": 10 }
+```
+
+推荐标签会出现在首页标签云的前面；`sort_order` 小的排前面。
+
+### POST /api/admin/tags/merge · 合并标签
+
+```json
+{ "from": ["优化", "优化设置"], "to": "优化" }
+```
+
+把 `from` 里的标签全部换成 `to`（帖子不会丢），返回 `{ "ok": true, "into": "优化", "threads": 5 }`。
+如果这些标签之前是推荐状态，会一起迁移到新标签上。
+
+### POST /api/admin/tags/delete · 删除标签
+
+```json
+{ "tag": "优化" }
+```
+
+从所有帖子上移除该标签，并取消推荐，返回 `{ "ok": true, "tag": "优化", "removed": 3 }`。
+
+---
+
+## 健康检查
+
+### GET /api/health
+
+```json
+{ "ok": true, "service": "blockbox-forum", "version": "0.1.0", "time": 1793426400 }
+```
+
+不需要登录，适合给监控 / 反向代理探活。
+
+---
+
+## 完整调用示例（Node.js 22 自带 fetch）
+
+```js
+const base = 'http://127.0.0.1:3210';
+let cookie = '';
+
+async function call(method, path, body) {
+  const res = await fetch(base + path, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      ...(cookie ? { cookie } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const setCookie = res.headers.get('set-cookie');
+  if (setCookie) cookie = setCookie.split(';')[0];
+  return res.json();
+}
+
+await call('POST', '/api/auth/login', { username: 'admin', password: 'admin123' });
+const { id } = await call('POST', '/api/threads', {
+  board: 'feedback',
+  title: '来自启动器的反馈',
+  content: '这里是正文',
+});
+console.log('新主题 id：', id);
+```

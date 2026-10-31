@@ -1,4 +1,4 @@
-name: 部署官网到服务器
+name: 部署官网与论坛到服务器
 
 on:
   push:
@@ -23,13 +23,22 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p 48407 202.181.26.190 >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: 同步网站文件
+      - name: 同步官网文件
         run: |
-          rsync -az --delete --exclude '.git' ./ deploy@202.181.26.190:/var/www/blockbox/ -e "ssh -p 48407"
+          rsync -az --delete --exclude '.git' --exclude '.github' --exclude 'forum' ./ deploy@202.181.26.190:/var/www/blockbox/ -e "ssh -p 48407"
+
+      - name: 同步论坛代码
+        run: |
+          rsync -az --delete --exclude 'data' --exclude '.env' --exclude '.git' forum/ deploy@202.181.26.190:/opt/blockbox-forum/ -e "ssh -p 48407"
+
+      - name: 重启论坛服务
+        run: |
+          ssh -p 48407 deploy@202.181.26.190 "sudo /usr/bin/systemctl restart blockbox-forum && sleep 2 && systemctl is-active blockbox-forum"
 
       - name: 验证部署
         run: |
           sleep 2
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://202.181.26.190/)
-          echo "服务器返回:$code"
-          test "$code" = 200
+          code1=$(curl -s -o /dev/null -w '%{http_code}' http://202.181.26.190/)
+          code2=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: forum.blockbox.cc.cd' http://202.181.26.190/)
+          echo "官网:$code1 论坛:$code2"
+          test "$code1" = 200 -a "$code2" = 200

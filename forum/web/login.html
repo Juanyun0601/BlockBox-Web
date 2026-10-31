@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 / 注册 · 方块盒子论坛</title>
+<meta name="description" content="登录方块盒子论坛，参与玩家讨论">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="login">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <div class="auth-wrap">
+      <div class="card auth-card">
+        <h1 id="authTitle">登录方块盒子论坛</h1>
+        <p id="authSub">用你注册的账号继续参与讨论。</p>
+
+        <div class="auth-tabs">
+          <button type="button" data-tab="login" class="active">登录</button>
+          <button type="button" data-tab="register">注册新账号</button>
+        </div>
+
+        <div id="authError"></div>
+        <div id="authNotice"></div>
+
+        <form id="authForm" autocomplete="on">
+          <div class="field">
+            <label for="username">用户名</label>
+            <input class="input" id="username" name="username" maxlength="20" autocomplete="username" placeholder="中文、字母、数字，2–20 位">
+          </div>
+          <div class="field">
+            <label for="password">密码</label>
+            <input class="input" id="password" name="password" type="password" autocomplete="current-password" placeholder="至少 6 位">
+          </div>
+          <div class="field hidden" id="confirmField">
+            <label for="confirm">确认密码</label>
+            <input class="input" id="confirm" name="confirm" type="password" autocomplete="new-password" placeholder="再输一次">
+          </div>
+          <button class="btn btn-primary btn-block" type="submit" id="submitBtn">登录</button>
+        </form>
+
+        <div class="auth-note">注册即表示你愿意守点规矩：友善提问、不刷屏、不发广告。</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261031f"></script>
+<script src="/assets/page-auth.js?v=20261031f"></script>
+</body>
+</html>

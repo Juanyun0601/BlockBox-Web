@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的相册 · 方块盒子论坛</title>
+<meta name="description" content="我在方块盒子论坛上传的图片">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="gallery">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>我的相册</h2>
+      <span class="small muted" id="galleryHint"></span>
+      <label class="btn btn-primary btn-sm" style="margin-left: auto; cursor: pointer">
+        上传图片
+        <input type="file" id="uploadInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+      </label>
+    </div>
+
+    <p class="small muted" style="margin-bottom: 14px">
+      上传过的图片都在这里。发帖时可以复制 Markdown 直接贴进正文；删除后引用它的帖子会显示裂图。
+    </p>
+
+    <div class="gallery-grid" id="galleryGrid">
+      <div class="skeleton">正在加载图片…</div>
+    </div>
+
+    <div id="pager"></div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261031f"></script>
+<script src="/assets/page-gallery.js?v=20261031f"></script>
+</body>
+</html>

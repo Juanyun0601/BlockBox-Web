@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>板块 · 方块盒子论坛</title>
+<meta name="description" content="方块盒子论坛板块主题列表">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="boards">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <div class="crumbs"><a href="/">首页</a><span>›</span><span id="crumbBoard">板块</span></div>
+
+    <section class="card board-head" id="boardHead">
+      <span class="board-icon">💬</span>
+      <div>
+        <h1>加载中…</h1>
+        <p></p>
+      </div>
+    </section>
+
+    <div class="card" style="margin-top: 16px">
+      <div class="toolbar">
+        <div class="tabs" id="sortTabs"></div>
+        <span class="small muted" id="boardStat" style="margin-left: auto"></span>
+        <a class="btn btn-primary btn-sm" id="newThreadBtn" href="/new.html">发帖</a>
+      </div>
+      <div class="thread-list" id="threadList">
+        <div class="skeleton">正在加载主题…</div>
+      </div>
+    </div>
+
+    <div id="pager"></div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261031f"></script>
+<script src="/assets/page-board.js?v=20261031f"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "blockbox-forum",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "方块盒子官方论坛 —— Node.js 内置 HTTP + SQLite，零第三方依赖",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server/index.js",
+    "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
+    "admin": "node --disable-warning=ExperimentalWarning scripts/set-admin.js",
+    "backup": "node --disable-warning=ExperimentalWarning scripts/backup.js",
+    "smoke": "node --disable-warning=ExperimentalWarning scripts/smoke.js"
+  }
+}

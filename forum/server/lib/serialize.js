@@ -1,0 +1,93 @@
+/** 数据库行 → 对外 JSON 形状的统一转换 */
+
+export function boardOut(row) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    icon: row.icon,
+    sort_order: row.sort_order,
+    thread_count: row.thread_count || 0,
+    post_count: row.post_count || 0,
+  };
+}
+
+export function authorOut(row, prefix = '') {
+  const id = row[`${prefix}id`];
+  if (!id) return null;
+  return {
+    id,
+    username: row[`${prefix}username`],
+    display_name: row[`${prefix}display_name`] || row[`${prefix}username`],
+    avatar: row[`${prefix}avatar`] || '',
+  };
+}
+
+/** 列表里的摘要：去掉 Markdown 记号，压成一行 */
+export function snippetOf(text, limit = 110) {
+  if (!text) return '';
+  const flat = String(text)
+    .replace(/```[\s\S]*?```/g, ' [代码] ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '[图片]')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[*_`>#~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const chars = [...flat];
+  return chars.length > limit ? chars.slice(0, limit).join('') + '…' : flat;
+}
+
+export function threadOut(row, { withSnippet = true } = {}) {
+  return {
+    id: row.id,
+    title: row.title,
+    board: row.board_id
+      ? { id: row.board_id, slug: row.board_slug, name: row.board_name, icon: row.board_icon || '' }
+      : null,
+    author: authorOut(row, 'author_'),
+    pinned: !!row.pinned,
+    locked: !!row.locked,
+    views: row.views || 0,
+    reply_count: row.reply_count || 0,
+    created_at: row.created_at,
+    last_post_at: row.last_post_at,
+    tags: row.tag_list ? String(row.tag_list).split(',').filter(Boolean) : [],
+    last_poster: row.last_username
+      ? { username: row.last_username, display_name: row.last_display_name || row.last_username }
+      : null,
+    ...(withSnippet ? { snippet: snippetOf(row.first_post) } : {}),
+    ...(row.bookmarked === undefined ? {} : { bookmarked: !!row.bookmarked }),
+  };
+}
+
+export function postOut(row) {
+  return {
+    id: row.id,
+    thread_id: row.thread_id,
+    floor: row.floor,
+    parent_post_id: row.parent_post_id || null,
+    content: row.deleted ? '' : row.content,
+    deleted: !!row.deleted,
+    edit_count: row.edit_count || 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    likes: row.like_count || 0,
+    liked: !!row.liked,
+    children: row.children || [],
+    children_count: row.children_count || 0,
+    author: row.username
+      ? {
+          id: row.author_id,
+          username: row.username,
+          display_name: row.display_name || row.username,
+          avatar: row.avatar || '',
+          role: row.role || 'user',
+          status: row.status || 'active',
+          thread_count: row.u_thread_count || 0,
+          post_count: row.u_post_count || 0,
+          joined_at: row.u_created_at || 0,
+        }
+      : { id: row.author_id, username: '已注销用户', display_name: '已注销用户', avatar: '' },
+  };
+}

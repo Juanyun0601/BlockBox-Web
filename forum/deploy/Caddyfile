@@ -1,0 +1,21 @@
+# Caddy 自动申请 HTTPS 证书，配置比 Nginx 短很多
+# 把 forum.blockbox.cc.cd 解析到本机后，改一下域名即可
+forum.blockbox.cc.cd {
+	encode gzip
+
+	# 反向代理到论坛进程
+	reverse_proxy 127.0.0.1:3210 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	# 上传图片允许到 5 MB
+	request_body {
+		max_size 5MB
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}

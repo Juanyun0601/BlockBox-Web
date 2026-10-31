@@ -1,0 +1,30 @@
+# /etc/systemd/system/blockbox-forum.service
+# 用法：
+#   sudo cp deploy/blockbox-forum.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now blockbox-forum
+#   journalctl -u blockbox-forum -f
+[Unit]
+Description=BlockBox Forum
+Documentation=https://github.com/Juanyun0601/BlockBox
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/blockbox-forum
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning server/index.js
+Restart=always
+RestartSec=3
+# 换成实际运行用户（需要对该目录与 data/ 有写权限）
+User=www-data
+Group=www-data
+
+# 简单的安全加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/blockbox-forum/data
+
+[Install]
+WantedBy=multi-user.target

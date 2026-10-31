@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理后台 · 方块盒子论坛</title>
+<meta name="description" content="方块盒子论坛管理后台">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="admin">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>管理后台</h2>
+      <span class="small muted" id="adminHint" style="margin-left: auto"></span>
+    </div>
+
+    <div id="adminHost">
+      <div class="skeleton">正在检查权限…</div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261031f"></script>
+<script src="/assets/page-admin.js?v=20261031f"></script>
+</body>
+</html>

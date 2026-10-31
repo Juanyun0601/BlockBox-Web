@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主题 · 方块盒子论坛</title>
+<meta name="description" content="方块盒子论坛主题详情">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="thread">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <div class="crumbs" id="crumbs"><a href="/">首页</a><span>›</span><span>主题</span></div>
+
+    <article class="card" id="threadCard">
+      <div class="thread-head" id="threadHead">
+        <h1>加载中…</h1>
+      </div>
+      <div id="postList"></div>
+    </article>
+
+    <div id="pager"></div>
+    <section id="composerHost"></section>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261031f"></script>
+<script src="/assets/page-thread.js?v=20261031f"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>通知 · 方块盒子论坛</title>
+<meta name="description" content="我在方块盒子论坛的站内通知">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="notifications">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap" style="max-width: 780px">
+    <div class="section-head">
+      <h2>站内通知</h2>
+      <span class="small muted" id="notifHint"></span>
+      <button class="btn btn-ghost btn-sm" id="readAllBtn" style="margin-left: auto">全部标为已读</button>
+    </div>
+
+    <div class="card notif-list" id="notifList">
+      <div class="skeleton">正在加载通知…</div>
+    </div>
+
+    <div id="pager"></div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261031f"></script>
+<script src="/assets/page-notifications.js?v=20261031f"></script>
+</body>
+</html>

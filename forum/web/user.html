@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>个人主页 · 方块盒子论坛</title>
+<meta name="description" content="方块盒子论坛用户主页">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="user">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <section class="card profile-card" id="profileCard">
+      <div class="skeleton">正在加载用户资料…</div>
+    </section>
+
+    <div id="editHost"></div>
+
+    <div class="card" style="margin-top: 16px">
+      <div class="toolbar">
+        <div class="tabs" id="userTabs"></div>
+        <span class="small muted" id="listHint" style="margin-left: auto"></span>
+      </div>
+      <div id="userContent">
+        <div class="skeleton">正在加载…</div>
+      </div>
+    </div>
+
+    <div id="pager"></div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261031f"></script>
+<script src="/assets/page-user.js?v=20261031f"></script>
+</body>
+</html>
