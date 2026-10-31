@@ -1,0 +1,35 @@
+name: 部署官网到服务器
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 配置 SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p 48407 202.181.26.190 >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: 同步网站文件
+        run: |
+          rsync -az --delete --exclude '.git' ./ deploy@202.181.26.190:/var/www/blockbox/ -e "ssh -p 48407"
+
+      - name: 验证部署
+        run: |
+          sleep 2
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://202.181.26.190/)
+          echo "服务器返回:$code"
+          test "$code" = 200
