@@ -171,6 +171,7 @@ window.BB_I18N_DICT = {
 "社区": "Comunidad",
 "GitHub 仓库": "Repositorio de GitHub",
 "问题反馈": "Reportar problemas",
+"意见反馈": "Comentarios",
 "相关站点": "Sitios relacionados",
 "Minecraft 官网": "Sitio oficial de Minecraft",
 "MCMod 百科": "Enciclopedia MCMod",

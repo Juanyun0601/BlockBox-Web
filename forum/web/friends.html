@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>好友 · 方块盒子论坛</title>
+<meta name="description" content="我在方块盒子论坛的好友与私信">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261103a">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="friends">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap" style="max-width: 1080px">
+    <div class="section-head">
+      <h2>好友</h2>
+      <span class="small muted" id="friendsHint"></span>
+      <button class="btn btn-ghost btn-sm" id="friendsRefresh" style="margin-left: auto">刷新</button>
+    </div>
+
+    <div class="friends-layout" id="friendsLayout">
+      <aside class="friends-side">
+        <div class="tabs" id="friendTabs">
+          <button type="button" class="active" data-tab="friends">好友<span class="tab-dot" id="friendsTabDot" hidden></span></button>
+          <button type="button" data-tab="requests">申请<span class="tab-dot" id="reqTabDot" hidden></span></button>
+          <button type="button" data-tab="add">添加好友</button>
+        </div>
+        <div class="card friends-list" id="friendSideBody">
+          <div class="skeleton">正在加载…</div>
+        </div>
+      </aside>
+
+      <section class="card chat-panel" id="chatPanel">
+        <div class="chat-empty" id="chatEmpty">在左侧选择一个好友，开始聊天</div>
+        <div class="chat-main" id="chatMain" hidden>
+          <div class="chat-head" id="chatHead"></div>
+          <div class="chat-more" id="chatMore" hidden><button class="btn btn-ghost btn-sm" id="chatMoreBtn" type="button">查看更早的消息</button></div>
+          <div class="chat-msgs" id="chatMsgs"></div>
+          <form class="chat-composer" id="chatForm">
+            <textarea class="textarea" id="chatInput" rows="2" maxlength="1000"
+                      placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+            <button class="btn btn-primary" type="submit" id="chatSend">发送</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261102d"></script>
+<script src="/assets/page-friends.js?v=20261102d"></script>
+</body>
+</html>

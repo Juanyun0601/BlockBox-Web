@@ -22,16 +22,20 @@ BB.boot(async () => {
   let tagData = null;
   let userQuery = '';
   let adminUsers = [];
+  let feedbackData = null;
+  let feedbackStatus = 'open';
 
   async function loadOverview() {
-    const [data, reportData, tagResult] = await Promise.all([
+    const [data, reportData, tagResult, feedbackResult] = await Promise.all([
       BB.api('/api/admin/overview'),
       BB.api('/api/admin/reports?status=open'),
       BB.api('/api/admin/tags'),
+      BB.api(`/api/admin/feedbacks?status=${feedbackStatus}&per_page=50`),
     ]);
     overview = data;
     reports = reportData;
     tagData = tagResult;
+    feedbackData = feedbackResult;
     render();
   }
 
@@ -91,6 +95,12 @@ BB.boot(async () => {
       </section>
 
       <section class="card admin-section">
+        <h2>反馈管理 <span id="feedbackPendingChip"></span></h2>
+        <div id="feedbackFilters" style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap"></div>
+        <div id="feedbackRows"></div>
+      </section>
+
+      <section class="card admin-section">
         <h2>最近主题</h2>
         <table class="table">
           <thead><tr><th>标题</th><th>板块</th><th>作者</th><th>时间</th><th>操作</th></tr></thead>
@@ -114,6 +124,7 @@ BB.boot(async () => {
     renderThreads();
     renderUsers();
     renderReports();
+    renderFeedback();
     renderTags();
 
     document.getElementById('addBoardBtn').addEventListener('click', addBoard);
@@ -359,6 +370,113 @@ BB.boot(async () => {
           });
           BB.toast('已处理', 'ok');
           loadOverview();
+        } catch (error) {
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+  }
+
+  function feedbackChip(status) {
+    if (status === 'resolved') return '<span class="chip">已处理</span>';
+    if (status === 'ignored') return '<span class="chip chip-grey">已忽略</span>';
+    return '<span class="chip chip-warn">待处理</span>';
+  }
+
+  function feedbackSource(item) {
+    return item.source === 'launcher'
+      ? `启动器${item.app_version ? ` · v${BB.esc(item.app_version)}` : ''}`
+      : '网页';
+  }
+
+  function renderFeedback() {
+    if (!feedbackData) return;
+    const counts = feedbackData.counts || {};
+
+    const pendingChip = document.getElementById('feedbackPendingChip');
+    pendingChip.innerHTML =
+      counts.open > 0
+        ? `<span class="chip chip-danger">待处理 ${counts.open}</span>`
+        : '<span class="chip chip-grey">没有待处理的反馈</span>';
+
+    const filters = document.getElementById('feedbackFilters');
+    filters.innerHTML = [
+      ['open', `待处理 ${counts.open || 0}`],
+      ['resolved', `已处理 ${counts.resolved || 0}`],
+      ['ignored', `已忽略 ${counts.ignored || 0}`],
+      ['all', '全部'],
+    ]
+      .map(
+        ([value, label]) =>
+          `<button class="btn btn-sm ${feedbackStatus === value ? 'btn-primary' : 'btn-ghost'}" data-fstatus="${value}">${label}</button>`,
+      )
+      .join('');
+    filters.querySelectorAll('[data-fstatus]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        feedbackStatus = button.dataset.fstatus;
+        try {
+          feedbackData = await BB.api(`/api/admin/feedbacks?status=${feedbackStatus}&per_page=50`);
+          renderFeedback();
+        } catch (error) {
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+
+    const rows = document.getElementById('feedbackRows');
+    if (!feedbackData.feedbacks || feedbackData.feedbacks.length === 0) {
+      rows.innerHTML = '<div class="empty">暂时没有反馈。</div>';
+      return;
+    }
+
+    rows.innerHTML = feedbackData.feedbacks
+      .map(
+        (item) => `
+      <div class="feedback-admin-row">
+        <div class="feedback-admin-main">
+          <div>
+            ${feedbackChip(item.status)}
+            <span class="chip chip-grey">${BB.esc(feedbackSource(item))}</span>
+          </div>
+          <div class="feedback-admin-content">${BB.esc(item.content)}</div>
+          <div class="feedback-admin-meta">
+            ${item.user ? `${BB.esc(item.user.display_name || item.user.username)}` : '已注销用户'}
+            · ${BB.datetime(item.created_at)}
+            ${item.handled_by ? ` · 由 ${BB.esc(item.handled_by)} 处理` : ''}
+          </div>
+          ${item.reply ? `<div class="feedback-reply"><b>已回复</b>：${BB.esc(item.reply)}</div>` : ''}
+        </div>
+        <div class="feedback-admin-actions">
+          <input class="input" placeholder="回复（可选）" data-reply="${item.id}">
+          <div class="btn-row">
+            ${
+              item.status === 'open'
+                ? `<button class="btn btn-primary btn-sm" data-feedback="${item.id}" data-act="resolve">标记已处理</button>
+                   <button class="btn btn-ghost btn-sm" data-feedback="${item.id}" data-act="ignore">忽略</button>`
+                : `<button class="btn btn-ghost btn-sm" data-feedback="${item.id}" data-act="reopen">重新打开</button>`
+            }
+          </div>
+        </div>
+      </div>`,
+      )
+      .join('');
+
+    rows.querySelectorAll('[data-feedback]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const feedbackId = Number(button.dataset.feedback);
+        const action = button.dataset.act;
+        const replyInput = rows.querySelector(`[data-reply="${feedbackId}"]`);
+        const payload =
+          action === 'resolve'
+            ? { status: 'resolved', reply: replyInput ? replyInput.value.trim() : '' }
+            : action === 'ignore'
+              ? { status: 'ignored', reply: replyInput ? replyInput.value.trim() : '' }
+              : { status: 'open', reply: '' };
+        try {
+          await BB.api(`/api/admin/feedbacks/${feedbackId}`, { method: 'PATCH', body: payload });
+          BB.toast(action === 'reopen' ? '已重新打开' : '已处理', 'ok');
+          feedbackData = await BB.api(`/api/admin/feedbacks?status=${feedbackStatus}&per_page=50`);
+          renderFeedback();
         } catch (error) {
           BB.toast(error.message, 'error');
         }

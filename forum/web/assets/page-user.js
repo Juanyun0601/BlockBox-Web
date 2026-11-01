@@ -33,6 +33,18 @@ BB.boot(async () => {
        </label>`
     : '';
 
+  /** 非自己的主页给出好友操作：按当前关系决定按钮（数据来自 /api/users/:id 的 friendship 字段） */
+  const friendActionHtml =
+    isSelf || user.status === 'banned'
+      ? ''
+      : user.friendship === 'friends'
+        ? `<a class="btn btn-primary btn-sm" href="/friends.html?peer=${userId}">💬 发私信</a>`
+        : user.friendship === 'outgoing'
+          ? `<button class="btn btn-ghost btn-sm" id="withdrawFriendBtn">已申请，点击撤回</button>`
+          : user.friendship === 'incoming'
+            ? `<a class="btn btn-primary btn-sm" href="/friends.html">对方想加你好友</a>`
+            : `<button class="btn btn-primary btn-sm" id="addFriendBtn">＋ 加好友</button>`;
+
   document.getElementById('profileCard').innerHTML = `
     <div class="profile-cover">${coverHtml}${coverAction}</div>
     <div class="profile-body">
@@ -49,6 +61,7 @@ BB.boot(async () => {
         </div>
       </div>
       <div class="profile-actions">
+        ${friendActionHtml}
         ${isSelf ? '<a class="btn btn-ghost btn-sm" href="/gallery.html">我的相册</a>' : ''}
         ${isSelf ? '<button class="btn btn-ghost btn-sm" id="editProfileBtn">编辑资料</button>' : ''}
         ${isSelf && user.role === 'admin' ? '<a class="btn btn-ghost btn-sm" href="/admin.html">管理后台</a>' : ''}
@@ -56,6 +69,40 @@ BB.boot(async () => {
     </div>`;
 
   if (isSelf) bindCoverInput('coverInput');
+
+  document.getElementById('profileCard').addEventListener('click', async (event) => {
+    const add = event.target.closest('#addFriendBtn');
+    if (add) {
+      add.disabled = true;
+      try {
+        const res = await BB.api('/api/friends/requests', { method: 'POST', body: { user_id: userId } });
+        BB.toast(res.status === 'friends' ? '对方也申请了你，已经成为好友' : '申请已发出，等对方同意', 'ok');
+        add.outerHTML = '<button class="btn btn-ghost btn-sm" disabled>已申请</button>';
+      } catch (error) {
+        if (error.status === 401) {
+          location.href = BB.loginLink();
+          return;
+        }
+        add.disabled = false;
+        BB.toast(error.message || '操作失败', 'error');
+      }
+      return;
+    }
+    const withdraw = event.target.closest('#withdrawFriendBtn');
+    if (withdraw) {
+      withdraw.disabled = true;
+      try {
+        const mine = await BB.api('/api/friends');
+        const row = (mine.outgoing || []).find((item) => item.user.id === userId);
+        if (row) await BB.api(`/api/friends/requests/${row.id}`, { method: 'DELETE' });
+        BB.toast('已撤回好友申请', 'ok');
+        withdraw.outerHTML = `<button class="btn btn-primary btn-sm" id="addFriendBtn">＋ 加好友</button>`;
+      } catch (error) {
+        withdraw.disabled = false;
+        BB.toast(error.message || '操作失败', 'error');
+      }
+    }
+  });
 
   const tabs = [
     ['threads', `主题 ${data.thread_total}`],

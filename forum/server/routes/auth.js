@@ -4,6 +4,7 @@ import { badRequest, readRawBody } from '../lib/http.js';
 import { enforce } from '../lib/rate-limit.js';
 import { removeUpload, saveImage } from '../lib/images.js';
 import { unreadNotifications } from '../lib/notify.js';
+import { socialUnread } from '../lib/social.js';
 import {
   clearSessionCookie,
   createSession,
@@ -86,6 +87,7 @@ export default function register(router) {
   router.get('/api/me', async (ctx) => ({
     user: publicUser(ctx.user, { self: true }),
     unread: unreadNotifications(ctx.user?.id),
+    friend_unread: socialUnread(ctx.user?.id),
     site: {
       name: config.siteName,
       desc: config.siteDesc,

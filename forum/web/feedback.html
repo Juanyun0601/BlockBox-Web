@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>意见反馈 · 方块盒子论坛</title>
+<meta name="description" content="向方块盒子反馈软件使用中遇到的问题与建议">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261103a">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="feedback">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap" style="max-width: 780px">
+    <div class="section-head">
+      <h2>意见反馈</h2>
+      <span class="small muted">软件使用中遇到问题？在这里告诉我们</span>
+    </div>
+
+    <div class="card" id="feedbackLoginCard" style="display: none">
+      <div class="empty">登录后才能提交反馈，处理进度也会展示在你的反馈列表里。<br><br>
+        <a class="btn btn-primary btn-sm" href="/login.html?next=%2Ffeedback.html">去登录</a></div>
+    </div>
+
+    <div class="card" id="feedbackFormCard" style="display: none">
+      <div class="field">
+        <label for="feedbackContent">反馈内容 <span class="req">*</span></label>
+        <div class="feedback-tpl" id="feedbackTpl">
+          <button type="button" class="btn btn-ghost btn-sm" data-tpl="bug">🐛 问题反馈模板</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-tpl="feature">💡 功能建议模板</button>
+          <span class="input-hint" style="margin: 0">点模板快速套格式，照着填就行</span>
+        </div>
+        <textarea class="textarea" id="feedbackContent" maxlength="1000"
+          placeholder="点上方模板快速套格式，或直接描述遇到的问题；涉及实例或版本时请写明版本号。"></textarea>
+        <div class="input-hint"><span id="feedbackCount">0</span>/1000 字 · 提交后可在下方「我的反馈」里查看处理进度</div>
+      </div>
+      <div class="input-hint" id="feedbackError" style="display: none; color: var(--danger)"></div>
+      <button class="btn btn-primary" id="feedbackSubmit" style="margin-top: 6px">提交反馈</button>
+    </div>
+
+    <div class="section-head" id="mineHead" style="display: none; margin-top: 24px">
+      <h2>我的反馈</h2>
+      <button class="btn btn-ghost btn-sm" id="feedbackRefresh" style="margin-left: auto">刷新</button>
+    </div>
+
+    <div class="card" id="mineList">
+      <div class="skeleton">正在加载…</div>
+    </div>
+
+    <div id="pager"></div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261102b"></script>
+<script src="/assets/page-feedback.js?v=20261103a"></script>
+</body>
+</html>

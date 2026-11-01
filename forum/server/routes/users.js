@@ -1,6 +1,7 @@
 import { db, paginate } from '../db.js';
 import { notFound } from '../lib/http.js';
 import { publicUser } from '../lib/auth.js';
+import { friendshipBetween } from '../lib/social.js';
 import { threadOut, snippetOf } from '../lib/serialize.js';
 import { listThreads, countThreads, listRepliesByAuthor, countRepliesByAuthor } from '../lib/queries.js';
 
@@ -39,8 +40,21 @@ export default function register(router) {
     }
 
     const self = ctx.user?.id === row.id;
+    // 登录态下附带好友关系，个人主页据此显示 加好友 / 发私信 按钮
+    let friendship = 'none';
+    if (self) {
+      friendship = 'self';
+    } else if (ctx.user) {
+      const rel = friendshipBetween(ctx.user.id, row.id);
+      if (rel) {
+        if (rel.status === 'accepted') friendship = 'friends';
+        else friendship = rel.requester_id === ctx.user.id ? 'outgoing' : 'incoming';
+      }
+    }
+
     return {
       user: publicUser(row, { self }),
+      friendship,
       threads: listThreads({ authorId: row.id, limit: 8, sort: 'new' }).map((item) =>
         threadOut(item, { withSnippet: false }),
       ),

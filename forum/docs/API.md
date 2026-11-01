@@ -47,11 +47,13 @@
 {
   "user": { "id": 1, "username": "admin", "display_name": "admin", "role": "admin", "avatar": "", "cover": "" },
   "unread": 3,
+  "friend_unread": 2,
   "site": { "name": "方块盒子论坛", "desc": "…", "register_open": true }
 }
 ```
 
-未登录时 `user` 为 `null`（注意不是 401，方便前端判断），`unread` 为 0。
+未登录时 `user` 为 `null`（注意不是 401，方便前端判断），`unread` 为 0。`friend_unread` 是
+「未读私信 + 待处理好友申请」合计，给顶栏好友角标用。
 
 ---
 
@@ -240,6 +242,47 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ---
 
+## 用户反馈
+
+官网/论坛页脚与启动器「设置 > 关于」提交的软件问题反馈，登录后可提交，管理员在后台处理。
+
+### POST /api/feedback · 提交反馈（需登录）
+
+```json
+{ "content": "启动 1.20.1 实例时闪退……", "source": "web", "app_version": "" }
+```
+
+- `content` 5–1000 字；`source` 为 `web`（网页）或 `launcher`（启动器），启动器提交时附带 `app_version`
+- 限流：每账号每小时 5 条
+
+返回 `{ "ok": true, "id": 12 }`。
+
+### GET /api/me/feedbacks?page=1&per_page=20 · 我的反馈（需登录）
+
+```json
+{
+  "feedbacks": [ { "id": 12, "source": "launcher", "content": "…", "app_version": "beta7",
+                   "status": "open", "reply": "", "handled_at": 0, "created_at": 1793600000 } ],
+  "pagination": { "page": 1, "per_page": 20, "total": 1, "pages": 1 }
+}
+```
+
+`status`：`open`（待处理）/ `resolved`（已处理）/ `ignored`（已忽略）；管理员回复在 `reply`。
+
+### GET /api/admin/feedbacks?status=open&page=1 · 反馈列表（管理员）
+
+`status` 支持 `open` / `resolved` / `ignored` / `all`。每条带提交人 `user`（未登录提交为 null）、处理人 `handled_by` 与三种状态的 `counts`，带 `pagination`。
+
+### PATCH /api/admin/feedbacks/:id · 处理反馈（管理员）
+
+```json
+{ "status": "resolved", "reply": "下个版本修复，感谢反馈！" }
+```
+
+`status` 为 `resolved` / `ignored` / `open`（重开），`reply` 最多 500 字、可选；处理人与处理时间自动记录。返回 `{ "ok": true, "status": "resolved" }`。
+
+---
+
 ## 用户
 
 ### GET /api/users/search?q=关键词
@@ -257,11 +300,14 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
   "user": { "id": 2, "username": "小白玩家", "display_name": "小白玩家", "bio": "", "avatar": "",
             "cover": "/uploads/cover-2-1793426400000.png", "role": "user",
             "status": "active", "thread_count": 1, "post_count": 1, "created_at": 1793426400 },
+  "friendship": "none",
   "threads": [ /* 最近 8 个主题 */ ],
   "replies": [ { "thread_id": 3, "thread_title": "…", "snippet": "…" } ],
   "thread_total": 1
 }
 ```
+
+`friendship` 只有登录时才有意义：`self`（自己）/ `none` / `outgoing`（我申请了对方）/ `incoming`（对方申请了我）/ `friends`。
 
 ### GET /api/users/:id/threads?page=1&per_page=20
 
@@ -270,6 +316,81 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ### GET /api/users/:id/posts?page=1&per_page=20
 
 用户发过的回复（不含 1 楼），带所属主题标题、`total` 与分页信息。
+
+---
+
+## 好友与私信
+
+好友关系是双向的：A 申请 → B 通过后才能互发私信。申请发给别人时如果对方恰好也申请过我，会直接成为好友。
+
+### GET /api/friends · 好友页数据（一次拉全）
+
+```json
+{
+  "friends": [
+    { "id": 2, "username": "红石工程师", "display_name": "红石工程师", "avatar": "",
+      "last_seen_at": 1793426400, "online": true, "unread": 1,
+      "last_message": { "body": "晚上一起开黑？", "created_at": 1793426400, "mine": false } }
+  ],
+  "incoming": [ { "id": 7, "created_at": 1793426400, "user": { "id": 3, "username": "小白玩家", "…": "…" } } ],
+  "outgoing": [ { "id": 8, "created_at": 1793426400, "user": { "id": 4, "username": "老玩家", "…": "…" } } ],
+  "total_unread": 1
+}
+```
+
+`online` 为最近 10 分钟内活跃。`last_message` 为空表示还没聊过。最多返回 200 个好友，按最近联系排序。
+
+### POST /api/friends/requests · 发好友申请
+
+`user_id` 或 `username` 二选一。返回 `{ "ok": true, "status": "pending" | "friends" }`，
+`friends` 表示对方之前也申请过我、已直接通过。限流：每小时 20 次。
+
+### POST /api/friends/requests/:id/accept · 通过申请
+
+只能处理发给自己的申请，返回 `{ "ok": true, "status": "friends", "user_id": 对方id }`。
+
+### POST /api/friends/requests/:id/decline · 拒绝申请
+
+### DELETE /api/friends/requests/:id · 撤回我发出的申请
+
+### DELETE /api/friends/:userId · 删除好友
+
+### GET /api/messages/:userId · 与某好友的私信历史
+
+可选 `before_id`（取更早的一页）与 `limit`（默认 40，最大 100）。**调用即把对方发来的未读消息标记已读。**
+
+```json
+{
+  "user": { "id": 2, "username": "红石工程师", "…": "…" },
+  "messages": [ { "id": 12, "body": "好啊几点", "mine": true, "created_at": 1793426400, "read_at": 1793426410 } ],
+  "has_more": false
+}
+```
+
+`messages` 按时间升序。不是好友时返回 403。
+
+### POST /api/messages/:userId · 发私信
+
+```json
+{ "body": "晚上 8 点？" }
+```
+
+内容 1–1000 字，限流：每分钟 30 条。返回 `{ "message": { "id": 13, "body": "…", "mine": true, "created_at": … } }`。
+
+### GET /api/messages/poll · 轮询（角标 / 会话列表 / 新消息）
+
+可选 `peer_id`（当前打开的会话）与 `after_id`（已拿到的最大消息 id）。不标记已读。
+
+```json
+{
+  "total_unread": 2,
+  "incoming_requests": 1,
+  "friends": [ { "id": 2, "unread": 2, "online": true, "last_message": { "…": "…" } } ],
+  "messages": [ { "id": 14, "body": "就现在？", "mine": false, "created_at": 1793426500, "read_at": 0 } ]
+}
+```
+
+`friends` 字段与 GET /api/friends 相同（含头像昵称，新好友出现时可以直接补进列表）。限流：每分钟 240 次。
 
 ---
 

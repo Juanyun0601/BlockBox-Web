@@ -204,6 +204,50 @@ CREATE TABLE IF NOT EXISTS reports (
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_dedupe ON reports(post_id, reporter_id);
 
+-- 好友关系（requester 向 addressee 发申请，通过后 status = accepted）-----------------
+CREATE TABLE IF NOT EXISTS friendships (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  addressee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status       TEXT    NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted')),
+  created_at   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL,
+  UNIQUE (requester_id, addressee_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id, status);
+CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id, status);
+
+-- 好友私信 -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS direct_messages (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  sender_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  peer_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body       TEXT    NOT NULL,
+  read_at    INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_dm_pair ON direct_messages(sender_id, peer_id, id);
+CREATE INDEX IF NOT EXISTS idx_dm_inbox ON direct_messages(peer_id, read_at);
+
+-- 用户反馈（官网/论坛页脚和启动器提交的问题反馈，管理后台处理）-----------
+CREATE TABLE IF NOT EXISTS feedbacks (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  source      TEXT    NOT NULL DEFAULT 'web' CHECK (source IN ('web', 'launcher')),
+  content     TEXT    NOT NULL,
+  app_version TEXT    NOT NULL DEFAULT '',
+  status      TEXT    NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'ignored')),
+  reply       TEXT    NOT NULL DEFAULT '',
+  handled_by  INTEGER,
+  handled_at  INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedbacks_user ON feedbacks(user_id, created_at DESC);
+
 -- 默认板块（只在不存在时补齐，不会覆盖已修改的名称/排序）
 INSERT OR IGNORE INTO boards (slug, name, description, icon, sort_order, created_at) VALUES
   ('general',  '综合讨论',   '关于方块盒子和 Minecraft 的任何话题',        '💬', 10, unixepoch()),

@@ -4,7 +4,7 @@
   'use strict';
 
   const BB = {};
-  BB.state = { me: null, site: { name: '方块盒子论坛', desc: '' }, unread: 0 };
+  BB.state = { me: null, site: { name: '方块盒子论坛', desc: '' }, unread: 0, friendUnread: 0 };
 
   // ------------------------------------------------------------ 基础工具
 
@@ -312,6 +312,12 @@
     }</button>`;
   }
 
+  /** 顶栏「好友」入口上的未读角标（未读私信 + 待处理申请） */
+  function friendBadge() {
+    const n = Number(BB.state.friendUnread || 0);
+    return n > 0 ? `<span class="badge" id="navFriendBadge">${n > 99 ? '99+' : n}</span>` : '';
+  }
+
   function renderNav(active) {
     const host = document.getElementById('siteNav');
     if (!host) return;
@@ -344,6 +350,7 @@
             <a href="/" data-nav="home"${is('home')}>首页</a>
             <a href="/#boards" data-nav="boards"${is('boards')}>板块</a>
             <a href="/search.html" data-nav="search"${is('search')}>搜索</a>
+            ${me ? `<a href="/friends.html" data-nav="friends" id="navFriendLink"${is('friends')}>好友${friendBadge()}</a>` : ''}
             ${me && me.role === 'admin' ? `<a href="/admin.html" data-nav="admin"${is('admin')}>管理</a>` : ''}
           </nav>
           <form class="nav-search" id="navSearch" role="search">
@@ -401,6 +408,7 @@
       const data = await BB.api('/api/me');
       BB.state.me = data.user;
       BB.state.unread = Number(data.unread || 0);
+      BB.state.friendUnread = Number(data.friend_unread || 0);
       BB.state.site = data.site || BB.state.site;
     } catch (error) {
       BB.toast('无法连接论坛服务，请确认服务已启动', 'error');
@@ -408,7 +416,27 @@
 
     const page = document.body.dataset.page || '';
     renderNav(page);
+    BB.syncFriendNav();
     BB.initLightbox();
+
+    // 登录后每 30 秒刷新一次好友角标；好友页自己有更快的轮询，两边写同一个状态不冲突
+    if (BB.state.me) {
+      let badgeBusy = false;
+      setInterval(async () => {
+        if (document.hidden || badgeBusy || !BB.state.me) return;
+        badgeBusy = true;
+        try {
+          const data = await BB.api('/api/messages/poll');
+          BB.state.friendUnread =
+            Number(data.total_unread || 0) + Number(data.incoming_requests || 0);
+          BB.syncFriendNav();
+        } catch {
+          /* 网络抖动忽略，等下一轮 */
+        } finally {
+          badgeBusy = false;
+        }
+      }, 30000);
+    }
 
     const footer = document.getElementById('siteFooter');
     if (footer) {
@@ -418,6 +446,7 @@
           <div class="links">
             <a href="https://blockbox.cc.cd" target="_blank" rel="noopener">官网</a>
             <a href="/search.html">搜索</a>
+            <a href="/feedback.html">反馈</a>
             <a href="https://blockbox.cc.cd/docs.html" target="_blank" rel="noopener">开发文档</a>
           </div>
         </div>`;
@@ -636,6 +665,25 @@
   };
 
   BB.refreshNav = () => renderNav(document.body.dataset.page || '');
+
+  /** 只更新顶栏「好友」角标的数字，不重建整个导航（好友页轮询时用） */
+  BB.syncFriendNav = () => {
+    const link = document.getElementById('navFriendLink');
+    if (!link) return;
+    const n = Number(BB.state.friendUnread || 0);
+    let badge = document.getElementById('navFriendBadge');
+    if (n > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.id = 'navFriendBadge';
+        link.appendChild(badge);
+      }
+      badge.textContent = n > 99 ? '99+' : String(n);
+    } else if (badge) {
+      badge.remove();
+    }
+  };
 
   // ------------------------------------------------------------ 图片灯箱
 
