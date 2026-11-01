@@ -1,11 +1,21 @@
 import { db, now, paginate, refreshBoardCounts, transaction } from '../db.js';
 import { badRequest, forbidden, notFound } from '../lib/http.js';
-import { publicUser, requireAdmin, requireHeadAdmin } from '../lib/auth.js';
+import { muteScopeList, normalizeMuteScope, publicUser, requireAdmin, requireHeadAdmin } from '../lib/auth.js';
 import { siteStats } from '../lib/queries.js';
 
 export default function register(router) {
+  /** 到期的禁言自动恢复正常（永久禁言 muted_until 为 0，不动） */
+  function sweepExpiredMutes() {
+    db.prepare(
+      `UPDATE users
+          SET status = 'active', muted_until = 0, mute_scope = 'all', mute_reason = '', mute_by = ''
+        WHERE status = 'muted' AND muted_until > 0 AND muted_until <= ?`,
+    ).run(now());
+  }
+
   router.get('/api/admin/overview', async (ctx) => {
     requireAdmin(ctx.user);
+    sweepExpiredMutes();
     const stats = siteStats();
     const boards = db.prepare('SELECT * FROM boards ORDER BY sort_order ASC, id ASC').all();
     const recentUsers = db
@@ -50,6 +60,7 @@ export default function register(router) {
 
   router.get('/api/admin/users', async (ctx) => {
     requireAdmin(ctx.user);
+    sweepExpiredMutes();
     const { page, perPage, offset } = paginate(ctx.url.searchParams, 30);
     const q = String(ctx.url.searchParams.get('q') || '').trim();
     const like = `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
@@ -82,22 +93,54 @@ export default function register(router) {
     // 次级管理员什么都能做，唯独不能设置别人的管理权限
     if (role !== target.role && admin.role !== 'admin') throw forbidden('次级管理员无法设置管理权限');
 
-    let mutedUntil = target.muted_until;
+    // 禁止内容：不传就沿用原来的，传了但一项都没选算错误
+    let scope = target.mute_scope || 'all';
+    if (body.mute_scope !== undefined) {
+      if (!muteScopeList(body.mute_scope).length) throw badRequest('至少要选一项禁止内容');
+      scope = normalizeMuteScope(body.mute_scope);
+    }
+
+    // 理由：留空表示不记录理由
+    let reason = String(target.mute_reason || '');
+    if (body.mute_reason !== undefined) {
+      reason = String(body.mute_reason == null ? '' : body.mute_reason).trim().slice(0, 100);
+    }
+
+    let mutedUntil = target.muted_until || 0;
     if (body.muted_until !== undefined) {
       mutedUntil = Math.max(0, Math.floor(Number(body.muted_until) || 0));
     }
-    if (status === 'muted' && mutedUntil === 0) {
-      const hours = Number(body.mute_hours ?? 24);
-      mutedUntil = now() + Math.max(1, Math.min(24 * 365, Math.floor(hours))) * 3600;
+    // mute_hours：>0 从现在起算，0 表示永久（到管理员手动解除为止），不传则保留原到期时间
+    if (status === 'muted' && body.mute_hours !== undefined) {
+      const hours = Math.max(0, Math.min(24 * 365, Math.floor(Number(body.mute_hours) || 0)));
+      mutedUntil = hours === 0 ? 0 : now() + hours * 3600;
     }
-    if (status !== 'muted') mutedUntil = 0;
+    // 从正常状态改成禁言但没给时间：默认 24 小时
+    if (status === 'muted' && mutedUntil === 0 && target.status !== 'muted' && body.mute_hours === undefined) {
+      mutedUntil = now() + 24 * 3600;
+    }
 
-    db.prepare('UPDATE users SET role = ?, status = ?, muted_until = ? WHERE id = ?').run(
-      role,
-      status,
-      mutedUntil,
-      target.id,
-    );
+    let muteBy = String(target.mute_by || '');
+    if (status === 'muted') {
+      // 只改角色时不覆盖原来的操作人
+      const touchedMute =
+        body.status !== undefined ||
+        body.mute_scope !== undefined ||
+        body.mute_reason !== undefined ||
+        body.mute_hours !== undefined ||
+        body.muted_until !== undefined;
+      if (touchedMute) muteBy = String(admin.display_name || admin.username || '').slice(0, 40);
+    } else {
+      // 恢复正常 / 封禁：禁言相关的信息一并清掉
+      mutedUntil = 0;
+      scope = 'all';
+      reason = '';
+      muteBy = '';
+    }
+
+    db.prepare(
+      'UPDATE users SET role = ?, status = ?, muted_until = ?, mute_scope = ?, mute_reason = ?, mute_by = ? WHERE id = ?',
+    ).run(role, status, mutedUntil, scope, reason, muteBy, target.id);
     if (status === 'banned') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(target.id);
 
     return { user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id), { self: true }) };

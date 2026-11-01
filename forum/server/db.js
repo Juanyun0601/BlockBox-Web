@@ -105,6 +105,14 @@ export function migrate() {
     db.exec('PRAGMA foreign_keys = ON');
     console.log('[论坛] 数据库已升级：用户角色支持次级管理员（moderator）');
   }
+
+  // 禁言细化：禁止哪些内容、理由、操作人（放在最后，兼容上面重建 users 表的老库）
+  const addedMuteScope = ensureColumn('users', 'mute_scope', "TEXT NOT NULL DEFAULT 'all'");
+  if (addedMuteScope) console.log('[论坛] 数据库已升级：users 增加 mute_scope（禁言范围）');
+  const addedMuteReason = ensureColumn('users', 'mute_reason', "TEXT NOT NULL DEFAULT ''");
+  if (addedMuteReason) console.log('[论坛] 数据库已升级：users 增加 mute_reason（禁言理由）');
+  const addedMuteBy = ensureColumn('users', 'mute_by', "TEXT NOT NULL DEFAULT ''");
+  if (addedMuteBy) console.log('[论坛] 数据库已升级：users 增加 mute_by（禁言操作人）');
 }
 
 migrate();

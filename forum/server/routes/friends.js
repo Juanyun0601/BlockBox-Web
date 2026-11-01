@@ -1,6 +1,6 @@
 import { db, now } from '../db.js';
 import { badRequest, forbidden, notFound } from '../lib/http.js';
-import { requireUser } from '../lib/auth.js';
+import { muteError, requireUser } from '../lib/auth.js';
 import { enforce } from '../lib/rate-limit.js';
 import {
   acceptedBetween,
@@ -215,6 +215,9 @@ export default function register(router) {
 
   router.post('/api/messages/:userId', async (ctx) => {
     const user = requireUser(ctx.user);
+    // 禁言里勾了「私信」就不让发
+    const mute = muteError(user, 'dm');
+    if (mute) throw mute;
     enforce(`dm:${user.id}`, 30, 60 * 1000, '私信发得太频繁');
     const peerId = int(ctx.params.userId, { field: '用户' });
     requireFriend(user, peerId);

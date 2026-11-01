@@ -42,7 +42,8 @@ export function createSession(userId, { ip = '', ua = '' } = {}) {
 
 const SESSION_USER_SQL = `
   SELECT u.id, u.username, u.display_name, u.email, u.bio, u.avatar, u.cover, u.role, u.status,
-         u.muted_until, u.thread_count, u.post_count, u.quiz_passed_at, u.quiz_best_score,
+         u.muted_until, u.mute_scope, u.mute_reason,
+         u.thread_count, u.post_count, u.quiz_passed_at, u.quiz_best_score,
          u.created_at, u.last_seen_at,
          s.expires_at
     FROM sessions s
@@ -115,15 +116,10 @@ export function requireHeadAdmin(user) {
 }
 
 /** 发帖 / 回复前检查账号状态 */
-export function assertCanPost(user) {
+export function assertCanPost(user, kind = 'thread') {
   requireUser(user);
-  if (user.status === 'banned') throw forbidden('该账号已被封禁，无法发言');
-  if (user.status === 'muted' && (user.muted_until === 0 || user.muted_until > now())) {
-    const until = user.muted_until
-      ? new Date(user.muted_until * 1000).toISOString().slice(0, 16).replace('T', ' ')
-      : '管理员解除为止';
-    throw new HttpError(403, `账号已被禁言（${until}）`, 'muted');
-  }
+  const mute = muteError(user, kind);
+  if (mute) throw mute;
   // 入站答题和账号绑定：没通过的账号不能发帖、不能回复
   if (!user.quiz_passed_at) {
     throw new HttpError(403, '发帖或回复前，需要先通过入站答题', 'quiz_required');
@@ -131,9 +127,72 @@ export function assertCanPost(user) {
   return user;
 }
 
+/** 禁言能管到的内容：thread 发帖 / reply 回复 / dm 私信；all 表示全部都禁 */
+export const MUTE_SCOPES = ['thread', 'reply', 'dm'];
+
+const MUTE_SCOPE_LABELS = { thread: '发帖', reply: '回复', dm: '私信' };
+
+/** 把数据库里的 mute_scope 拆成范围列表（空 / all 都表示全部） */
+export function muteScopeList(value) {
+  const raw = String(value == null ? '' : value).trim().toLowerCase();
+  if (!raw || raw === 'all') return MUTE_SCOPES.slice();
+  const picked = raw.split(/[,\s]+/).filter((item) => MUTE_SCOPES.includes(item));
+  return MUTE_SCOPES.filter((scope) => picked.includes(scope));
+}
+
+/** 归一化成存库的写法：全选存 all，否则存 thread,reply 这样的列表 */
+export function normalizeMuteScope(value) {
+  const list = muteScopeList(value);
+  return list.length === MUTE_SCOPES.length ? 'all' : list.join(',');
+}
+
+/** 禁言范围的中文说法，用在提示语里 */
+export function muteScopeLabel(value) {
+  return muteScopeList(value)
+    .map((scope) => MUTE_SCOPE_LABELS[scope])
+    .join('、');
+}
+
+/** 禁言是否还在生效（永久禁言 muted_until 为 0） */
+export function muteActive(user) {
+  if (!user || user.status !== 'muted') return false;
+  const until = Number(user.muted_until || 0);
+  return until === 0 || until > now();
+}
+
+/** 服务器本地时间：2026-11-01 20:42（禁言提示里给人看的时间） */
+function localTime(seconds) {
+  const d = new Date(Number(seconds) * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * 被禁言时返回要抛出的错误，没被禁言返回 null。
+ * kind：thread 发帖 / reply 回复 / dm 私信
+ */
+export function muteError(user, kind = 'thread') {
+  requireUser(user);
+  if (user.status === 'banned') throw forbidden('该账号已被封禁，无法发言');
+  if (!muteActive(user)) return null;
+  if (!muteScopeList(user.mute_scope).includes(kind)) return null;
+
+  const until = Number(user.muted_until || 0)
+    ? `${localTime(user.muted_until)} 解除`
+    : '管理员解除为止';
+  const reason = String(user.mute_reason || '').trim();
+  return new HttpError(
+    403,
+    `账号已被禁言：禁止${muteScopeLabel(user.mute_scope)}（${until}）${reason ? `，理由：${reason}` : ''}`,
+    'muted',
+  );
+}
+
 /** 对外输出的用户信息（不含邮箱哈希等敏感字段） */
 export function publicUser(row, { self = false } = {}) {
   if (!row) return null;
+  // 到期未处理的禁言按正常显示，避免列表里一直挂着「禁言」
+  const expired = !muteActive(row) && row.status === 'muted';
   const data = {
     id: row.id,
     username: row.username,
@@ -142,8 +201,8 @@ export function publicUser(row, { self = false } = {}) {
     avatar: row.avatar || '',
     cover: row.cover || '',
     role: row.role,
-    status: row.status,
-    muted_until: row.muted_until || 0,
+    status: expired ? 'active' : row.status,
+    muted_until: expired ? 0 : row.muted_until || 0,
     thread_count: row.thread_count || 0,
     post_count: row.post_count || 0,
     quiz_passed: !!row.quiz_passed_at,
@@ -152,6 +211,11 @@ export function publicUser(row, { self = false } = {}) {
     created_at: row.created_at,
     last_seen_at: row.last_seen_at || 0,
   };
-  if (self || isAdminRole(row.role)) data.email = row.email || '';
+  if (self || isAdminRole(row.role)) {
+    data.email = row.email || '';
+    data.mute_scope = row.mute_scope || 'all';
+    data.mute_reason = row.mute_reason || '';
+    data.mute_by = row.mute_by || '';
+  }
   return data;
 }

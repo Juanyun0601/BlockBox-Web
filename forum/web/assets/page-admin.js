@@ -496,17 +496,178 @@ BB.boot(async () => {
     });
   }
 
+  /** 禁言时长：0 表示永久，需要管理员手动解除 */
+  const MUTE_HOURS = [
+    [1, '1 小时'],
+    [24, '24 小时'],
+    [72, '3 天'],
+    [168, '7 天'],
+    [720, '30 天'],
+    [0, '永久（手动解除）'],
+  ];
+
+  /** 已禁言的用户打开弹窗时，默认选中和剩余时间最接近的一档 */
+  function guessHours(user) {
+    if (user.status !== 'muted') return 24;
+    if (!user.muted_until) return 0;
+    const left = (Number(user.muted_until) * 1000 - Date.now()) / 3600000;
+    let best = 24;
+    MUTE_HOURS.forEach(([hours]) => {
+      if (hours === 0) return;
+      if (Math.abs(hours - left) < Math.abs(best - left)) best = hours;
+    });
+    return best;
+  }
+
+  /** 禁言弹窗：禁止内容 + 理由 + 时间都在这里设，行里只留一颗「禁言」按钮 */
+  function openMuteDialog(user) {
+    const isMuted = user.status === 'muted';
+    const isBanned = user.status === 'banned';
+    const scope = BB.muteScopeList(user.mute_scope);
+    const hours = guessHours(user);
+
+    const nowText = isMuted
+      ? `当前已禁言：禁止${BB.muteScopeLabel(user.mute_scope)} · ${BB.muteUntilText(user.muted_until)}${
+          user.mute_reason ? ` · 理由：${BB.esc(user.mute_reason)}` : ''
+        }`
+      : isBanned
+        ? '当前已被封禁。确认禁言后会改为禁言状态，账号可以重新登录。'
+        : '禁言后，下面勾选的操作会立刻不能使用，到时间自动恢复。';
+
+    const mask = document.createElement('div');
+    mask.className = 'modal-mask';
+    mask.innerHTML = `
+      <div class="modal-card" role="dialog" aria-modal="true" aria-label="禁言 ${BB.esc(user.username)}">
+        <h3>禁言 @${BB.esc(user.username)}</h3>
+        <p class="muted small">${nowText}</p>
+        <div class="field">
+          <label>禁止内容</label>
+          <div class="check-row">
+            ${BB.MUTE_SCOPES.map(
+              ([key, label]) =>
+                `<label><input type="checkbox" value="${key}"${scope.includes(key) ? ' checked' : ''}>${label}</label>`,
+            ).join('')}
+          </div>
+          <div class="input-hint">至少选一项；三项全选等于禁止全部发言。</div>
+        </div>
+        <div class="field">
+          <label>理由</label>
+          <input class="input" id="muteReason" maxlength="100" placeholder="例如：连续发广告，提醒后仍在刷屏"
+                 value="${BB.esc(user.mute_reason || '')}">
+          <div class="input-hint">理由会显示给被禁言的人，写清楚一点能减少误会。</div>
+        </div>
+        <div class="field">
+          <label>时间</label>
+          <select class="select" id="muteHours">
+            ${MUTE_HOURS.map(
+              ([value, label]) => `<option value="${value}"${value === hours ? ' selected' : ''}>${label}</option>`,
+            ).join('')}
+          </select>
+        </div>
+        <div class="modal-error" id="muteError"></div>
+        <div class="modal-actions">
+          ${isMuted || isBanned ? `<button class="btn btn-ghost btn-sm" data-act="clear">${isBanned ? '解除封禁' : '解除禁言'}</button>` : ''}
+          <button class="btn btn-ghost btn-sm" data-act="cancel">取消</button>
+          <button class="btn btn-primary btn-sm" data-act="ok">${isMuted ? '更新禁言' : '确认禁言'}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(mask);
+    document.body.classList.add('modal-open');
+
+    const errorHost = mask.querySelector('#muteError');
+    const checkboxes = [...mask.querySelectorAll('.check-row input')];
+    const close = () => {
+      mask.remove();
+      document.body.classList.remove('modal-open');
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') close();
+    };
+
+    const fail = (message) => {
+      errorHost.textContent = message;
+    };
+
+    const submit = async (button) => {
+      const picked = checkboxes.filter((box) => box.checked).map((box) => box.value);
+      if (!picked.length) {
+        fail('至少要选一项禁止内容');
+        return;
+      }
+      button.disabled = true;
+      fail('');
+      try {
+        await BB.api(`/api/admin/users/${user.id}`, {
+          method: 'PATCH',
+          body: {
+            status: 'muted',
+            mute_scope: picked.join(','),
+            mute_reason: mask.querySelector('#muteReason').value.trim(),
+            mute_hours: Number(mask.querySelector('#muteHours').value),
+          },
+        });
+        close();
+        BB.toast(`已禁言 ${user.display_name || user.username}`, 'ok');
+        renderUsers();
+      } catch (error) {
+        button.disabled = false;
+        fail(error.message || '操作失败，稍后再试');
+      }
+    };
+
+    mask.addEventListener('click', async (event) => {
+      if (event.target === mask) {
+        close();
+        return;
+      }
+      const button = event.target.closest('[data-act]');
+      if (!button) return;
+      const act = button.dataset.act;
+      if (act === 'cancel') {
+        close();
+        return;
+      }
+      if (act === 'ok') {
+        submit(button);
+        return;
+      }
+      if (act === 'clear') {
+        button.disabled = true;
+        try {
+          await BB.api(`/api/admin/users/${user.id}`, { method: 'PATCH', body: { status: 'active' } });
+          close();
+          BB.toast('已恢复正常', 'ok');
+          renderUsers();
+        } catch (error) {
+          button.disabled = false;
+          fail(error.message || '操作失败，稍后再试');
+        }
+      }
+    });
+
+    document.addEventListener('keydown', onKey);
+    const first = checkboxes.find((box) => box.checked) || checkboxes[0];
+    if (first) first.focus();
+  }
+
   async function renderUsers() {
     const body = document.getElementById('userRows');
     const data = await BB.api(`/api/admin/users?q=${encodeURIComponent(userQuery)}&per_page=50`);
     adminUsers = data.users;
     body.innerHTML = data.users
       .map((user) => {
+        const muteTitle = user.status === 'muted'
+          ? ` title="禁止${BB.esc(BB.muteScopeLabel(user.mute_scope))} · ${BB.muteUntilText(user.muted_until)}${
+              user.mute_reason ? ` · 理由：${BB.esc(user.mute_reason)}` : ''
+            }${user.mute_by ? ` · 由 ${BB.esc(user.mute_by)} 操作` : ''}"`
+          : '';
         const statusLabel =
           user.status === 'banned'
             ? '<span class="chip chip-danger">封禁</span>'
             : user.status === 'muted'
-              ? '<span class="chip chip-warn">禁言</span>'
+              ? `<span class="chip chip-warn"${muteTitle}>禁言</span>
+                 <div class="small muted">禁止${BB.esc(BB.muteScopeLabel(user.mute_scope))} · ${BB.muteUntilText(user.muted_until)}</div>`
               : '<span class="chip chip-grey">正常</span>';
         const roleLabel =
           user.role === 'admin'
@@ -519,6 +680,11 @@ BB.boot(async () => {
           ? `<button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="role-mod">${user.role === 'moderator' ? '降为成员' : '设为次级管理员'}</button>
             <button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="role">${user.role === 'admin' ? '降为成员' : '设为管理员'}</button>`
           : '';
+        // 不能改自己的管理权限，自己的行就不给这些按钮
+        const selfRow = BB.state.me && BB.state.me.id === user.id;
+        const muteButton = selfRow
+          ? ''
+          : `<button class="btn ${user.status === 'muted' ? 'btn-primary' : 'btn-ghost'} btn-sm" data-user="${user.id}" data-act="mute">禁言</button>`;
         return `
         <tr>
           <td>
@@ -533,9 +699,7 @@ BB.boot(async () => {
           <td class="small">${BB.datetime(user.created_at).slice(0, 10)}</td>
           <td class="row-actions">
             ${roleButtons}
-            <button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="mute">禁言 24 小时</button>
-            <button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="restore">恢复正常</button>
-            <button class="btn btn-danger btn-sm" data-user="${user.id}" data-act="ban">封禁</button>
+            ${muteButton}
           </td>
         </tr>`;
       })
@@ -545,19 +709,18 @@ BB.boot(async () => {
       button.addEventListener('click', async () => {
         const userId = Number(button.dataset.user);
         const action = button.dataset.act;
+        const target = adminUsers.find((u) => u.id === userId);
+        if (action === 'mute') {
+          openMuteDialog(target || { id: userId, username: '', status: 'active' });
+          return;
+        }
         const payload =
           action === 'role'
-            ? { role: adminUsers.find((u) => u.id === userId)?.role === 'admin' ? 'user' : 'admin' }
-            : action === 'role-mod'
-              ? { role: adminUsers.find((u) => u.id === userId)?.role === 'moderator' ? 'user' : 'moderator' }
-              : action === 'mute'
-                ? { status: 'muted', mute_hours: 24 }
-                : action === 'ban'
-                  ? { status: 'banned' }
-                  : { status: 'active' };
+            ? { role: target?.role === 'admin' ? 'user' : 'admin' }
+            : { role: target?.role === 'moderator' ? 'user' : 'moderator' };
         try {
           await BB.api(`/api/admin/users/${userId}`, { method: 'PATCH', body: payload });
-          BB.toast(action.startsWith('role') ? '已更新用户角色' : '已更新用户状态', 'ok');
+          BB.toast('已更新用户角色', 'ok');
           renderUsers();
         } catch (error) {
           BB.toast(error.message, 'error');

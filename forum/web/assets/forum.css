@@ -1134,3 +1134,51 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
   width: 32px; height: 32px; border-radius: 8px; line-height: 1;
 }
 .emoji-panel button:hover { background: var(--bg-tint); }
+
+/* ============================================================
+   通用居中弹窗（禁言弹窗等）
+   ============================================================ */
+
+body.modal-open { overflow: hidden; }
+
+.modal-mask {
+  position: fixed; inset: 0; z-index: 360; background: rgba(10, 16, 12, 0.62);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  animation: modal-fade 0.16s ease;
+}
+.modal-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+  padding: 22px; width: 420px; max-width: 100%; max-height: calc(100vh - 40px); overflow-y: auto;
+  box-shadow: var(--shadow-md); animation: modal-in 0.18s ease;
+}
+.modal-card h3 { font-size: 16px; font-weight: 800; }
+.modal-card > p { margin: 4px 0 16px; }
+.modal-card .field:last-of-type { margin-bottom: 0; }
+.modal-error { color: var(--danger); font-size: 13px; margin-top: 10px; }
+.modal-error:empty { display: none; }
+.check-row { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.check-row label {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-size: 14px; font-weight: 600; color: var(--ink-2);
+}
+.check-row input { accent-color: var(--g700); width: 15px; height: 15px; cursor: pointer; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 18px; }
+.modal-actions [data-act="clear"] { margin-right: auto; color: var(--danger); }
+.modal-actions [data-act="clear"]:hover { background: var(--danger-soft); border-color: transparent; }
+
+@keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 720px) {
+  .modal-mask { padding: 14px; align-items: flex-start; padding-top: 60px; }
+  .modal-card { padding: 18px; }
+  .modal-actions [data-act="clear"] { margin-right: 0; }
+}
+
+/* 个人主页上的禁言提示 */
+.mute-note {
+  margin-top: 10px; padding: 9px 12px; border-radius: 10px; font-size: 13px;
+  background: var(--warn-soft); color: var(--warn); border: 1px solid rgba(178, 106, 0, 0.25);
+  line-height: 1.6;
+}
+

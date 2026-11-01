@@ -27,6 +27,14 @@ BB.boot(async () => {
         ? '<span class="chip chip-warn">已禁言</span>'
         : '';
 
+  // 禁言详情（禁止哪些内容 / 还剩多久 / 理由）只对本人和管理员可见
+  const muteNote =
+    user.status === 'muted' && user.mute_scope !== undefined
+      ? `<div class="mute-note">已被禁言：禁止${BB.muteScopeLabel(user.mute_scope)} · ${BB.muteUntilText(user.muted_until)}${
+          user.mute_reason ? ` · 理由：${BB.esc(user.mute_reason)}` : ''
+        }${user.mute_by && isSelf ? ` · 由 ${BB.esc(user.mute_by)} 操作` : ''}</div>`
+      : '';
+
   const coverHtml = user.cover
     ? `<img src="${BB.esc(user.cover)}" alt="" loading="lazy">`
     : isSelf
@@ -58,6 +66,7 @@ BB.boot(async () => {
         <h1>${BB.esc(user.display_name || user.username)} ${roleChip}${statusChip}</h1>
         <div class="uname">@${BB.esc(user.username)}</div>
         <div class="bio">${user.bio ? BB.esc(user.bio) : '<span class="muted">这位玩家还没写简介</span>'}</div>
+        ${muteNote}
         <div class="profile-stats">
           <span><b>${BB.num(user.thread_count)}</b> 主题</span>
           <span><b>${BB.num(user.post_count)}</b> 帖子</span>

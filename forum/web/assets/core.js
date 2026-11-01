@@ -40,6 +40,39 @@
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
+  // ------------------------------------------------------------ 禁言
+  // scope 存库格式：all 或 thread,reply,dm 这样的列表
+  BB.MUTE_SCOPES = [
+    ['thread', '发帖'],
+    ['reply', '回复'],
+    ['dm', '私信'],
+  ];
+
+  BB.muteScopeList = (scope) => {
+    const raw = String(scope == null ? '' : scope).trim().toLowerCase();
+    if (!raw || raw === 'all') return BB.MUTE_SCOPES.map(([key]) => key);
+    const picked = raw.split(/[,\s]+/);
+    return BB.MUTE_SCOPES.map(([key]) => key).filter((key) => picked.includes(key));
+  };
+
+  BB.muteScopeLabel = (scope) => {
+    const list = BB.muteScopeList(scope);
+    const labels = BB.MUTE_SCOPES.filter(([key]) => list.includes(key)).map(([, label]) => label);
+    return labels.length === BB.MUTE_SCOPES.length ? '全部发言' : labels.join('、') || '全部发言';
+  };
+
+  /** 禁言到期说法：永久 / 还剩 x 天 / 至 某时 */
+  BB.muteUntilText = (until) => {
+    const seconds = Number(until || 0);
+    if (!seconds) return '永久';
+    const diff = seconds - Date.now() / 1000;
+    if (diff <= 0) return '即将自动解除';
+    if (diff < 3600) return `还剩 ${Math.max(1, Math.ceil(diff / 60))} 分钟`;
+    if (diff < 86400) return `还剩 ${Math.ceil(diff / 3600)} 小时`;
+    if (diff < 86400 * 30) return `还剩 ${Math.ceil(diff / 86400)} 天`;
+    return `${BB.datetime(seconds)} 解除`;
+  };
+
   // ------------------------------------------------------------ 接口
 
   BB.api = async function (path, options = {}) {

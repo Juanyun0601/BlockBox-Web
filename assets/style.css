@@ -1026,7 +1026,7 @@ section[id] { scroll-margin-top: calc(var(--nav-h) + 12px); }
 
 .footer { border-top: 1px solid var(--line); background: var(--card); }
 .footer-inner {
-  display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 36px; padding: 56px 24px 40px;
+  display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; gap: 36px; padding: 56px 24px 40px;
 }
 .footer-brand p { margin-top: 16px; font-size: 14px; color: var(--ink-2); }
 .footer-col h4 { font-size: 13.5px; font-weight: 700; margin-bottom: 14px; color: var(--ink); }

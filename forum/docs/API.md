@@ -629,12 +629,17 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ```json
 { "role": "admin" }                          // 设为管理员（"user" 降回成员）
 { "role": "moderator" }                      // 设为次级管理员（"user" 降回成员）
-{ "status": "muted", "mute_hours": 24 }      // 禁言，到点自动恢复
-{ "status": "banned" }                       // 封禁，同时踢下线
-{ "status": "active" }                       // 恢复正常
+{ "status": "muted",                          // 禁言：勾选禁止内容 + 理由 + 时长
+  "mute_scope": "thread,reply",               // 禁止内容：thread 发帖 / reply 回复 / dm 私信，全选等于 "all"
+  "mute_reason": "连续发广告",                 // 理由，最多 100 字，会显示给被禁言的人
+  "mute_hours": 24 }                          // 时长：>0 从现在起算小时数，0 表示永久（手动解除）
+{ "status": "banned" }                       // 封禁，同时踢下线（后台界面已不提供，接口仍保留）
+{ "status": "active" }                       // 恢复正常 / 解除禁言（禁言信息一并清空）
 ```
 
-不能修改自己的角色。次级管理员可以做这里的所有事，唯独不能改任何人的 `role`（改角色仅限管理员）。
+不能修改自己的角色，也不能禁言自己。次级管理员可以做这里的所有事，唯独不能改任何人的 `role`（改角色仅限管理员）。
+
+禁言到期后，用户下次被管理后台读到时自动恢复成 `active`；到期前也可以随时用 `status: "active"` 提前解除。
 
 角色取值：`user`（成员）/ `moderator`（次级管理员）/ `admin`（管理员）。
 

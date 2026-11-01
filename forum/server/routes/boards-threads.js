@@ -454,7 +454,7 @@ export default function register(router) {
   // ---------------- 发帖 ----------------
 
   router.post('/api/threads', async (ctx) => {
-    const user = assertCanPost(ctx.user);
+    const user = assertCanPost(ctx.user, 'thread');
     enforce(`thread:${user.id}`, 6, 60 * 60 * 1000, '发帖太频繁');
     enforce(`thread-ip:${ctx.ip}`, 12, 60 * 60 * 1000, '发帖太频繁');
 
@@ -532,7 +532,7 @@ export default function register(router) {
   // ---------------- 回复 ----------------
 
   router.post('/api/threads/:id/posts', async (ctx) => {
-    const user = assertCanPost(ctx.user);
+    const user = assertCanPost(ctx.user, 'reply');
     enforce(`reply:${user.id}`, 12, 5 * 60 * 1000, '回复太频繁');
     enforce(`reply-ip:${ctx.ip}`, 20, 5 * 60 * 1000, '回复太频繁');
 
