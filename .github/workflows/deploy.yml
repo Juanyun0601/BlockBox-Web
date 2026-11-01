@@ -39,8 +39,8 @@ jobs:
         run: |
           ok=1
           for i in 1 2 3 4 5; do
-            code1=$(curl -s -o /dev/null -w '%{http_code}' https://blockbox.cc.cd/)
-            code2=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: forum.blockbox.cc.cd' http://202.181.26.190/)
+            code1=$(curl -s -o /dev/null -w '%{http_code}' https://mcblockbox.top/)
+            code2=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: forum.mcblockbox.top' http://202.181.26.190/)
             echo "官网:$code1 论坛:$code2 (第${i}次)"
             if [ "$code1" = 200 ] && [ "$code2" = 200 ]; then ok=0; break; fi
             sleep 5

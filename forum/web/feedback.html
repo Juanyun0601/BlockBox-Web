@@ -6,7 +6,7 @@
 <title>意见反馈 · 方块盒子论坛</title>
 <meta name="description" content="向方块盒子反馈软件使用中遇到的问题与建议">
 <link rel="icon" href="/assets/img/icon.ico">
-<link rel="stylesheet" href="/assets/forum.css?v=20261103b">
+<link rel="stylesheet" href="/assets/forum.css?v=20261105a">
 <script>
   (function () {
     try {
@@ -111,11 +111,25 @@
     </div>
 
     <div id="pager"></div>
+
+    <div class="section-head" style="margin-top: 28px">
+      <h2>全部反馈</h2>
+      <span class="small muted">大家提交的反馈都在这里，点一条可以看详情</span>
+    </div>
+
+    <div class="card" id="allListCard">
+      <div class="fb-tabs" id="allTabs"></div>
+      <div id="allList">
+        <div class="skeleton">正在加载…</div>
+      </div>
+    </div>
+
+    <div id="allPager"></div>
   </div>
 </main>
 
 <footer class="footer" id="siteFooter"></footer>
 <script src="/assets/core.js?v=20261102b"></script>
-<script src="/assets/page-feedback.js?v=20261104a"></script>
+<script src="/assets/page-feedback.js?v=20261105a"></script>
 </body>
 </html>

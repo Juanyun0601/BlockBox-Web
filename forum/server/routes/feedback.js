@@ -36,6 +36,13 @@ function assembleContent(type, fields) {
   return sections.join('\n\n');
 }
 
+/** 从组装好的正文里取第一行「问题描述 / 建议内容」当列表标题（GitHub Issues 列表的样子） */
+function deriveTitle(content) {
+  const match = content.match(/^### (?:问题描述|建议内容)\n(.+)$/m);
+  const line = (match ? match[1] : content.split('\n').find((l) => l.trim() && !l.startsWith('### ')) || '').trim();
+  return line.length > 80 ? `${line.slice(0, 79)}…` : line;
+}
+
 export default function register(router) {
   // ---------------- 用户反馈（官网 / 论坛 / 启动器共用） ----------------
 
@@ -131,6 +138,51 @@ export default function register(router) {
   });
 
   // ---------------- 管理：反馈处理 ----------------
+
+  /** 公开反馈列表（仿 GitHub Issues 列表页：任何人可看，带状态筛选与计数） */
+  router.get('/api/feedbacks', async (ctx) => {
+    const statusParam = ctx.url.searchParams.get('status') || 'all';
+    const status = ['open', 'resolved', 'ignored', 'all'].includes(statusParam) ? statusParam : 'all';
+    const { page, perPage, offset } = paginate(ctx.url.searchParams, 20);
+    const where = status === 'all' ? '' : 'WHERE f.status = ?';
+    const params = status === 'all' ? [] : [status];
+
+    const total = db.prepare(`SELECT COUNT(*) AS n FROM feedbacks f ${where}`).get(...params).n;
+    const rows = db
+      .prepare(
+        `SELECT f.id, f.type, f.status, f.content, f.reply, f.handled_at, f.created_at,
+                u.id AS user_id, u.username AS user_username, u.display_name AS user_display_name
+           FROM feedbacks f
+           LEFT JOIN users u ON u.id = f.user_id
+           ${where}
+          ORDER BY f.created_at DESC, f.id DESC
+          LIMIT ? OFFSET ?`,
+      )
+      .all(...params, perPage, offset);
+
+    return {
+      status,
+      feedbacks: rows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        status: row.status,
+        title: deriveTitle(row.content),
+        content: row.content,
+        reply: row.reply,
+        handled_at: row.handled_at,
+        created_at: row.created_at,
+        user: row.user_id
+          ? { id: row.user_id, username: row.user_username, display_name: row.user_display_name || row.user_username }
+          : null,
+      })),
+      counts: {
+        open: db.prepare("SELECT COUNT(*) AS n FROM feedbacks WHERE status = 'open'").get().n,
+        resolved: db.prepare("SELECT COUNT(*) AS n FROM feedbacks WHERE status = 'resolved'").get().n,
+        ignored: db.prepare("SELECT COUNT(*) AS n FROM feedbacks WHERE status = 'ignored'").get().n,
+      },
+      pagination: { page, per_page: perPage, total, pages: Math.max(1, Math.ceil(total / perPage)) },
+    };
+  });
 
   router.get('/api/admin/feedbacks', async (ctx) => {
     requireAdmin(ctx.user);

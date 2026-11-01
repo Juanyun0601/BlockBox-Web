@@ -30,7 +30,7 @@ BB.boot(async () => {
       <div class="child-body">
         <div class="child-head">
           <a class="name" href="/user.html?id=${author.id}">${BB.esc(name)}</a>
-          ${author.role === 'admin' ? '<span class="chip chip-grey">管理员</span>' : ''}
+          ${author.role === 'admin' ? '<span class="chip chip-grey">管理员</span>' : author.role === 'moderator' ? '<span class="chip chip-grey">次级管理员</span>' : ''}
           <span class="child-time">${BB.time(child.created_at)}</span>
           <span class="floor">#${child.floor}</span>
         </div>
@@ -62,7 +62,7 @@ BB.boot(async () => {
       <div class="post-side">
         ${BB.avatar(author)}
         <a class="name" href="/user.html?id=${author.id}">${BB.esc(name)}</a>
-        <div class="role">${author.role === 'admin' ? '<span class="chip chip-grey">管理员</span>' : ''}</div>
+        <div class="role">${author.role === 'admin' ? '<span class="chip chip-grey">管理员</span>' : author.role === 'moderator' ? '<span class="chip chip-grey">次级管理员</span>' : ''}</div>
         <div class="counts">
           <span>${BB.num(author.post_count || 0)} 帖 · ${BB.num(author.thread_count || 0)} 主题</span>
           ${joined ? `<span>${joined}</span>` : ''}
@@ -343,9 +343,10 @@ BB.boot(async () => {
       }
     };
 
-    BB.attachImagePaste(box);
+    const insertImageFiles = BB.attachImagePaste(box);
     BB.attachMentions(box);
     BB.bindDraft(box, `reply:${thread.id}`);
+    BB.attachMarkdownEditor(box, { imageFiles: insertImageFiles });
     bindReplyTargetButtons();
 
     box.addEventListener('input', updateCount);
@@ -524,6 +525,9 @@ BB.boot(async () => {
       </div>`;
     const textarea = element.querySelector('textarea');
     textarea.value = post.content;
+    const insertImageFiles = BB.attachImagePaste(textarea);
+    BB.attachMentions(textarea);
+    BB.attachMarkdownEditor(textarea, { imageFiles: insertImageFiles });
     textarea.focus();
     element.querySelector('[data-cancel]').addEventListener('click', () => load());
     element.querySelector('[data-save]').addEventListener('click', async () => {

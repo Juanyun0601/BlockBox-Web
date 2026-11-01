@@ -1,6 +1,6 @@
 import { db, paginate, now, transaction, refreshBoardCounts } from '../db.js';
 import { badRequest, notFound } from '../lib/http.js';
-import { assertCanPost, requireAdmin, requireUser } from '../lib/auth.js';
+import { assertCanPost, isAdminRole, requireAdmin, requireUser } from '../lib/auth.js';
 import { enforce } from '../lib/rate-limit.js';
 import { bool, text } from '../lib/validate.js';
 import { boardOut, postOut, threadOut, snippetOf } from '../lib/serialize.js';
@@ -506,7 +506,7 @@ export default function register(router) {
     const user = requireUser(ctx.user);
     const thread = getThread(Number(ctx.params.id));
     if (!thread || thread.deleted) throw notFound('主题不存在');
-    if (thread.author_id !== user.id && user.role !== 'admin') throw badRequest('只能修改自己的主题');
+    if (thread.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能修改自己的主题');
 
     const body = await ctx.json();
     const title = body.title === undefined ? thread.title : text(body.title, { field: '标题', min: 2, max: 80 });
@@ -520,7 +520,7 @@ export default function register(router) {
     const user = requireUser(ctx.user);
     const thread = getThread(Number(ctx.params.id));
     if (!thread || thread.deleted) throw notFound('主题不存在');
-    if (thread.author_id !== user.id && user.role !== 'admin') throw badRequest('只能删除自己的主题');
+    if (thread.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能删除自己的主题');
     db.prepare('UPDATE threads SET deleted = 1 WHERE id = ?').run(thread.id);
     db.prepare('DELETE FROM thread_search WHERE thread_id = ?').run(thread.id);
     db.prepare('DELETE FROM notifications WHERE thread_id = ?').run(thread.id);
@@ -538,7 +538,7 @@ export default function register(router) {
 
     const thread = getThread(Number(ctx.params.id));
     if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
-    if (thread.locked && user.role !== 'admin') throw badRequest('该主题已被锁定，无法回复', 'thread_locked');
+    if (thread.locked && !isAdminRole(user.role)) throw badRequest('该主题已被锁定，无法回复', 'thread_locked');
 
     const body = await ctx.json();
     const content = text(body.content, { field: '回复内容', min: 1, max: 20000 });
@@ -601,7 +601,7 @@ export default function register(router) {
     const user = requireUser(ctx.user);
     const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(Number(ctx.params.id));
     if (!post || post.deleted) throw notFound('楼层不存在');
-    if (post.author_id !== user.id && user.role !== 'admin') throw badRequest('只能修改自己的回复');
+    if (post.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能修改自己的回复');
 
     const body = await ctx.json();
     const content = text(body.content, { field: '内容', min: 1, max: 20000 });
@@ -626,7 +626,7 @@ export default function register(router) {
     const user = requireUser(ctx.user);
     const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(Number(ctx.params.id));
     if (!post || post.deleted) throw notFound('楼层不存在');
-    if (post.author_id !== user.id && user.role !== 'admin') throw badRequest('只能删除自己的回复');
+    if (post.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能删除自己的回复');
 
     const thread = db.prepare('SELECT * FROM threads WHERE id = ?').get(post.thread_id);
     transaction(() => {

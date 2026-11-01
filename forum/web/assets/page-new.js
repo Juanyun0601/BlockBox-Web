@@ -42,9 +42,18 @@ BB.boot(async () => {
   const contentInput = document.getElementById('contentInput');
   const submit = document.getElementById('submitBtn');
 
-  BB.attachImagePaste(contentInput);
+  const insertImageFiles = BB.attachImagePaste(contentInput);
   BB.attachMentions(contentInput);
   BB.bindDraft(contentInput, 'new-thread');
+  BB.attachMarkdownEditor(contentInput, { imageFiles: insertImageFiles });
+
+  // 正文字数（和回复框一致）
+  const contentCount = document.getElementById('contentCount');
+  const updateCount = () => {
+    if (contentCount) contentCount.textContent = `${[...contentInput.value.trim()].length} 字`;
+  };
+  contentInput.addEventListener('input', updateCount);
+  updateCount();
 
   // ---------------- 标签 ----------------
   const tags = [];

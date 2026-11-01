@@ -146,7 +146,7 @@ async function main() {
   const thread = await request('POST', '/api/threads', {
     board: 'general',
     title: '冒烟测试主题：方块盒子论坛',
-    content: '这是一条**测试**内容，包含 `代码` 和 [官网](https://blockbox.cc.cd)。',
+    content: '这是一条**测试**内容，包含 `代码` 和 [官网](https://mcblockbox.top)。',
   });
   check('发帖成功', thread.status === 200 && thread.json?.id > 0, thread.text);
   const threadId = thread.json?.id;

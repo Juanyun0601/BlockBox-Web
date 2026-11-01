@@ -60,6 +60,51 @@ export function migrate() {
   if (addedDmImage) console.log('[论坛] 数据库已升级：direct_messages 增加 image（图片地址）');
   const addedDmReply = ensureColumn('direct_messages', 'reply_to', 'INTEGER NOT NULL DEFAULT 0');
   if (addedDmReply) console.log('[论坛] 数据库已升级：direct_messages 增加 reply_to（引用的消息）');
+
+  // 用户角色新增「次级管理员」：老库的 CHECK 约束没这一档，需要重建 users 表
+  const usersSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get()?.sql || '';
+  if (usersSql && !usersSql.includes('moderator')) {
+    // foreign_keys 开关在事务内是空操作，必须在事务外切
+    db.exec('PRAGMA foreign_keys = OFF');
+    transaction(() => {
+      db.exec(
+        `CREATE TABLE users_new (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          username      TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+          display_name  TEXT    NOT NULL DEFAULT '',
+          pass_hash     TEXT    NOT NULL,
+          email         TEXT    NOT NULL DEFAULT '',
+          bio           TEXT    NOT NULL DEFAULT '',
+          avatar        TEXT    NOT NULL DEFAULT '',
+          cover         TEXT    NOT NULL DEFAULT '',
+          role          TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'moderator', 'admin')),
+          status        TEXT    NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'muted', 'banned')),
+          muted_until   INTEGER NOT NULL DEFAULT 0,
+          thread_count  INTEGER NOT NULL DEFAULT 0,
+          post_count    INTEGER NOT NULL DEFAULT 0,
+          quiz_passed_at  INTEGER NOT NULL DEFAULT 0,
+          quiz_best_score INTEGER NOT NULL DEFAULT -1,
+          created_at    INTEGER NOT NULL,
+          last_seen_at  INTEGER NOT NULL DEFAULT 0
+        )`,
+      );
+      // 老库的列是 ALTER TABLE 追加的，物理顺序和新建表不同，必须按列名对齐拷贝
+      db.exec(
+        `INSERT INTO users_new (id, username, display_name, pass_hash, email, bio, avatar, cover,
+                                role, status, muted_until, thread_count, post_count,
+                                quiz_passed_at, quiz_best_score, created_at, last_seen_at)
+         SELECT id, username, display_name, pass_hash, email, bio, avatar, cover,
+                role, status, muted_until, thread_count, post_count,
+                quiz_passed_at, quiz_best_score, created_at, last_seen_at
+           FROM users`,
+      );
+      db.exec('DROP TABLE users');
+      db.exec('ALTER TABLE users_new RENAME TO users');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)');
+    });
+    db.exec('PRAGMA foreign_keys = ON');
+    console.log('[论坛] 数据库已升级：用户角色支持次级管理员（moderator）');
+  }
 }
 
 migrate();

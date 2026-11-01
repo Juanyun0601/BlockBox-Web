@@ -6,7 +6,7 @@
 <title>好友 · 方块盒子论坛</title>
 <meta name="description" content="我在方块盒子论坛的好友与私信">
 <link rel="icon" href="/assets/img/icon.ico">
-<link rel="stylesheet" href="/assets/forum.css?v=20261103b">
+<link rel="stylesheet" href="/assets/forum.css?v=20261105a">
 <script>
   (function () {
     try {
@@ -47,10 +47,18 @@
           <div class="chat-head" id="chatHead"></div>
           <div class="chat-more" id="chatMore" hidden><button class="btn btn-ghost btn-sm" id="chatMoreBtn" type="button">查看更早的消息</button></div>
           <div class="chat-msgs" id="chatMsgs"></div>
+          <div class="chat-reply" id="chatReply" hidden>
+            <span class="chat-reply-text" id="chatReplyText"></span>
+            <button class="btn btn-ghost btn-sm" id="chatReplyCancel" type="button">✕</button>
+          </div>
           <form class="chat-composer" id="chatForm">
+            <button class="chat-tool" type="button" id="chatEmoji" title="表情">😊</button>
+            <button class="chat-tool" type="button" id="chatImage" title="发送图片">📷</button>
             <textarea class="textarea" id="chatInput" rows="2" maxlength="1000"
                       placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
             <button class="btn btn-primary" type="submit" id="chatSend">发送</button>
+            <input type="file" id="chatFileInput" accept="image/*" hidden>
+            <div class="emoji-panel" id="emojiPanel" hidden></div>
           </form>
         </div>
       </section>
@@ -59,7 +67,7 @@
 </main>
 
 <footer class="footer" id="siteFooter"></footer>
-<script src="/assets/core.js?v=20261102d"></script>
-<script src="/assets/page-friends.js?v=20261102d"></script>
+<script src="/assets/core.js?v=20261102e"></script>
+<script src="/assets/page-friends.js?v=20261102e"></script>
 </body>
 </html>

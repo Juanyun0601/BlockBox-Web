@@ -331,6 +331,34 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: inherit;
   background: var(--bg-tint); font-size: 13.5px; line-height: 1.65; color: var(--ink-2); word-break: break-word;
 }
 .feedback-reply b { color: var(--brand); font-size: 12.5px; margin-right: 4px; }
+
+/* 全部反馈列表（仿 GitHub Issues 列表页） */
+.fb-tabs { display: flex; gap: 4px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.fb-tab {
+  border: 0; background: none; cursor: pointer; padding: 4px 12px; border-radius: 999px;
+  font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink-2);
+}
+.fb-tab:hover { background: var(--bg-tint); }
+.fb-tab.active { background: var(--brand-soft); color: var(--brand); }
+.fb-issue { border-bottom: 1px solid var(--line); }
+.fb-issue:last-child { border-bottom: 0; }
+.fb-issue-head { padding: 12px 16px; cursor: pointer; }
+.fb-issue-head:hover { background: var(--card-2); }
+.fb-issue.expanded .fb-issue-head { background: var(--bg-tint); }
+.fb-issue-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fb-issue-title { font-size: 14.5px; font-weight: 700; word-break: break-word; }
+.fb-issue-meta { font-size: 12.5px; color: var(--ink-3); margin-top: 5px; }
+.fb-state {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 10px; flex: none;
+  border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
+}
+.fb-state-open { background: var(--g600); }
+.fb-state-resolved { background: #8250df; }
+.fb-state-ignored { background: var(--ink-3); }
+.fb-issue-detail { padding: 2px 16px 14px; border-top: 1px dashed var(--line); }
+.fb-issue-detail .feedback-content { margin-top: 12px; }
+.fb-issue-detail .feedback-reply { margin-top: 12px; }
+
 .feedback-admin-row { display: flex; gap: 12px; align-items: flex-start; padding: 13px 16px; border-bottom: 1px solid var(--line); }
 .feedback-admin-row:last-child { border-bottom: 0; }
 .feedback-admin-main { min-width: 0; flex: 1; }
@@ -743,6 +771,41 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
   font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums;
 }
 
+/* Markdown 编辑器：工具栏 + 编辑/预览 */
+.md-editor { display: flex; flex-direction: column; gap: 8px; }
+.md-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
+  border: 1px solid var(--line); background: var(--card-2); border-radius: var(--radius-sm);
+  padding: 4px 6px;
+}
+.md-toolbar button {
+  border: 1px solid transparent; background: transparent; color: var(--ink-2);
+  height: 28px; padding: 0 9px; border-radius: 8px; font-size: 12.5px; cursor: pointer;
+  line-height: 1; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.md-toolbar button:hover { background: var(--brand-soft); color: var(--brand); border-color: var(--brand-line); }
+.md-toolbar .md-strong { font-weight: 800; }
+.md-toolbar .md-em { font-style: italic; font-family: Georgia, "Times New Roman", serif; font-weight: 700; }
+.md-toolbar .md-strike { text-decoration: line-through; }
+.md-toolbar .md-code { font-family: var(--mono); font-size: 12px; }
+.md-mode {
+  display: flex; gap: 2px; background: var(--bg-tint); padding: 3px;
+  border-radius: 999px; margin-left: auto;
+}
+.md-mode button {
+  height: 24px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  color: var(--ink-3);
+}
+.md-mode button.active { background: var(--card); color: var(--brand); box-shadow: var(--shadow-sm); }
+.md-mode button:hover { border-color: transparent; background: transparent; color: var(--brand); }
+.md-mode button.active:hover { background: var(--card); }
+.md-preview {
+  border: 1px solid var(--line-2); background: var(--card); border-radius: var(--radius-sm);
+  padding: 12px 14px; min-height: 130px; max-height: 480px; overflow-y: auto;
+  font-size: 15px; word-break: break-word;
+}
+.md-preview:empty::before { content: "还没有内容，切回「编辑」写两句吧"; color: var(--ink-3); font-size: 13.5px; }
+
 /* ---------------- 登录 ---------------- */
 
 .auth-wrap { max-width: 430px; margin: 24px auto; }
@@ -882,6 +945,8 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
   .thread-hero .meta .meta-dot { display: none; }
   .composer { padding: 16px; }
   .composer-hint { margin-left: 0; width: 100%; }
+  .md-toolbar button { padding: 0 7px; }
+  .md-mode { margin-left: 0; width: 100%; justify-content: center; }
   .reply-target { font-size: 12px; }
   .to-top { right: 14px; bottom: 20px; width: 40px; height: 40px; }
   .board-head { flex-wrap: wrap; }
@@ -1011,3 +1076,61 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
   .friends-list { max-height: 300px; min-height: 0; }
   .chat-panel { min-height: 380px; max-height: none; }
 }
+
+/* ---------------- 聊天增强：图片 / 引用 / 撤回 / 表情 ---------------- */
+
+.chat-composer { position: relative; }
+
+.chat-tool {
+  border: 0; background: transparent; cursor: pointer;
+  width: 36px; height: 38px; border-radius: 10px; font-size: 18px; flex: none;
+}
+.chat-tool:hover { background: var(--bg-tint); }
+
+.msg-text { white-space: pre-wrap; word-break: break-word; }
+.msg-quote {
+  font-size: 12px; color: var(--ink-3); border-left: 2px solid var(--line-2);
+  padding: 1px 0 1px 8px; margin-bottom: 4px; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.msg-image {
+  max-width: 220px; max-height: 180px; border-radius: 10px; display: block;
+  cursor: zoom-in; border: 1px solid var(--line);
+}
+.msg-caption { font-size: 13px; margin-top: 4px; }
+.msg-withdrawn {
+  text-align: center; font-size: 11.5px; color: var(--ink-3);
+  padding: 2px 10px;
+}
+.msg-row.mine .msg-withdrawn { text-align: right; padding-right: 2px; }
+
+.msg-actions {
+  display: flex; flex-direction: column; gap: 2px; align-self: center;
+  opacity: 0; transition: opacity 0.15s;
+}
+.msg-row:hover .msg-actions { opacity: 1; }
+.msg-actions button {
+  border: 1px solid var(--line-2); background: var(--card); cursor: pointer;
+  border-radius: 6px; width: 24px; height: 24px; font-size: 12px;
+  color: var(--ink-2); display: grid; place-items: center; padding: 0;
+}
+.msg-actions button:hover { color: var(--brand); border-color: var(--brand-line); }
+
+.chat-reply {
+  display: flex; align-items: center; gap: 8px; padding: 6px 16px;
+  border-top: 1px solid var(--line); background: var(--card-2);
+  font-size: 12.5px; color: var(--ink-2);
+}
+.chat-reply-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.emoji-panel {
+  position: absolute; bottom: 58px; left: 10px;
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+  background: var(--card); border: 1px solid var(--line-2); border-radius: 12px;
+  padding: 6px; box-shadow: var(--shadow-md); z-index: 60;
+}
+.emoji-panel button {
+  border: 0; background: transparent; font-size: 17px; cursor: pointer;
+  width: 32px; height: 32px; border-radius: 8px; line-height: 1;
+}
+.emoji-panel button:hover { background: var(--bg-tint); }

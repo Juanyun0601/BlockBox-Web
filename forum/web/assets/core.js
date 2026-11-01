@@ -287,7 +287,9 @@
   // ------------------------------------------------------------ 登录状态
 
   BB.isLoggedIn = () => !!BB.state.me;
-  BB.isAdmin = () => !!BB.state.me && BB.state.me.role === 'admin';
+  BB.isAdmin = () => !!BB.state.me && (BB.state.me.role === 'admin' || BB.state.me.role === 'moderator');
+  // 真管理员：次级管理员做不了的事（比如给人设管理权限）要挡住
+  BB.isHeadAdmin = () => !!BB.state.me && BB.state.me.role === 'admin';
 
   BB.loginLink = (next) =>
     `/login.html?next=${encodeURIComponent(next || location.pathname + location.search)}`;
@@ -351,7 +353,7 @@
             <a href="/#boards" data-nav="boards"${is('boards')}>板块</a>
             <a href="/search.html" data-nav="search"${is('search')}>搜索</a>
             ${me ? `<a href="/friends.html" data-nav="friends" id="navFriendLink"${is('friends')}>好友${friendBadge()}</a>` : ''}
-            ${me && me.role === 'admin' ? `<a href="/admin.html" data-nav="admin"${is('admin')}>管理</a>` : ''}
+            ${BB.isAdmin() ? `<a href="/admin.html" data-nav="admin"${is('admin')}>管理</a>` : ''}
           </nav>
           <form class="nav-search" id="navSearch" role="search">
             <input type="search" name="q" placeholder="搜索帖子…" aria-label="搜索帖子">
@@ -444,10 +446,10 @@
         <div class="wrap footer-inner">
           <span>© ${new Date().getFullYear()} 方块盒子 · 官方玩家社区</span>
           <div class="links">
-            <a href="https://blockbox.cc.cd" target="_blank" rel="noopener">官网</a>
+            <a href="https://mcblockbox.top" target="_blank" rel="noopener">官网</a>
             <a href="/search.html">搜索</a>
             <a href="/feedback.html">反馈</a>
-            <a href="https://blockbox.cc.cd/docs.html" target="_blank" rel="noopener">开发文档</a>
+            <a href="https://mcblockbox.top/docs.html" target="_blank" rel="noopener">开发文档</a>
           </div>
         </div>`;
     }
@@ -662,6 +664,324 @@
     } catch (error) {
       BB.toast(error.message, 'error');
     }
+  };
+
+  // ------------------------------------------------------------ Markdown 编辑器增强
+
+  /** 把选区替换为文本并走原生撤销栈；execCommand 不可用时手动改 value */
+  function replaceSelection(textarea, text, selectFrom, selectTo) {
+    let ok = false;
+    textarea.focus();
+    try {
+      ok = text === '' ? document.execCommand('delete') : document.execCommand('insertText', false, text);
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      const start = textarea.selectionStart ?? textarea.value.length;
+      const end = textarea.selectionEnd ?? start;
+      textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+    }
+    if (selectFrom != null) {
+      textarea.selectionStart = selectFrom;
+      textarea.selectionEnd = selectTo == null ? selectFrom : selectTo;
+    }
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  /** 光标覆盖的整行范围（行首到行尾） */
+  function lineRange(textarea) {
+    const value = textarea.value;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? start;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    let lineEnd = value.indexOf('\n', end);
+    if (lineEnd === -1) lineEnd = value.length;
+    return { start: lineStart, end: lineEnd };
+  }
+
+  /** 光标是否在 ``` 围栏代码块内 */
+  function insideFence(value, position) {
+    const lines = value.slice(0, position).split('\n');
+    let fences = 0;
+    for (const line of lines) if (/^\s*```/.test(line)) fences += 1;
+    return fences % 2 === 1;
+  }
+
+  /** 用包裹符包住选区（已包住时反向拆掉），插入后选中包裹内容方便继续打字 */
+  function wrapSelection(textarea, marker, placeholder) {
+    const value = textarea.value;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? start;
+    let inner = value.slice(start, end);
+    const before = value.slice(Math.max(0, start - marker.length), start);
+    const after = value.slice(end, end + marker.length);
+    if (inner && before === marker && after === marker) {
+      textarea.setSelectionRange(start - marker.length, end + marker.length);
+      replaceSelection(textarea, inner, start - marker.length, end - marker.length);
+      return;
+    }
+    if (!inner) inner = placeholder;
+    const text = marker + inner + marker;
+    const innerStart = start + marker.length;
+    textarea.setSelectionRange(start, end);
+    replaceSelection(textarea, text, innerStart, innerStart + inner.length);
+  }
+
+  /** 对选区覆盖的每一行做加/去前缀的开关式转换 */
+  function toggleLinePrefix(textarea, pattern, makePrefix) {
+    const { start, end } = lineRange(textarea);
+    const lines = textarea.value.slice(start, end).split('\n');
+    const marked = lines.filter((line) => line.trim());
+    const allMarked = marked.length > 0 && marked.every((line) => pattern.test(line));
+    const changed = lines
+      .map((line, index) => {
+        const stripped = line.replace(pattern, '');
+        if (allMarked) return stripped;
+        return line.trim() ? makePrefix(line, index) : line;
+      })
+      .join('\n');
+    textarea.setSelectionRange(start, end);
+    replaceSelection(textarea, changed, start, start + changed.length);
+  }
+
+  const HEADING_RE = /^#{1,6}\s+/;
+  const QUOTE_RE = /^>\s?/;
+  const UL_RE = /^\s*[-*+]\s+/;
+  const OL_RE = /^\s*\d+[.)]\s+/;
+
+  const lineCommands = {
+    heading: (textarea) =>
+      toggleLinePrefix(
+        textarea,
+        HEADING_RE,
+        (line) => `## ${line.replace(HEADING_RE, '')}`,
+      ),
+    quote: (textarea) => toggleLinePrefix(textarea, QUOTE_RE, (line) => `> ${line.replace(QUOTE_RE, '')}`),
+    ul: (textarea) => toggleLinePrefix(textarea, UL_RE, (line) => `- ${line.replace(UL_RE, '')}`),
+    ol: (textarea) =>
+      toggleLinePrefix(textarea, OL_RE, (line, index) => `${index + 1}. ${line.replace(OL_RE, '')}`),
+  };
+
+  function codeBlockCommand(textarea) {
+    const { start, end } = lineRange(textarea);
+    const block = textarea.value.slice(start, end);
+    const text = `\`\`\`\n${block}${block ? '\n' : ''}\`\`\``;
+    const caret = start + 4;
+    textarea.setSelectionRange(start, end);
+    replaceSelection(textarea, text, caret, caret + block.length);
+  }
+
+  function linkCommand(textarea) {
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? start;
+    const inner = textarea.value.slice(start, end).trim();
+    if (inner && /^(https?:\/\/|\/)[^\s)]+$/i.test(inner)) {
+      // 选中的是链接：包成 [标题](链接)，选中标题让用户填
+      const text = `[](${inner})`;
+      replaceSelection(textarea, text, start + 1, start + 1);
+    } else if (inner) {
+      // 选中的是文字：包成 [文字](https://)，选中链接让用户填
+      const urlStart = start + inner.length + 3;
+      replaceSelection(textarea, `[${inner}](https://)`, urlStart, urlStart + 8);
+    } else {
+      replaceSelection(textarea, '[标题](https://)', start + 1, start + 3);
+    }
+  }
+
+  /** 回车续列表：有编号时自增，空列表项回车直接退出 */
+  function continueList(textarea) {
+    if (textarea.selectionEnd !== textarea.selectionStart) return false;
+    const caret = textarea.selectionStart ?? 0;
+    const value = textarea.value;
+    if (insideFence(value, caret)) return false;
+    const lineStart = value.lastIndexOf('\n', caret - 1) + 1;
+    const line = value.slice(lineStart, caret);
+    const match = /^(\s*)([-*+]|\d+([.)]))\s+(.*)$/.exec(line);
+    if (!match) return false;
+    if (!match[4].trim()) {
+      textarea.setSelectionRange(lineStart, caret);
+      replaceSelection(textarea, '');
+      return true;
+    }
+    const number = /^(\d+)([.)])$/.exec(match[2]);
+    const marker = number ? `${Number(number[1]) + 1}${number[2]} ` : `${match[2]} `;
+    replaceSelection(textarea, `\n${match[1]}${marker}`);
+    return true;
+  }
+
+  /** 代码块内或选中多行时，Tab 缩进 / Shift+Tab 反缩进（2 空格） */
+  function indentSelection(textarea, event) {
+    const value = textarea.value;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? 0;
+    const multiLine = value.slice(start, end).includes('\n');
+    if (!multiLine && !insideFence(value, start)) return false;
+    const { start: ls, end: le } = lineRange(textarea);
+    const lines = value.slice(ls, le).split('\n');
+    const changed = lines
+      .map((line) => (event.shiftKey ? line.replace(/^( {1,2}|\t)/, '') : line ? `  ${line}` : line))
+      .join('\n');
+    textarea.setSelectionRange(ls, le);
+    replaceSelection(textarea, changed, ls, ls + changed.length);
+    return true;
+  }
+
+  /**
+   * 给 textarea 挂上 Markdown 工具栏、编辑/预览切换和快捷键。
+   * options.imageFiles 传 BB.attachImagePaste 的返回值，图片按钮就能复用粘贴上传通道。
+   */
+  BB.attachMarkdownEditor = (textarea, options = {}) => {
+    if (textarea.dataset.mdEditor) return null;
+    textarea.dataset.mdEditor = '1';
+
+    const editor = document.createElement('div');
+    editor.className = 'md-editor';
+
+    const buttons = [
+      ['bold', 'B', '加粗（Ctrl+B）', 'md-strong'],
+      ['italic', 'I', '斜体（Ctrl+I）', 'md-em'],
+      ['strike', 'S', '删除线', 'md-strike'],
+      ['heading', 'H', '标题', ''],
+      ['quote', '❝', '引用', ''],
+      ['code', '</>', '行内代码', 'md-code'],
+      ['codeblock', '{}', '代码块', 'md-code'],
+      ['ul', '• 列表', '无序列表', ''],
+      ['ol', '1. 编号', '有序列表', ''],
+      ['link', '链接', '插入链接（Ctrl+K）', ''],
+      ['image', '图片', '上传图片', ''],
+    ];
+    editor.innerHTML = `
+      <div class="md-toolbar" role="toolbar" aria-label="Markdown 工具栏">
+        ${buttons
+          .map(
+            ([cmd, label, title, extra]) =>
+              `<button type="button" data-cmd="${cmd}" title="${title}" aria-label="${title}" class="${extra}">${BB.esc(
+                label,
+              )}</button>`,
+          )
+          .join('')}
+        <span class="md-mode" role="tablist" aria-label="编辑或预览">
+          <button type="button" data-mode="edit" class="active" aria-pressed="true">编辑</button>
+          <button type="button" data-mode="preview" aria-pressed="false">预览</button>
+        </span>
+      </div>`;
+
+    const preview = document.createElement('div');
+    preview.className = 'md-preview post-content hidden';
+    // 把 textarea 和预览层一起包进编辑器容器，工具栏/输入区/预览的间距由容器统一控制
+    textarea.replaceWith(editor);
+    editor.append(textarea, preview);
+
+    // ---------- 图片 ----------
+    const imageFiles =
+      options.imageFiles ||
+      (async (files) => {
+        for (const file of Array.from(files)) {
+          if (!file.type || !file.type.startsWith('image/')) continue;
+          if (file.size > 4 * 1024 * 1024) {
+            BB.toast('图片超过 4 MB，先压缩一下吧', 'error');
+            continue;
+          }
+          BB.toast('正在上传图片…');
+          try {
+            const url = await BB.uploadImage(file);
+            insertAtCursor(textarea, `\n![${file.name || '图片'}](${url})\n`);
+            BB.toast('图片已插入正文', 'ok');
+          } catch (error) {
+            BB.toast(error.message, 'error');
+          }
+        }
+      });
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = 'image/*';
+    picker.multiple = true;
+    picker.hidden = true;
+    picker.addEventListener('change', () => {
+      if (picker.files && picker.files.length) imageFiles(picker.files);
+      picker.value = '';
+    });
+    editor.appendChild(picker);
+
+    // ---------- 命令 ----------
+    const commands = {
+      bold: () => wrapSelection(textarea, '**', '加粗'),
+      italic: () => wrapSelection(textarea, '*', '斜体'),
+      strike: () => wrapSelection(textarea, '~~', '删除线'),
+      code: () => wrapSelection(textarea, '`', '代码'),
+      codeblock: () => codeBlockCommand(textarea),
+      link: () => linkCommand(textarea),
+      image: () => picker.click(),
+      heading: () => lineCommands.heading(textarea),
+      quote: () => lineCommands.quote(textarea),
+      ul: () => lineCommands.ul(textarea),
+      ol: () => lineCommands.ol(textarea),
+    };
+
+    const toolbar = editor.querySelector('.md-toolbar');
+    toolbar.addEventListener('mousedown', (event) => {
+      // 阻止工具栏抢焦点，保住 textarea 里的选区
+      if (event.target.closest('button')) event.preventDefault();
+    });
+    toolbar.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-cmd]');
+      if (!button) return;
+      commands[button.dataset.cmd]();
+    });
+
+    // ---------- 编辑 / 预览 ----------
+    const modeButtons = Array.from(editor.querySelectorAll('.md-mode button'));
+    const setMode = (mode) => {
+      const isPreview = mode === 'preview';
+      modeButtons.forEach((button) => {
+        const active = (button.dataset.mode === 'preview') === isPreview;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      if (isPreview) {
+        preview.style.minHeight = `${textarea.offsetHeight}px`;
+        preview.innerHTML = BB.md(textarea.value);
+        textarea.style.display = 'none';
+        preview.classList.remove('hidden');
+      } else {
+        preview.classList.add('hidden');
+        preview.innerHTML = '';
+        textarea.style.display = '';
+        textarea.focus();
+      }
+    };
+    modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
+
+    // ---------- 快捷键 / 智能输入 ----------
+    textarea.addEventListener('keydown', (event) => {
+      const mod = event.ctrlKey || event.metaKey;
+      if (mod && (event.key === 'b' || event.key === 'B')) {
+        event.preventDefault();
+        commands.bold();
+        return;
+      }
+      if (mod && (event.key === 'i' || event.key === 'I')) {
+        event.preventDefault();
+        commands.italic();
+        return;
+      }
+      if (mod && (event.key === 'k' || event.key === 'K')) {
+        event.preventDefault();
+        commands.link();
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey && !mod) {
+        // @选人菜单开着时让位给补全
+        const menu = document.querySelector('.mention-menu');
+        if (menu && !menu.classList.contains('hidden')) return;
+        if (continueList(textarea)) event.preventDefault();
+        return;
+      }
+      if (event.key === 'Tab' && indentSelection(textarea, event)) event.preventDefault();
+    });
+
+    return { setMode };
   };
 
   BB.refreshNav = () => renderNav(document.body.dataset.page || '');

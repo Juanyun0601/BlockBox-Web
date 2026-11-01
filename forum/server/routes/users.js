@@ -1,6 +1,6 @@
 import { db, paginate } from '../db.js';
 import { notFound } from '../lib/http.js';
-import { publicUser } from '../lib/auth.js';
+import { isAdminRole, publicUser } from '../lib/auth.js';
 import { friendshipBetween } from '../lib/social.js';
 import { threadOut, snippetOf } from '../lib/serialize.js';
 import { listThreads, countThreads, listRepliesByAuthor, countRepliesByAuthor } from '../lib/queries.js';
@@ -35,7 +35,7 @@ export default function register(router) {
   router.get('/api/users/:id', async (ctx) => {
     const row = db.prepare('SELECT * FROM users WHERE id = ?').get(Number(ctx.params.id));
     if (!row) throw notFound('用户不存在');
-    if (row.status === 'banned' && ctx.user?.role !== 'admin' && ctx.user?.id !== row.id) {
+    if (row.status === 'banned' && !isAdminRole(ctx.user?.role) && ctx.user?.id !== row.id) {
       throw notFound('用户不存在');
     }
 

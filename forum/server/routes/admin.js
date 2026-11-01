@@ -1,6 +1,6 @@
 import { db, now, paginate, refreshBoardCounts, transaction } from '../db.js';
-import { badRequest, notFound } from '../lib/http.js';
-import { publicUser, requireAdmin } from '../lib/auth.js';
+import { badRequest, forbidden, notFound } from '../lib/http.js';
+import { publicUser, requireAdmin, requireHeadAdmin } from '../lib/auth.js';
 import { siteStats } from '../lib/queries.js';
 
 export default function register(router) {
@@ -76,8 +76,11 @@ export default function register(router) {
     const body = await ctx.json();
     const role = body.role === undefined ? target.role : String(body.role);
     const status = body.status === undefined ? target.status : String(body.status);
-    if (!['user', 'admin'].includes(role)) throw badRequest('角色只能是 user 或 admin');
+    if (!['user', 'moderator', 'admin'].includes(role)) throw badRequest('角色只能是 user / moderator / admin');
     if (!['active', 'muted', 'banned'].includes(status)) throw badRequest('状态只能是 active / muted / banned');
+
+    // 次级管理员什么都能做，唯独不能设置别人的管理权限
+    if (role !== target.role && admin.role !== 'admin') throw forbidden('次级管理员无法设置管理权限');
 
     let mutedUntil = target.muted_until;
     if (body.muted_until !== undefined) {

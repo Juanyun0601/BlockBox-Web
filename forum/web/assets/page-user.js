@@ -14,7 +14,12 @@ BB.boot(async () => {
   const user = data.user;
   document.title = `${user.display_name || user.username} · 方块盒子论坛`;
 
-  const roleChip = user.role === 'admin' ? '<span class="chip">管理员</span>' : '<span class="chip chip-grey">成员</span>';
+  const roleChip =
+    user.role === 'admin'
+      ? '<span class="chip">管理员</span>'
+      : user.role === 'moderator'
+        ? '<span class="chip">次级管理员</span>'
+        : '<span class="chip chip-grey">成员</span>';
   const statusChip =
     user.status === 'banned'
       ? '<span class="chip chip-danger">已封禁</span>'
@@ -64,7 +69,7 @@ BB.boot(async () => {
         ${friendActionHtml}
         ${isSelf ? '<a class="btn btn-ghost btn-sm" href="/gallery.html">我的相册</a>' : ''}
         ${isSelf ? '<button class="btn btn-ghost btn-sm" id="editProfileBtn">编辑资料</button>' : ''}
-        ${isSelf && user.role === 'admin' ? '<a class="btn btn-ghost btn-sm" href="/admin.html">管理后台</a>' : ''}
+        ${isSelf && (user.role === 'admin' || user.role === 'moderator') ? '<a class="btn btn-ghost btn-sm" href="/admin.html">管理后台</a>' : ''}
       </div>
     </div>`;
 

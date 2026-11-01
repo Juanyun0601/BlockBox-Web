@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   bio           TEXT    NOT NULL DEFAULT '',
   avatar        TEXT    NOT NULL DEFAULT '',
   cover         TEXT    NOT NULL DEFAULT '',
-  role          TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  role          TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'moderator', 'admin')),
   status        TEXT    NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'muted', 'banned')),
   muted_until   INTEGER NOT NULL DEFAULT 0,
   thread_count  INTEGER NOT NULL DEFAULT 0,

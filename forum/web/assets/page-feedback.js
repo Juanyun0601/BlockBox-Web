@@ -75,7 +75,106 @@ BB.boot(async () => {
     }
   }
 
-  // ── 未登录：只给登录引导 ──
+  // ────────────────────────── 全部反馈（仿 GitHub Issues 列表页，公开） ──────────────────────────
+
+  const allTabs = document.getElementById('allTabs');
+  const allList = document.getElementById('allList');
+  let allStatus = 'all';
+  let allCounts = { open: 0, resolved: 0, ignored: 0 };
+
+  /** GitHub 风格的状态胶囊：待处理绿 / 已处理紫 / 已忽略灰 */
+  const statePill = (status) =>
+    status === 'resolved'
+      ? '<span class="fb-state fb-state-resolved">已处理</span>'
+      : status === 'ignored'
+        ? '<span class="fb-state fb-state-ignored">已忽略</span>'
+        : '<span class="fb-state fb-state-open">待处理</span>';
+
+  function renderAllTabs() {
+    allTabs.innerHTML = [
+      ['all', `全部 ${(allCounts.open || 0) + (allCounts.resolved || 0) + (allCounts.ignored || 0)}`],
+      ['open', `待处理 ${allCounts.open || 0}`],
+      ['resolved', `已处理 ${allCounts.resolved || 0}`],
+      ['ignored', `已忽略 ${allCounts.ignored || 0}`],
+    ]
+      .map(
+        ([value, label]) =>
+          `<button type="button" class="fb-tab${allStatus === value ? ' active' : ''}" data-status="${value}">${label}</button>`,
+      )
+      .join('');
+    allTabs.querySelectorAll('[data-status]').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (allStatus === button.dataset.status) return;
+        allStatus = button.dataset.status;
+        renderAllTabs();
+        loadAll(1);
+      });
+    });
+  }
+
+  function renderAll(data) {
+    allCounts = data.counts || allCounts;
+    renderAllTabs();
+
+    document.getElementById('allPager').innerHTML = BB.pagination(
+      data.pagination,
+      (target) => `/feedback.html?page=${target}`,
+    );
+
+    allList.innerHTML = data.feedbacks.length
+      ? data.feedbacks
+          .map((item) => {
+            const author = item.user ? BB.esc(item.user.display_name || item.user.username) : '已注销用户';
+            const handled = item.handled_at
+              ? ` · ${item.status === 'ignored' ? '已忽略' : '已处理于'} ${BB.time(item.handled_at)}`
+              : '';
+            return `<div class="fb-issue">
+            <div class="fb-issue-head" data-expand="${item.id}">
+              <div class="fb-issue-title-row">
+                ${statePill(item.status)}
+                <span class="fb-issue-title">${BB.esc(item.title)}</span>
+                <span class="chip chip-grey">${typeText(item.type)}</span>
+              </div>
+              <div class="fb-issue-meta">#${item.id} 由 ${author} 提交 · ${BB.time(item.created_at)}${handled}</div>
+            </div>
+            <div class="fb-issue-detail" style="display: none">
+              <div class="feedback-content">${escapeMultiline(item.content)}</div>
+              ${
+                item.reply
+                  ? `<div class="feedback-reply"><b>管理员回复</b>（${BB.time(item.handled_at)}）：${escapeMultiline(item.reply)}</div>`
+                  : ''
+              }
+            </div>
+          </div>`;
+          })
+          .join('')
+      : '<div class="empty">还没有人提交过反馈，来当第一个吧。</div>';
+
+    // 点行头展开 / 收起详情
+    allList.querySelectorAll('[data-expand]').forEach((head) => {
+      head.addEventListener('click', () => {
+        const detail = head.parentElement.querySelector('.fb-issue-detail');
+        detail.style.display = detail.style.display === 'none' ? '' : 'none';
+        head.parentElement.classList.toggle('expanded', detail.style.display !== 'none');
+      });
+    });
+  }
+
+  async function loadAll(page) {
+    allList.innerHTML = '<div class="skeleton">正在加载…</div>';
+    document.getElementById('allPager').innerHTML = '';
+    try {
+      const data = await BB.api(`/api/feedbacks?status=${allStatus}&page=${page}&per_page=20`);
+      renderAll(data);
+    } catch (error) {
+      allList.innerHTML = `<div class="empty">${BB.esc(error.message)}</div>`;
+    }
+  }
+
+  // ── 公开列表所有人可见（含未登录访客） ──
+  await loadAll(Math.max(1, Number(BB.param('page') || 1) || 1));
+
+  // ── 未登录：表单区只给登录引导 ──
   if (!BB.state.me) {
     loginCard.style.display = '';
     mineHead.style.display = 'none';
@@ -165,6 +264,7 @@ BB.boot(async () => {
       stepsEl.value = '1. \n2. \n3. ';
       BB.toast('反馈已提交，感谢你的反馈！', 'ok');
       await loadMine(1);
+      await loadAll(1);
     } catch (error) {
       showError(error.message);
     } finally {
@@ -173,7 +273,8 @@ BB.boot(async () => {
     }
   });
 
-  refreshBtn.addEventListener('click', () => loadMine(Math.max(1, Number(BB.param('page') || 1) || 1)));
-
-  await loadMine(Math.max(1, Number(BB.param('page') || 1) || 1));
+  refreshBtn.addEventListener('click', () => {
+    loadMine(Math.max(1, Number(BB.param('page') || 1) || 1));
+    loadAll(1);
+  });
 });

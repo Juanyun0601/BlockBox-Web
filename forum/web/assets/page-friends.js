@@ -26,9 +26,14 @@ BB.boot(async () => {
   let hasMore = false;
   let sending = false;
   let pollBusy = false;
+  let imageUploading = false;
+  let replyTarget = null;     // 正在引用的消息（null = 没有）
   let searchResults = [];     // 「添加好友」页签的搜索结果
 
   const esc = BB.esc;
+  const EMOJIS = ['😀','😁','😂','🤣','😊','😍','😘','😜','🤔','😎','😴','😭','🥺','😡','🤯','🙄',
+    '👋','👍','👎','👌','🙏','💪','🤝','✌️','🎉','🔥','❤️','💔','🌹','⭐','🌙','☀️',
+    '🎮','⛏️','🏠','🐷','🐮','🐶','🐱','🐭','🍕','🍔','🍺','☕','🎁','💰','⚡','💎'];
   const chatMain = document.getElementById('chatMain');
   const chatEmpty = document.getElementById('chatEmpty');
   const chatHead = document.getElementById('chatHead');
@@ -61,6 +66,71 @@ BB.boot(async () => {
     return data.friends.find((item) => item.id === id) || null;
   }
 
+  /** 会话列表 / 引用条里的消息摘要 */
+  function messagePreview(msg) {
+    if (msg.kind === 'withdrawn') return '撤回了一条消息';
+    if (msg.kind === 'image') return '[图片]';
+    return msg.body;
+  }
+
+  function setMessageReply(msg) {
+    replyTarget = msg;
+    const name = msg.mine ? '我' : (peer ? peer.display_name : '');
+    const text = `回复 ${name}：${messagePreview(msg)}`;
+    document.getElementById('chatReplyText').textContent = text;
+    document.getElementById('chatReplyText').title = text;
+    document.getElementById('chatReply').hidden = false;
+    chatInput.focus();
+  }
+
+  function clearReply() {
+    replyTarget = null;
+    document.getElementById('chatReply').hidden = true;
+  }
+
+  function toggleEmojiPanel() {
+    const panel = document.getElementById('emojiPanel');
+    if (!panel.dataset.built) {
+      panel.innerHTML = EMOJIS.map((e) => `<button type="button" data-emoji="${e}">${e}</button>`).join('');
+      panel.dataset.built = '1';
+    }
+    panel.hidden = !panel.hidden;
+  }
+
+  async function withdrawMessage(id) {
+    if (!window.confirm('确定撤回这条消息吗？')) return;
+    try {
+      await BB.api(`/api/messages/${id}`, { method: 'DELETE' });
+    } catch (error) {
+      BB.toast(error.message || '撤回失败', 'error');
+    }
+    if (peer) openChat(peer);
+  }
+
+  async function sendImageFile(file) {
+    if (!peer || imageUploading) return;
+    if (file.size > 4 * 1024 * 1024) {
+      BB.toast('图片超过 4 MB，先压缩一下吧', 'error');
+      return;
+    }
+    imageUploading = true;
+    BB.toast('正在上传图片…');
+    try {
+      const uploaded = await BB.uploadImage(file);
+      const res = await BB.api(`/api/messages/${peer.id}`, {
+        method: 'POST',
+        body: { kind: 'image', image: uploaded, reply_to: replyTarget ? replyTarget.id : 0 },
+      });
+      appendMessages([res.message]);
+      scrollBottom(true);
+      clearReply();
+    } catch (error) {
+      BB.toast(error.message || '发送失败，请稍后再试', 'error');
+    } finally {
+      imageUploading = false;
+    }
+  }
+
   async function reload() {
     data = await BB.api('/api/friends');
     syncBadge();
@@ -71,8 +141,9 @@ BB.boot(async () => {
   function friendRow(f) {
     const unread = f.unread ? `<span class="fr-badge">${f.unread > 99 ? '99+' : f.unread}</span>` : '';
     const time = f.last_message ? `<span class="fr-time">${esc(hhmm(f.last_message.created_at))}</span>` : '';
+    const lastText = f.last_message ? messagePreview(f.last_message) : '';
     const preview = f.last_message
-      ? esc(`${f.last_message.mine ? '我：' : ''}${f.last_message.body}`)
+      ? esc(`${f.last_message.mine && f.last_message.kind !== 'withdrawn' ? '我：' : ''}${lastText}`)
       : '还没有聊过天';
     return `<div class="fr-row${peer && peer.id === f.id ? ' active' : ''}" data-peer="${f.id}" title="打开会话">
       ${BB.avatar(f, 'avatar-sm')}
@@ -177,10 +248,24 @@ BB.boot(async () => {
   // ------------------------------------------------------------ 右侧聊天
 
   function messageHtml(msg) {
-    const bubble = `<div class="msg-bubble">${esc(msg.body)}</div>`;
-    const time = `<span class="msg-time">${esc(hhmm(msg.created_at))}</span>`;
-    if (msg.mine) return `<div class="msg-row mine" data-mid="${msg.id}"><div class="msg-body">${bubble}${time}</div></div>`;
-    return `<div class="msg-row theirs" data-mid="${msg.id}">${BB.avatar(peer, 'avatar-xs')}<div class="msg-body">${bubble}${time}</div></div>`;
+    if (msg.kind === 'withdrawn') {
+      return `<div class="msg-withdrawn">${esc(msg.mine ? '你撤回了一条消息' : '对方撤回了一条消息')}</div>`;
+    }
+    const quote = msg.reply_to
+      ? `<div class="msg-quote">回复 ${esc(msg.reply_mine ? '我' : (peer ? peer.display_name : ''))}：${esc(msg.reply_body)}</div>`
+      : '';
+    const inner = msg.kind === 'image'
+      ? `${quote}<a class="img-link" href="${esc(msg.image)}" data-full="${esc(msg.image)}"><img class="msg-image" src="${esc(msg.image)}" alt="图片" loading="lazy"></a>${msg.body ? `<div class="msg-text">${esc(msg.body)}</div>` : ''}`
+      : `${quote}<div class="msg-text">${esc(msg.body)}</div>`;
+    const canWithdraw = msg.mine && Date.now() / 1000 - msg.created_at <= 600;
+    const actions = `<span class="msg-actions">
+        <button type="button" data-reply="${msg.id}" title="回复">↩</button>
+        ${msg.kind === 'text' && msg.body ? `<button type="button" data-copy="${msg.id}" title="复制文字">⧉</button>` : ''}
+        ${canWithdraw ? `<button type="button" data-withdraw-msg="${msg.id}" title="撤回">✕</button>` : ''}
+      </span>`;
+    const time = `<span class="msg-time">${esc(hhmm(msg.created_at))}${msg.mine && msg.read_at ? ' · 已读' : ''}</span>`;
+    if (msg.mine) return `<div class="msg-row mine" data-mid="${msg.id}">${actions}<div class="msg-body">${inner}${time}</div></div>`;
+    return `<div class="msg-row theirs" data-mid="${msg.id}">${BB.avatar(peer, 'avatar-xs')}<div class="msg-body">${inner}${time}</div>${actions}</div>`;
   }
 
   function renderMessages() {
@@ -232,6 +317,8 @@ BB.boot(async () => {
     msgs.clear();
     lastId = 0;
     hasMore = false;
+    clearReply();
+    document.getElementById('emojiPanel').hidden = true;
     chatEmpty.hidden = true;
     chatMain.hidden = false;
     chatMsgs.innerHTML = '<div class="empty">正在加载消息…</div>';
@@ -277,10 +364,14 @@ BB.boot(async () => {
     sending = true;
     chatSend.disabled = true;
     try {
-      const res = await BB.api(`/api/messages/${peer.id}`, { method: 'POST', body: { body } });
+      const res = await BB.api(`/api/messages/${peer.id}`, {
+        method: 'POST',
+        body: { body, reply_to: replyTarget ? replyTarget.id : 0 },
+      });
       chatInput.value = '';
       appendMessages([res.message]);
       scrollBottom(true);
+      clearReply();
     } catch (error) {
       if (error.status === 403) {
         BB.toast(error.message || '发送失败', 'error');
@@ -489,6 +580,45 @@ BB.boot(async () => {
     }
   });
   document.getElementById('chatMoreBtn').addEventListener('click', loadOlder);
+  document.getElementById('chatEmoji').addEventListener('click', toggleEmojiPanel);
+  document.getElementById('chatReplyCancel').addEventListener('click', clearReply);
+  document.getElementById('chatImage').addEventListener('click', () => document.getElementById('chatFileInput').click());
+  document.getElementById('chatFileInput').addEventListener('change', (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (file) sendImageFile(file);
+    event.target.value = '';
+  });
+  document.getElementById('emojiPanel').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-emoji]');
+    if (!button) return;
+    chatInput.value += button.dataset.emoji;
+    document.getElementById('emojiPanel').hidden = true;
+    chatInput.focus();
+  });
+  chatMsgs.addEventListener('click', (event) => {
+    const replyButton = event.target.closest('[data-reply]');
+    if (replyButton) {
+      const msg = msgs.get(Number(replyButton.dataset.reply));
+      if (msg) setMessageReply(msg);
+      return;
+    }
+    const copyButton = event.target.closest('[data-copy]');
+    if (copyButton) {
+      const msg = msgs.get(Number(copyButton.dataset.copy));
+      if (msg) navigator.clipboard.writeText(msg.body).then(() => BB.toast('已复制', 'ok'));
+      return;
+    }
+    const withdrawButton = event.target.closest('[data-withdraw-msg]');
+    if (withdrawButton) withdrawMessage(Number(withdrawButton.dataset.withdrawMsg));
+  });
+  chatInput.addEventListener('paste', (event) => {
+    const files = Array.from((event.clipboardData && event.clipboardData.files) || [])
+      .filter((file) => file.type.startsWith('image/'));
+    if (files.length > 0) {
+      event.preventDefault();
+      sendImageFile(files[0]);
+    }
+  });
   chatHead.addEventListener('click', (event) => {
     if (event.target.closest('[data-remove-friend]')) removeFriend();
   });

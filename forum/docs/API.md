@@ -281,6 +281,23 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 返回 `{ "ok": true, "id": 12 }`。
 
+### GET /api/feedbacks?status=all&page=1 · 公开反馈列表（无需登录）
+
+仿 GitHub Issues 列表页：所有人可见，带状态筛选与计数。`title` 为从正文提取的第一行问题描述 / 建议内容。
+
+```json
+{
+  "status": "all",
+  "feedbacks": [ { "id": 12, "type": "bug", "status": "open", "title": "启动 1.20.1 实例时闪退",
+                   "content": "### 启动器版本\n…", "reply": "", "handled_at": 0,
+                   "created_at": 1793600000, "user": { "id": 2, "username": "…", "display_name": "…" } } ],
+  "counts": { "open": 3, "resolved": 1, "ignored": 0 },
+  "pagination": { "page": 1, "per_page": 20, "total": 4, "pages": 1 }
+}
+```
+
+`status` 支持 `all`（默认）/ `open` / `resolved` / `ignored`；`reply` 为管理员的公开回复。
+
 ### GET /api/me/feedbacks?page=1&per_page=20 · 我的反馈（需登录）
 
 ```json
@@ -611,12 +628,15 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ```json
 { "role": "admin" }                          // 设为管理员（"user" 降回成员）
+{ "role": "moderator" }                      // 设为次级管理员（"user" 降回成员）
 { "status": "muted", "mute_hours": 24 }      // 禁言，到点自动恢复
 { "status": "banned" }                       // 封禁，同时踢下线
 { "status": "active" }                       // 恢复正常
 ```
 
-不能修改自己的角色。
+不能修改自己的角色。次级管理员可以做这里的所有事，唯独不能改任何人的 `role`（改角色仅限管理员）。
+
+角色取值：`user`（成员）/ `moderator`（次级管理员）/ `admin`（管理员）。
 
 ### GET /api/admin/reports?status=open
 

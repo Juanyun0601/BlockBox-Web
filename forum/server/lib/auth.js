@@ -95,9 +95,22 @@ export function requireUser(user) {
   return user;
 }
 
+/** 是否管理员级（管理员 / 次级管理员都算） */
+export function isAdminRole(role) {
+  return role === 'admin' || role === 'moderator';
+}
+
+/** 管理后台各功能：管理员和次级管理员都能用 */
 export function requireAdmin(user) {
   requireUser(user);
-  if (user.role !== 'admin') throw forbidden('需要管理员权限');
+  if (!isAdminRole(user.role)) throw forbidden('需要管理员权限');
+  return user;
+}
+
+/** 只有真正的管理员能做（如设置别人的管理员权限），次级管理员不行 */
+export function requireHeadAdmin(user) {
+  requireUser(user);
+  if (user.role !== 'admin') throw forbidden('只有管理员才能设置管理权限');
   return user;
 }
 
@@ -139,6 +152,6 @@ export function publicUser(row, { self = false } = {}) {
     created_at: row.created_at,
     last_seen_at: row.last_seen_at || 0,
   };
-  if (self || row.role === 'admin') data.email = row.email || '';
+  if (self || isAdminRole(row.role)) data.email = row.email || '';
   return data;
 }

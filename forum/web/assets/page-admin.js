@@ -9,7 +9,7 @@ BB.boot(async () => {
     </div>`;
     return;
   }
-  if (BB.state.me.role !== 'admin') {
+  if (BB.state.me.role !== 'admin' && BB.state.me.role !== 'moderator') {
     host.innerHTML = `<div class="card composer">
       <h3>没有权限</h3>
       <p class="muted small">当前账号不是管理员，如需管理权限请联系站点负责人。</p>
@@ -508,6 +508,17 @@ BB.boot(async () => {
             : user.status === 'muted'
               ? '<span class="chip chip-warn">禁言</span>'
               : '<span class="chip chip-grey">正常</span>';
+        const roleLabel =
+          user.role === 'admin'
+            ? '<span class="chip">管理员</span>'
+            : user.role === 'moderator'
+              ? '<span class="chip">次级管理员</span>'
+              : '<span class="chip chip-grey">成员</span>';
+        // 次级管理员不能设置别人的管理权限，所以这两颗按钮只给真管理员看
+        const roleButtons = BB.isHeadAdmin()
+          ? `<button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="role-mod">${user.role === 'moderator' ? '降为成员' : '设为次级管理员'}</button>
+            <button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="role">${user.role === 'admin' ? '降为成员' : '设为管理员'}</button>`
+          : '';
         return `
         <tr>
           <td>
@@ -516,12 +527,12 @@ BB.boot(async () => {
               <span>${BB.esc(user.display_name || user.username)}<br><span class="small muted">@${BB.esc(user.username)}</span></span>
             </a>
           </td>
-          <td>${user.role === 'admin' ? '<span class="chip">管理员</span>' : '<span class="chip chip-grey">成员</span>'}</td>
+          <td>${roleLabel}</td>
           <td>${statusLabel}</td>
           <td class="small">${BB.num(user.thread_count)} / ${BB.num(user.post_count)}</td>
           <td class="small">${BB.datetime(user.created_at).slice(0, 10)}</td>
           <td class="row-actions">
-            <button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="role">${user.role === 'admin' ? '降为成员' : '设为管理员'}</button>
+            ${roleButtons}
             <button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="mute">禁言 24 小时</button>
             <button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="restore">恢复正常</button>
             <button class="btn btn-danger btn-sm" data-user="${user.id}" data-act="ban">封禁</button>
@@ -537,14 +548,16 @@ BB.boot(async () => {
         const payload =
           action === 'role'
             ? { role: adminUsers.find((u) => u.id === userId)?.role === 'admin' ? 'user' : 'admin' }
-            : action === 'mute'
-              ? { status: 'muted', mute_hours: 24 }
-              : action === 'ban'
-                ? { status: 'banned' }
-                : { status: 'active' };
+            : action === 'role-mod'
+              ? { role: adminUsers.find((u) => u.id === userId)?.role === 'moderator' ? 'user' : 'moderator' }
+              : action === 'mute'
+                ? { status: 'muted', mute_hours: 24 }
+                : action === 'ban'
+                  ? { status: 'banned' }
+                  : { status: 'active' };
         try {
           await BB.api(`/api/admin/users/${userId}`, { method: 'PATCH', body: payload });
-          BB.toast('已更新用户状态', 'ok');
+          BB.toast(action.startsWith('role') ? '已更新用户角色' : '已更新用户状态', 'ok');
           renderUsers();
         } catch (error) {
           BB.toast(error.message, 'error');
