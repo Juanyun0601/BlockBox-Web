@@ -16,6 +16,7 @@ import {
   serveFile,
 } from './lib/http.js';
 import { SESSION_COOKIE, hashPassword, userFromToken } from './lib/auth.js';
+import { purgeOldVisits, recordVisit } from './lib/visits.js';
 import registerAuth from './routes/auth.js';
 import registerBoards from './routes/boards-threads.js';
 import registerUsers from './routes/users.js';
@@ -191,7 +192,19 @@ async function handle(req, res) {
   }
 
   const immutable = pathname.startsWith('/assets/');
-  if (await serveFile(res, config.webDir, pathname, { immutable })) return;
+  if (await serveFile(res, config.webDir, pathname, { immutable })) {
+    // 只有正常打开的页面才计入访问量（静态资源、404 都不算）
+    if (!immutable) {
+      recordVisit({
+        path: pathname,
+        ip,
+        userAgent: String(req.headers['user-agent'] || ''),
+        userId: user ? user.id : 0,
+        ref: String(req.headers.referer || ''),
+      });
+    }
+    return;
+  }
 
   // 页面找不到：给一个 404 页面，而不是纯文本
   const notFoundPage = path.join(config.webDir, '404.html');

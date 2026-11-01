@@ -61,6 +61,13 @@ export const config = {
   secureCookie: bool(env.SECURE_COOKIE, false),
   logRequests: bool(env.LOG_REQUESTS, true),
 
+  // 访问统计：记录页面浏览、统计日活 / 月活。
+  // 明细保留天数决定能查多久的趋势（默认 400 天，够算月活和同比）；
+  // 盐值换了以后旧访客会被当成新访客，换之前请想清楚。
+  visitTracking: bool(env.VISIT_TRACKING, true),
+  visitRetentionDays: Math.max(7, num(env.VISIT_RETENTION_DAYS, 400)),
+  visitSalt: env.VISIT_SALT || 'blockbox-forum',
+
   maxBodyBytes: num(env.MAX_BODY_BYTES, 256 * 1024),
   maxAvatarBytes: num(env.MAX_AVATAR_BYTES, 512 * 1024),
   maxCoverBytes: num(env.MAX_COVER_BYTES, 3 * 1024 * 1024),

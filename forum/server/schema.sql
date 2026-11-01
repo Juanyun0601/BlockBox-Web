@@ -255,6 +255,34 @@ CREATE TABLE IF NOT EXISTS feedbacks (
 CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedbacks_user ON feedbacks(user_id, created_at DESC);
 
+-- 访问记录（页面浏览明细，管理后台的访问量 / 日活 / 月活都从这里算）---
+-- 只记真实用户打开的 HTML 页面：接口请求、图片等静态资源和爬虫都不记。
+CREATE TABLE IF NOT EXISTS visits (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  day        TEXT    NOT NULL,              -- 本地日期 YYYY-MM-DD，按天统计用
+  visitor    TEXT    NOT NULL,              -- 访客指纹（IP + 浏览器标识的哈希，不存原始 IP）
+  user_id    INTEGER NOT NULL DEFAULT 0,    -- 登录用户 id，游客为 0
+  path       TEXT    NOT NULL,              -- 去掉查询串的页面路径
+  ref        TEXT    NOT NULL DEFAULT '',   -- 来源页
+  ua         TEXT    NOT NULL DEFAULT '',   -- 浏览器标识
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_visits_created ON visits(created_at);
+CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
+CREATE INDEX IF NOT EXISTS idx_visits_day_visitor ON visits(day, visitor);
+CREATE INDEX IF NOT EXISTS idx_visits_path ON visits(day, path);
+
+-- 访客档案：每个访客一行，长期保留（明细会被定期清理，累计数据靠它）---
+CREATE TABLE IF NOT EXISTS visit_visitors (
+  visitor       TEXT PRIMARY KEY,
+  first_seen_at INTEGER NOT NULL,
+  last_seen_at  INTEGER NOT NULL,
+  hits          INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_visit_visitors_first ON visit_visitors(first_seen_at);
+
 -- 默认板块（只在不存在时补齐，不会覆盖已修改的名称/排序）
 INSERT OR IGNORE INTO boards (slug, name, description, icon, sort_order, created_at) VALUES
   ('general',  '综合讨论',   '关于方块盒子和 Minecraft 的任何话题',        '💬', 10, unixepoch()),
