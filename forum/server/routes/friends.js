@@ -111,6 +111,36 @@ export default function register(router) {
   // 注意：/api/messages/poll 必须注册在 /api/messages/:userId 之前，
   // 否则 "poll" 会被当成用户 id。
 
+  /** 消息统一序列化：kind = text / image / withdrawn（撤回占位），带引用摘要 */
+  function messageOut(row, user) {
+    let replyBody = '';
+    if (row.reply_to) {
+      const replyKind = row.reply_kind || 'text';
+      if (replyKind === 'withdrawn') replyBody = '[已撤回]';
+      else if (replyKind === 'image') replyBody = '[图片]';
+      else replyBody = String(row.reply_body || '').slice(0, 60);
+    }
+    return {
+      id: row.id,
+      kind: row.kind || 'text',
+      body: row.body,
+      image: row.image || '',
+      reply_to: row.reply_to || 0,
+      reply_body: replyBody,
+      reply_mine: row.reply_sender === user.id ? 1 : 0,
+      mine: row.sender_id === user.id,
+      created_at: row.created_at,
+      read_at: row.read_at || 0,
+    };
+  }
+
+  /** 带引用消息的 SELECT 片段 */
+  const DM_SELECT = `
+    SELECT m.id, m.sender_id, m.body, m.kind, m.image, m.reply_to, m.read_at, m.created_at,
+           q.body AS reply_body, q.kind AS reply_kind, q.sender_id AS reply_sender
+      FROM direct_messages m
+      LEFT JOIN direct_messages q ON q.id = m.reply_to`;
+
   /**
    * 轻量轮询：角标（未读私信 + 待处理申请）、会话列表增量、当前聊天的新消息。
    * 刻意不标记已读——已读只发生在真正打开会话的 GET /api/messages/:userId 上。
@@ -125,20 +155,13 @@ export default function register(router) {
     if (peerId > 0 && afterId >= 0 && acceptedBetween(user.id, peerId)) {
       const rows = db
         .prepare(
-          `SELECT id, sender_id, body, read_at, created_at
-             FROM direct_messages
-            WHERE ((sender_id = ? AND peer_id = ?) OR (sender_id = ? AND peer_id = ?)) AND id > ?
-            ORDER BY id ASC
+          `${DM_SELECT}
+            WHERE ((m.sender_id = ? AND m.peer_id = ?) OR (m.sender_id = ? AND m.peer_id = ?)) AND m.id > ?
+            ORDER BY m.id ASC
             LIMIT 50`,
         )
         .all(user.id, peerId, peerId, user.id, afterId);
-      messages = rows.map((row) => ({
-        id: row.id,
-        body: row.body,
-        mine: row.sender_id === user.id,
-        created_at: row.created_at,
-        read_at: row.read_at || 0,
-      }));
+      messages = rows.map((row) => messageOut(row, user));
     }
 
     return {
@@ -173,30 +196,20 @@ export default function register(router) {
     const params = [user.id, peerId, peerId, user.id];
     let where = '';
     if (beforeId > 0) {
-      where = 'AND id < ?';
+      where = 'AND m.id < ?';
       params.push(beforeId);
     }
     const rows = db
       .prepare(
-        `SELECT id, sender_id, body, read_at, created_at
-           FROM direct_messages
-          WHERE (sender_id = ? AND peer_id = ?) OR (sender_id = ? AND peer_id = ?) ${where}
-          ORDER BY id DESC
+        `${DM_SELECT}
+          WHERE (m.sender_id = ? AND m.peer_id = ?) OR (m.sender_id = ? AND m.peer_id = ?) ${where}
+          ORDER BY m.id DESC
           LIMIT ?`,
       )
       .all(...params, limit + 1);
 
     const hasMore = rows.length > limit;
-    const messages = rows
-      .slice(0, limit)
-      .reverse()
-      .map((row) => ({
-        id: row.id,
-        body: row.body,
-        mine: row.sender_id === user.id,
-        created_at: row.created_at,
-        read_at: row.read_at || 0,
-      }));
+    const messages = rows.slice(0, limit).reverse().map((row) => messageOut(row, user));
     return { user: peerOut(peer), messages, has_more: hasMore };
   });
 
@@ -207,19 +220,55 @@ export default function register(router) {
     requireFriend(user, peerId);
 
     const body = await ctx.json();
-    const content = text(body.body, { field: '私信内容', min: 1, max: 1000 });
+    const kind = body.kind === 'image' ? 'image' : 'text';
+    let content = '';
+    let image = '';
+    if (kind === 'image') {
+      // 图片走 /api/upload 拿到的站内地址
+      image = String(body.image || '');
+      if (!image.startsWith('/uploads/') || image.length > 200 || image.includes('..')) {
+        throw badRequest('图片地址无效');
+      }
+      if (body.body !== undefined && body.body !== null && body.body !== '') {
+        content = text(body.body, { field: '附言', max: 200 });
+      }
+    } else {
+      content = text(body.body, { field: '私信内容', min: 1, max: 1000 });
+    }
+
+    // 回复引用：只能引用这个会话里的消息
+    let replyTo = 0;
+    if (body.reply_to !== undefined && body.reply_to !== null && body.reply_to !== '') {
+      replyTo = int(body.reply_to, { field: '回复消息' });
+      const target = db.prepare('SELECT sender_id, peer_id FROM direct_messages WHERE id = ?').get(replyTo);
+      const inPair =
+        target &&
+        ((target.sender_id === user.id && target.peer_id === peerId) ||
+          (target.sender_id === peerId && target.peer_id === user.id));
+      if (!inPair) throw notFound('要回复的消息不存在');
+    }
+
     const timestamp = now();
     const result = db
-      .prepare('INSERT INTO direct_messages (sender_id, peer_id, body, created_at) VALUES (?, ?, ?, ?)')
-      .run(user.id, peerId, content, timestamp);
-    return {
-      message: {
-        id: Number(result.lastInsertRowid),
-        body: content,
-        mine: true,
-        created_at: timestamp,
-        read_at: 0,
-      },
-    };
+      .prepare(
+        `INSERT INTO direct_messages (sender_id, peer_id, body, kind, image, reply_to, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(user.id, peerId, content, kind, image, replyTo, timestamp);
+    const row = db.prepare(`${DM_SELECT} WHERE m.id = ?`).get(Number(result.lastInsertRowid));
+    return { message: messageOut(row, user) };
+  });
+
+  /** 撤回自己 10 分钟内发出的消息：内容清空，双方都显示「撤回了一条消息」 */
+  router.delete('/api/messages/:id', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const id = int(ctx.params.id, { field: '消息' });
+    const row = db.prepare('SELECT * FROM direct_messages WHERE id = ?').get(id);
+    if (!row) throw notFound('消息不存在或已被撤回');
+    if (row.sender_id !== user.id) throw forbidden('只能撤回自己发的消息');
+    if (row.kind === 'withdrawn') throw badRequest('这条消息已经撤回过了');
+    if (now() - row.created_at > 10 * 60) throw badRequest('超过 10 分钟的消息不能撤回了');
+    db.prepare(`UPDATE direct_messages SET kind = 'withdrawn', body = '', image = '', reply_to = 0 WHERE id = ?`).run(id);
+    return { ok: true };
   });
 }

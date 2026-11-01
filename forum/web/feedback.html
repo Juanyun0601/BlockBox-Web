@@ -6,7 +6,7 @@
 <title>意见反馈 · 方块盒子论坛</title>
 <meta name="description" content="向方块盒子反馈软件使用中遇到的问题与建议">
 <link rel="icon" href="/assets/img/icon.ico">
-<link rel="stylesheet" href="/assets/forum.css?v=20261103a">
+<link rel="stylesheet" href="/assets/forum.css?v=20261103b">
 <script>
   (function () {
     try {
@@ -35,15 +35,67 @@
 
     <div class="card" id="feedbackFormCard" style="display: none">
       <div class="field">
-        <label for="feedbackContent">反馈内容 <span class="req">*</span></label>
-        <div class="feedback-tpl" id="feedbackTpl">
-          <button type="button" class="btn btn-ghost btn-sm" data-tpl="bug">🐛 问题反馈模板</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-tpl="feature">💡 功能建议模板</button>
-          <span class="input-hint" style="margin: 0">点模板快速套格式，照着填就行</span>
+        <label>反馈类型 <span class="req">*</span></label>
+        <div class="feedback-tpl" id="feedbackType">
+          <button type="button" class="btn btn-primary btn-sm" data-type="bug">🐛 问题反馈</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-type="feature">💡 功能建议</button>
         </div>
-        <textarea class="textarea" id="feedbackContent" maxlength="1000"
-          placeholder="点上方模板快速套格式，或直接描述遇到的问题；涉及实例或版本时请写明版本号。"></textarea>
-        <div class="input-hint"><span id="feedbackCount">0</span>/1000 字 · 提交后可在下方「我的反馈」里查看处理进度</div>
+      </div>
+      <div class="field" id="fieldAppVersion">
+        <label for="feedbackAppVersion">启动器版本 <span class="req">*</span></label>
+        <input class="input" id="feedbackAppVersion" maxlength="40" placeholder="例如 beta6">
+        <div class="input-hint">在「设置 → 关于」里能看到版本号</div>
+      </div>
+      <div class="field" id="fieldPlatform">
+        <label for="feedbackPlatform">运行平台 <span class="req">*</span></label>
+        <select class="select" id="feedbackPlatform">
+          <option value="Windows（x64）">Windows（x64）</option>
+          <option value="Windows（ARM64）">Windows（ARM64）</option>
+          <option value="Android">Android</option>
+          <option value="鸿蒙 HarmonyOS">鸿蒙 HarmonyOS</option>
+          <option value="其他">其他（请在问题描述里说明）</option>
+        </select>
+      </div>
+      <div class="field" id="fieldOsVersion">
+        <label for="feedbackOsVersion">系统版本（可选）</label>
+        <input class="input" id="feedbackOsVersion" maxlength="100" placeholder="例如 Windows 11 23H2 / Android 14">
+      </div>
+      <div class="field">
+        <label for="feedbackDesc"><span id="descLabel">问题描述</span> <span class="req">*</span></label>
+        <textarea class="textarea" id="feedbackDesc" maxlength="800" style="min-height: 90px"
+          placeholder="说说发生了什么，涉及哪个页面、哪个实例，越具体越好。"></textarea>
+      </div>
+      <div class="field" id="fieldSteps">
+        <label for="feedbackSteps">复现步骤 <span class="req">*</span></label>
+        <textarea class="textarea" id="feedbackSteps" maxlength="800" style="min-height: 90px">1. 
+2. 
+3. </textarea>
+        <div class="input-hint">按顺序写下你点过哪些地方，方便照着再试一遍</div>
+      </div>
+      <div class="field" id="fieldExpected">
+        <label for="feedbackExpected">期望结果（可选）</label>
+        <textarea class="textarea" id="feedbackExpected" maxlength="400" style="min-height: 64px"
+          placeholder="例如：安装完成后自动打开新实例。"></textarea>
+      </div>
+      <div class="field" id="fieldActual">
+        <label for="feedbackActual">实际结果（可选）</label>
+        <textarea class="textarea" id="feedbackActual" maxlength="400" style="min-height: 64px"
+          placeholder="如果有报错弹窗，把提示文字原样贴进来。"></textarea>
+      </div>
+      <div class="field" id="fieldLogs">
+        <label for="feedbackLogs">日志（可选）</label>
+        <textarea class="textarea" id="feedbackLogs" maxlength="2000" style="min-height: 80px"
+          placeholder="在「设置 → 高级设置 → 运行日志」里导出；很长时贴最后几十行就可以。"></textarea>
+      </div>
+      <div class="field" id="fieldScreenshots">
+        <label for="feedbackScreenshots">截图 / 录屏（可选）</label>
+        <textarea class="textarea" id="feedbackScreenshots" maxlength="500" style="min-height: 64px"
+          placeholder="图片链接或文字说明。"></textarea>
+      </div>
+      <div class="field" id="fieldScene" style="display: none">
+        <label for="feedbackScene">使用场景（可选）</label>
+        <textarea class="textarea" id="feedbackScene" maxlength="800" style="min-height: 90px"
+          placeholder="什么时候会用到、能解决什么问题"></textarea>
       </div>
       <div class="input-hint" id="feedbackError" style="display: none; color: var(--danger)"></div>
       <button class="btn btn-primary" id="feedbackSubmit" style="margin-top: 6px">提交反馈</button>
@@ -64,6 +116,6 @@
 
 <footer class="footer" id="siteFooter"></footer>
 <script src="/assets/core.js?v=20261102b"></script>
-<script src="/assets/page-feedback.js?v=20261103a"></script>
+<script src="/assets/page-feedback.js?v=20261104a"></script>
 </body>
 </html>

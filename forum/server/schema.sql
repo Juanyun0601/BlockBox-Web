@@ -224,6 +224,9 @@ CREATE TABLE IF NOT EXISTS direct_messages (
   sender_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   peer_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   body       TEXT    NOT NULL,
+  kind       TEXT    NOT NULL DEFAULT 'text',
+  image      TEXT    NOT NULL DEFAULT '',
+  reply_to   INTEGER NOT NULL DEFAULT 0,
   read_at    INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
@@ -235,6 +238,7 @@ CREATE INDEX IF NOT EXISTS idx_dm_inbox ON direct_messages(peer_id, read_at);
 CREATE TABLE IF NOT EXISTS feedbacks (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  type        TEXT    NOT NULL DEFAULT 'bug' CHECK (type IN ('bug', 'feature')),
   source      TEXT    NOT NULL DEFAULT 'web' CHECK (source IN ('web', 'launcher')),
   content     TEXT    NOT NULL,
   app_version TEXT    NOT NULL DEFAULT '',

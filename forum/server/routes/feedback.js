@@ -1,34 +1,114 @@
 import { db, now, paginate } from '../db.js';
-import { notFound } from '../lib/http.js';
+import { badRequest, notFound } from '../lib/http.js';
 import { requireAdmin, requireUser } from '../lib/auth.js';
 import { enforce } from '../lib/rate-limit.js';
 import { text } from '../lib/validate.js';
 
 const FEEDBACK_SOURCES = ['web', 'launcher'];
+const FEEDBACK_TYPES = ['bug', 'feature'];
+// 与仓库 .github/ISSUE_TEMPLATE/bug_report.yml 的「运行平台」下拉保持一致
+const FEEDBACK_PLATFORMS = ['Windows（x64）', 'Windows（ARM64）', 'Android', '鸿蒙 HarmonyOS', '其他'];
+
+/**
+ * 按类型把结构化字段组装成一条反馈正文。
+ * 问题反馈的标题层级与 GitHub Issue 模板（bug_report.yml）一致（### 启动器版本 …），
+ * 空着的选填项不输出；功能建议仓库没有对应模板，沿用「建议内容 + 使用场景」。
+ */
+function assembleContent(type, fields) {
+  const sections = [];
+  const push = (title, body) => sections.push(`### ${title}\n${body}`);
+
+  if (type === 'feature') {
+    push('建议内容', fields.description);
+    if (fields.scene) push('使用场景', fields.scene);
+    return sections.join('\n\n');
+  }
+
+  push('启动器版本', fields.appVersion);
+  push('运行平台', fields.platform);
+  if (fields.osVersion) push('系统版本', fields.osVersion);
+  push('问题描述', fields.description);
+  push('复现步骤', fields.steps);
+  if (fields.expected) push('期望结果', fields.expected);
+  if (fields.actual) push('实际结果', fields.actual);
+  if (fields.logs) push('日志', fields.logs);
+  if (fields.screenshots) push('截图 / 录屏', fields.screenshots);
+  return sections.join('\n\n');
+}
 
 export default function register(router) {
   // ---------------- 用户反馈（官网 / 论坛 / 启动器共用） ----------------
 
-  /** 提交反馈：登录用户每账号每小时限 5 条，来源标记 web（网页）或 launcher（启动器） */
+  /**
+   * 提交反馈：登录用户每账号每小时限 5 条，来源标记 web（网页）或 launcher（启动器）。
+   * 结构化必填字段由服务端校验并组装成正文，老客户端直接传 content 的写法仍然兼容。
+   */
   router.post('/api/feedback', async (ctx) => {
     const user = requireUser(ctx.user);
     enforce(`feedback:${user.id}`, 5, 60 * 60 * 1000, '反馈提交太频繁，请稍后再试');
 
     const body = await ctx.json();
-    const content = text(body.content, { field: '反馈内容', min: 5, max: 1000 });
     const source = FEEDBACK_SOURCES.includes(String(body.source)) ? String(body.source) : 'web';
-    const appVersion = text(body.app_version, { field: '软件版本', max: 40, optional: true }) || '';
 
+    // 老客户端兼容：直接给整段 content
+    if (body.description === undefined && body.content !== undefined) {
+      const content = text(body.content, { field: '反馈内容', min: 5, max: 1000 });
+      const type = FEEDBACK_TYPES.includes(String(body.type)) ? String(body.type) : 'bug';
+      const appVersion = text(body.app_version, { field: '软件版本', max: 40, optional: true }) || '';
+      const info = db
+        .prepare(
+          `INSERT INTO feedbacks (user_id, type, source, content, app_version, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .run(user.id, type, source, content, appVersion, now());
+      return { ok: true, id: Number(info.lastInsertRowid) };
+    }
+
+    const type = FEEDBACK_TYPES.includes(String(body.type)) ? String(body.type) : 'bug';
+
+    if (type === 'feature') {
+      const fields = {
+        description: text(body.description, { field: '建议内容', min: 5, max: 800 }),
+        scene: text(body.scene, { field: '使用场景', max: 800, optional: true }) || '',
+      };
+      const appVersion = text(body.app_version, { field: '软件版本', max: 40, optional: true }) || '';
+      const content = assembleContent(type, fields);
+      const info = db
+        .prepare(
+          `INSERT INTO feedbacks (user_id, type, source, content, app_version, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .run(user.id, type, source, content, appVersion, now());
+      return { ok: true, id: Number(info.lastInsertRowid) };
+    }
+
+    // 问题反馈：字段与 GitHub Issue 模板一致
+    const appVersion = text(body.app_version, { field: '启动器版本', min: 1, max: 40 });
+    const platform = FEEDBACK_PLATFORMS.includes(String(body.platform)) ? String(body.platform) : null;
+    if (!platform) throw badRequest('请选择运行平台');
+    const fields = {
+      appVersion,
+      platform,
+      osVersion: text(body.os_version, { field: '系统版本', max: 100, optional: true }) || '',
+      description: text(body.description, { field: '问题描述', min: 5, max: 800 }),
+      steps: text(body.steps, { field: '复现步骤', min: 2, max: 800 }),
+      expected: text(body.expected, { field: '期望结果', max: 400, optional: true }) || '',
+      actual: text(body.actual, { field: '实际结果', max: 400, optional: true }) || '',
+      logs: text(body.logs, { field: '日志', max: 2000, optional: true }) || '',
+      screenshots: text(body.screenshots, { field: '截图 / 录屏', max: 500, optional: true }) || '',
+    };
+
+    const content = assembleContent(type, fields);
     const info = db
       .prepare(
-        `INSERT INTO feedbacks (user_id, source, content, app_version, created_at)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO feedbacks (user_id, type, source, content, app_version, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(user.id, source, content, appVersion, now());
+      .run(user.id, type, source, content, appVersion, now());
     return { ok: true, id: Number(info.lastInsertRowid) };
   });
 
-  /** 我的反馈列表（含处理状态与管理员回复） */
+  /** 我的反馈列表（含类型、处理状态与管理员回复） */
   router.get('/api/me/feedbacks', async (ctx) => {
     const user = requireUser(ctx.user);
     const { page, perPage, offset } = paginate(ctx.url.searchParams, 20);
@@ -36,7 +116,7 @@ export default function register(router) {
     const total = db.prepare('SELECT COUNT(*) AS n FROM feedbacks WHERE user_id = ?').get(user.id).n;
     const rows = db
       .prepare(
-        `SELECT id, source, content, app_version, status, reply, handled_at, created_at
+        `SELECT id, type, source, content, app_version, status, reply, handled_at, created_at
            FROM feedbacks
           WHERE user_id = ?
           ORDER BY created_at DESC, id DESC
@@ -63,7 +143,7 @@ export default function register(router) {
     const total = db.prepare(`SELECT COUNT(*) AS n FROM feedbacks f ${where}`).get(...params).n;
     const rows = db
       .prepare(
-        `SELECT f.id, f.source, f.content, f.app_version, f.status, f.reply,
+        `SELECT f.id, f.type, f.source, f.content, f.app_version, f.status, f.reply,
                 f.handled_by, f.handled_at, f.created_at,
                 u.id AS user_id, u.username AS user_username, u.display_name AS user_display_name,
                 a.username AS handled_by_name
@@ -80,6 +160,7 @@ export default function register(router) {
       status,
       feedbacks: rows.map((row) => ({
         id: row.id,
+        type: row.type,
         source: row.source,
         content: row.content,
         app_version: row.app_version,

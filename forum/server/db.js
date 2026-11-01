@@ -48,6 +48,18 @@ export function migrate() {
   if (addedQuizPassed) console.log('[论坛] 数据库已升级：users 增加 quiz_passed_at（入站答题通过时间）');
   const addedQuizScore = ensureColumn('users', 'quiz_best_score', 'INTEGER NOT NULL DEFAULT -1');
   if (addedQuizScore) console.log('[论坛] 数据库已升级：users 增加 quiz_best_score（答题历史最高分）');
+
+  // 用户反馈区分类型（问题反馈 / 功能建议）
+  const addedFeedbackType = ensureColumn('feedbacks', 'type', "TEXT NOT NULL DEFAULT 'bug'");
+  if (addedFeedbackType) console.log('[论坛] 数据库已升级：feedbacks 增加 type（反馈类型）');
+
+  // 私信支持图片 / 回复引用 / 撤回占位
+  const addedDmKind = ensureColumn('direct_messages', 'kind', "TEXT NOT NULL DEFAULT 'text'");
+  if (addedDmKind) console.log('[论坛] 数据库已升级：direct_messages 增加 kind（消息类型）');
+  const addedDmImage = ensureColumn('direct_messages', 'image', "TEXT NOT NULL DEFAULT ''");
+  if (addedDmImage) console.log('[论坛] 数据库已升级：direct_messages 增加 image（图片地址）');
+  const addedDmReply = ensureColumn('direct_messages', 'reply_to', 'INTEGER NOT NULL DEFAULT 0');
+  if (addedDmReply) console.log('[论坛] 数据库已升级：direct_messages 增加 reply_to（引用的消息）');
 }
 
 migrate();

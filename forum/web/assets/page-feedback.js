@@ -3,11 +3,22 @@ BB.boot(async () => {
   const loginCard = document.getElementById('feedbackLoginCard');
   const mineHead = document.getElementById('mineHead');
   const mineList = document.getElementById('mineList');
-  const contentEl = document.getElementById('feedbackContent');
-  const countEl = document.getElementById('feedbackCount');
   const errorEl = document.getElementById('feedbackError');
   const submitBtn = document.getElementById('feedbackSubmit');
   const refreshBtn = document.getElementById('feedbackRefresh');
+
+  const appVersionEl = document.getElementById('feedbackAppVersion');
+  const platformEl = document.getElementById('feedbackPlatform');
+  const osVersionEl = document.getElementById('feedbackOsVersion');
+  const descEl = document.getElementById('feedbackDesc');
+  const descLabel = document.getElementById('descLabel');
+  const stepsEl = document.getElementById('feedbackSteps');
+  const expectedEl = document.getElementById('feedbackExpected');
+  const actualEl = document.getElementById('feedbackActual');
+  const logsEl = document.getElementById('feedbackLogs');
+  const screenshotsEl = document.getElementById('feedbackScreenshots');
+  const sceneFieldEl = document.getElementById('fieldScene');
+  const sceneEl = document.getElementById('feedbackScene');
 
   const statusChip = (status) =>
     status === 'resolved'
@@ -16,9 +27,14 @@ BB.boot(async () => {
         ? '<span class="chip chip-grey">已忽略</span>'
         : '<span class="chip chip-warn">待处理</span>';
 
+  const typeText = (type) => (type === 'feature' ? '功能建议' : '问题反馈');
   const sourceText = (item) => (item.source === 'launcher' ? '启动器' : '网页');
 
-  const escapeMultiline = (value) => BB.esc(value).replace(/\n/g, '<br>');
+  // 正文里的 GitHub 模板标题（### xxx）渲染成加粗小标题
+  const escapeMultiline = (value) =>
+    BB.esc(value)
+      .replace(/^### (.+)$/gm, '<b>$1</b>')
+      .replace(/\n/g, '<br>');
 
   function renderMine(data) {
     document.getElementById('pager').innerHTML = BB.pagination(
@@ -31,6 +47,7 @@ BB.boot(async () => {
           .map(
             (item) => `<div class="feedback-row">
             <div class="feedback-head">
+              <span class="chip chip-grey">${typeText(item.type)}</span>
               ${statusChip(item.status)}
               <span class="light small">来自${sourceText(item)}${item.app_version ? ` · v${BB.esc(item.app_version)}` : ''}</span>
               <span class="notif-time">${BB.time(item.created_at)}</span>
@@ -58,42 +75,6 @@ BB.boot(async () => {
     }
   }
 
-  // ── 反馈模板：点一下套格式，照着填就行 ──
-  const TEMPLATES = {
-    bug: [
-      '【问题】一句话说清遇到了什么：',
-      '',
-      '【复现步骤】',
-      '1. ',
-      '2. ',
-      '',
-      '【期望】正常应该是：',
-      '',
-      '【实际】结果是：',
-      '',
-      '【环境】系统与实例版本（如 Windows 11 + 1.20.1）：',
-    ].join('\n'),
-    feature: [
-      '【建议】想要的功能：',
-      '',
-      '【场景】什么时候会用到、能解决什么问题：',
-      '',
-      '【参考】其他启动器或软件有没有类似做法：',
-    ].join('\n'),
-  };
-
-  document.querySelectorAll('#feedbackTpl [data-tpl]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const tpl = TEMPLATES[button.dataset.tpl];
-      if (!tpl) return;
-      const current = contentEl.value.trim();
-      if (current && current !== tpl && !confirm('套用模板会替换当前已填写的内容，确定吗？')) return;
-      contentEl.value = tpl;
-      updateCount();
-      contentEl.focus();
-    });
-  });
-
   // ── 未登录：只给登录引导 ──
   if (!BB.state.me) {
     loginCard.style.display = '';
@@ -106,10 +87,30 @@ BB.boot(async () => {
   formCard.style.display = '';
   mineHead.style.display = '';
 
-  const updateCount = () => {
-    countEl.textContent = String([...contentEl.value].length);
-  };
-  contentEl.addEventListener('input', updateCount);
+  let currentType = 'bug';
+
+  /** 按类型显示对应字段：问题反馈与 GitHub Issue 模板一致，功能建议只要建议内容 */
+  function applyType(type) {
+    currentType = type;
+    const isBug = type === 'bug';
+    descLabel.textContent = isBug ? '问题描述' : '建议内容';
+    descEl.placeholder = isBug
+      ? '说说发生了什么，涉及哪个页面、哪个实例，越具体越好。'
+      : '想要什么功能，一句话说清。';
+    for (const id of ['fieldAppVersion', 'fieldPlatform', 'fieldOsVersion', 'fieldSteps', 'fieldExpected', 'fieldActual', 'fieldLogs', 'fieldScreenshots']) {
+      document.getElementById(id).style.display = isBug ? '' : 'none';
+    }
+    sceneFieldEl.style.display = isBug ? 'none' : '';
+    document.querySelectorAll('#feedbackType [data-type]').forEach((button) => {
+      const active = button.dataset.type === type;
+      button.classList.toggle('btn-primary', active);
+      button.classList.toggle('btn-ghost', !active);
+    });
+  }
+
+  document.querySelectorAll('#feedbackType [data-type]').forEach((button) => {
+    button.addEventListener('click', () => applyType(button.dataset.type));
+  });
 
   const showError = (message) => {
     errorEl.textContent = message;
@@ -120,18 +121,48 @@ BB.boot(async () => {
   };
 
   submitBtn.addEventListener('click', async () => {
-    const content = contentEl.value.trim();
-    if ([...content].length < 5) {
-      showError('反馈内容至少 5 个字');
+    const description = descEl.value.trim();
+    if ([...description].length < 5) {
+      showError(currentType === 'bug' ? '问题描述至少 5 个字' : '建议内容至少 5 个字');
+      descEl.focus();
       return;
     }
+
+    const body = { type: currentType, description, source: 'web' };
+    if (currentType === 'bug') {
+      const appVersion = appVersionEl.value.trim();
+      if (!appVersion) {
+        showError('启动器版本不能为空：在「设置 → 关于」里能看到');
+        appVersionEl.focus();
+        return;
+      }
+      body.app_version = appVersion;
+      body.platform = platformEl.value;
+      body.os_version = osVersionEl.value.trim();
+      const steps = stepsEl.value.trim();
+      if (!steps) {
+        showError('复现步骤不能为空：按顺序写下你点过哪些地方');
+        stepsEl.focus();
+        return;
+      }
+      body.steps = steps;
+      body.expected = expectedEl.value.trim();
+      body.actual = actualEl.value.trim();
+      body.logs = logsEl.value.trim();
+      body.screenshots = screenshotsEl.value.trim();
+    } else {
+      body.scene = sceneEl.value.trim();
+    }
+
     submitBtn.disabled = true;
     submitBtn.textContent = '提交中…';
     hideError();
     try {
-      await BB.api('/api/feedback', { method: 'POST', body: { content, source: 'web' } });
-      contentEl.value = '';
-      updateCount();
+      await BB.api('/api/feedback', { method: 'POST', body });
+      for (const el of [appVersionEl, osVersionEl, descEl, expectedEl, actualEl, logsEl, screenshotsEl, sceneEl]) {
+        el.value = '';
+      }
+      stepsEl.value = '1. \n2. \n3. ';
       BB.toast('反馈已提交，感谢你的反馈！', 'ok');
       await loadMine(1);
     } catch (error) {

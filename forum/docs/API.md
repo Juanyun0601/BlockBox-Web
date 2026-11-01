@@ -248,11 +248,35 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ### POST /api/feedback · 提交反馈（需登录）
 
+问题反馈（`type = bug`）字段与 GitHub Issue 模板（`.github/ISSUE_TEMPLATE/bug_report.yml`）一致，由服务端校验并组装成 `### 标题` 格式的正文：
+
 ```json
-{ "content": "启动 1.20.1 实例时闪退……", "source": "web", "app_version": "" }
+{
+  "type": "bug",
+  "app_version": "beta6",
+  "platform": "Windows（x64）",
+  "os_version": "Windows 11 23H2",
+  "description": "启动 1.20.1 实例时闪退",
+  "steps": "1. 选择实例\n2. 点启动",
+  "expected": "正常进入游戏",
+  "actual": "闪退回到主页",
+  "logs": "（可选）导出日志的关键行",
+  "screenshots": "（可选）截图链接或说明",
+  "source": "web"
+}
 ```
 
-- `content` 5–1000 字；`source` 为 `web`（网页）或 `launcher`（启动器），启动器提交时附带 `app_version`
+- 必填：`app_version`（启动器版本，1–40 字）、`platform`（运行平台，五选一：Windows（x64）/ Windows（ARM64）/ Android / 鸿蒙 HarmonyOS / 其他）、`description`（问题描述，5–800 字）、`steps`（复现步骤，2–800 字）
+- 选填：`os_version`（系统版本 ≤100）、`expected` / `actual`（期望 / 实际结果 ≤400）、`logs`（日志 ≤2000）、`screenshots`（截图 / 录屏 ≤500）
+
+功能建议（`type = feature`）只需 `description`（建议内容，5–800 字），可选 `scene`（使用场景 ≤800 字）：
+
+```json
+{ "type": "feature", "description": "希望能批量导出截图", "scene": "做整合包宣传时" }
+```
+
+- 兼容旧写法：只传 `content`（5–1000 字）也可以
+- `source` 为 `web`（网页）或 `launcher`（启动器）
 - 限流：每账号每小时 5 条
 
 返回 `{ "ok": true, "id": 12 }`。
@@ -261,13 +285,14 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ```json
 {
-  "feedbacks": [ { "id": 12, "source": "launcher", "content": "…", "app_version": "beta7",
+  "feedbacks": [ { "id": 12, "type": "bug", "source": "launcher", "content": "【问题】…\n\n【复现步骤】…",
+                   "app_version": "beta7",
                    "status": "open", "reply": "", "handled_at": 0, "created_at": 1793600000 } ],
   "pagination": { "page": 1, "per_page": 20, "total": 1, "pages": 1 }
 }
 ```
 
-`status`：`open`（待处理）/ `resolved`（已处理）/ `ignored`（已忽略）；管理员回复在 `reply`。
+`type`：`bug`（问题反馈）/ `feature`（功能建议）；`status`：`open`（待处理）/ `resolved`（已处理）/ `ignored`（已忽略）；管理员回复在 `reply`。
 
 ### GET /api/admin/feedbacks?status=open&page=1 · 反馈列表（管理员）
 

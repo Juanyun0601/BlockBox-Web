@@ -59,7 +59,7 @@ export function listFriends(meId) {
   const lastMap = new Map();
   const lastRows = db
     .prepare(
-      `SELECT d.body, d.created_at,
+      `SELECT d.body, d.kind, d.created_at,
               CASE WHEN d.sender_id = ? THEN 1 ELSE 0 END AS mine,
               CASE WHEN d.sender_id = ? THEN d.peer_id ELSE d.sender_id END AS friend_id
          FROM direct_messages d
@@ -71,7 +71,7 @@ export function listFriends(meId) {
     )
     .all(meId, meId, meId, meId, meId);
   for (const row of lastRows) {
-    lastMap.set(row.friend_id, { body: row.body, created_at: row.created_at, mine: !!row.mine });
+    lastMap.set(row.friend_id, { body: row.body, kind: row.kind, created_at: row.created_at, mine: !!row.mine });
   }
 
   /** 每个好友发来的未读数 */

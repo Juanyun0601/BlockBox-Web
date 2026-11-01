@@ -383,6 +383,17 @@ BB.boot(async () => {
     return '<span class="chip chip-warn">待处理</span>';
   }
 
+  function feedbackTypeChip(type) {
+    return type === 'feature'
+      ? '<span class="chip chip-grey">功能建议</span>'
+      : '<span class="chip chip-danger">问题反馈</span>';
+  }
+
+  // 反馈正文里的 GitHub 模板标题（### xxx）渲染成加粗
+  function feedbackContentHtml(content) {
+    return BB.esc(content).replace(/^### (.+)$/gm, '<b>$1</b>');
+  }
+
   function feedbackSource(item) {
     return item.source === 'launcher'
       ? `启动器${item.app_version ? ` · v${BB.esc(item.app_version)}` : ''}`
@@ -435,10 +446,11 @@ BB.boot(async () => {
       <div class="feedback-admin-row">
         <div class="feedback-admin-main">
           <div>
+            ${feedbackTypeChip(item.type)}
             ${feedbackChip(item.status)}
             <span class="chip chip-grey">${BB.esc(feedbackSource(item))}</span>
           </div>
-          <div class="feedback-admin-content">${BB.esc(item.content)}</div>
+          <div class="feedback-admin-content">${feedbackContentHtml(item.content)}</div>
           <div class="feedback-admin-meta">
             ${item.user ? `${BB.esc(item.user.display_name || item.user.username)}` : '已注销用户'}
             · ${BB.datetime(item.created_at)}
