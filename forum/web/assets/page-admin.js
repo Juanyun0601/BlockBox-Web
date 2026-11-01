@@ -24,18 +24,23 @@ BB.boot(async () => {
   let adminUsers = [];
   let feedbackData = null;
   let feedbackStatus = 'open';
+  let visitData = null;
+  let visitDays = 30;
 
   async function loadOverview() {
-    const [data, reportData, tagResult, feedbackResult] = await Promise.all([
+    const [data, reportData, tagResult, feedbackResult, visitResult] = await Promise.all([
       BB.api('/api/admin/overview'),
       BB.api('/api/admin/reports?status=open'),
       BB.api('/api/admin/tags'),
       BB.api(`/api/admin/feedbacks?status=${feedbackStatus}&per_page=50`),
+      // 访问数据单独容错：接口出问题时只是这块空着，不影响其余后台功能
+      BB.api(`/api/admin/visits?days=${visitDays}`).catch(() => null),
     ]);
     overview = data;
     reports = reportData;
     tagData = tagResult;
     feedbackData = feedbackResult;
+    visitData = visitResult;
     render();
   }
 
@@ -54,6 +59,27 @@ BB.boot(async () => {
         ${statCard(stats.posts, '回复')}
         ${statCard(stats.online, '15 分钟在线')}
       </div>
+
+      <section class="card admin-section">
+        <div class="visit-head">
+          <h2>访问数据</h2>
+          <div class="visit-range" id="visitRange"></div>
+        </div>
+        <div class="visit-stats" id="visitStats"></div>
+        <p class="small muted visit-note" id="visitNote"></p>
+        <div class="visit-chart-box">
+          <div class="visit-chart-head">
+            <b>浏览趋势</b>
+            <span class="visit-legend"><i class="visit-dot visit-dot-uv"></i>访客 <i class="visit-dot visit-dot-pv"></i>浏览</span>
+          </div>
+          <div class="visit-chart" id="visitChart"></div>
+          <div class="visit-axis" id="visitAxis"></div>
+        </div>
+        <div class="visit-chart-head" style="margin-top: 18px"><b>今日 24 小时</b></div>
+        <div class="visit-hours" id="visitHours"></div>
+        <div class="visit-chart-head" style="margin-top: 18px"><b>访问最多的页面</b></div>
+        <div id="visitPages"></div>
+      </section>
 
       <section class="card admin-section">
         <h2>板块管理</h2>
@@ -126,6 +152,7 @@ BB.boot(async () => {
     renderReports();
     renderFeedback();
     renderTags();
+    renderVisits();
 
     document.getElementById('addBoardBtn').addEventListener('click', addBoard);
     document.getElementById('mergeBtn').addEventListener('click', mergeTags);
@@ -139,6 +166,130 @@ BB.boot(async () => {
         renderUsers();
       }
     });
+  }
+
+  // ---------------- 访问数据 ----------------
+
+  const VISIT_RANGES = [
+    [7, '近 7 天'],
+    [30, '近 30 天'],
+    [90, '近 90 天'],
+  ];
+
+  /** 较昨日涨跌：昨天没有数据时不显示百分比，免得出现 +∞ */
+  function visitDelta(value, base) {
+    if (!base) return '';
+    const pct = Math.round(((value - base) / base) * 100);
+    return pct ? `较昨日 ${pct > 0 ? '+' : ''}${pct}%` : '与昨日持平';
+  }
+
+  function visitStatCard(value, label, note = '') {
+    return `<div class="visit-stat"><b>${value}</b><span>${label}</span>${note ? `<em>${note}</em>` : ''}</div>`;
+  }
+
+  function renderVisits() {
+    if (!visitData) {
+      const note = document.getElementById('visitNote');
+      if (note) note.textContent = '访问数据加载失败，刷新页面再试一次。';
+      return;
+    }
+    const stats = visitData.summary;
+    const series = visitData.series || [];
+    const hours = visitData.hours || [];
+    const pages = visitData.pages || [];
+    const empty = !stats.total.pv;
+
+    // 天数切换：7 / 30 / 90
+    const range = document.getElementById('visitRange');
+    range.innerHTML = VISIT_RANGES.map(
+      ([days, label]) =>
+        `<button class="btn btn-sm ${days === visitDays ? 'btn-primary' : 'btn-ghost'}" data-vdays="${days}">${label}</button>`,
+    ).join('');
+    range.querySelectorAll('[data-vdays]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const days = Number(button.dataset.vdays);
+        if (days === visitDays) return;
+        button.disabled = true;
+        try {
+          visitData = await BB.api(`/api/admin/visits?days=${days}`);
+          visitDays = days;
+          renderVisits();
+        } catch (error) {
+          button.disabled = false;
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+
+    document.getElementById('visitNote').textContent = empty
+      ? '还没有访问记录：有人打开论坛任意页面后就会自动开始统计。'
+      : `只统计真实打开的页面，接口请求、图片、管理后台和搜索引擎爬虫都不算；访问明细保留 ${visitData.retention_days} 天。`;
+
+    const peakNote = stats.peak ? `单日最高 ${BB.num(stats.peak.pv)}（${stats.peak.day.slice(5).replace('-', '/')}）` : '';
+    document.getElementById('visitStats').innerHTML = [
+      visitStatCard(BB.num(stats.today.pv), '今日浏览', visitDelta(stats.today.pv, stats.yesterday.pv)),
+      visitStatCard(BB.num(stats.today.uv), '今日访客（日活）', `首次到访 ${BB.num(stats.today.new_visitors)}`),
+      visitStatCard(BB.num(stats.week.uv), '近 7 天访客', `浏览 ${BB.num(stats.week.pv)}`),
+      visitStatCard(BB.num(stats.month.uv), '近 30 天活跃（月活）', `浏览 ${BB.num(stats.month.pv)}`),
+      visitStatCard(BB.num(stats.total.pv), '累计浏览', peakNote),
+      visitStatCard(
+        BB.num(stats.total.uv),
+        '累计访客',
+        stats.total.last_seen_at ? `最近 ${BB.time(stats.total.last_seen_at)}` : '',
+      ),
+    ].join('');
+
+    // 趋势：每天的浏览（浅色柱）里有多少是访客（深色柱），同一根柱子里能直接看出比例
+    const maxPv = Math.max(1, ...series.map((item) => item.pv));
+    document.getElementById('visitChart').innerHTML = series
+      .map((item) => {
+        const pvHeight = item.pv ? Math.max(2, Math.round((item.pv / maxPv) * 100)) : 0;
+        const uvHeight = item.uv ? Math.max(2, Math.round((item.uv / maxPv) * 100)) : 0;
+        return `<div class="visit-bar-col" title="${item.day} · 浏览 ${item.pv} · 访客 ${item.uv}">
+          <div class="visit-bar-track">
+            <i class="visit-bar-pv" style="height: ${pvHeight}%"></i>
+            <i class="visit-bar-uv" style="height: ${uvHeight}%"></i>
+          </div>
+        </div>`;
+      })
+      .join('');
+
+    const labels = [series[0], series[Math.floor((series.length - 1) / 2)], series[series.length - 1]].filter(Boolean);
+    document.getElementById('visitAxis').innerHTML = labels
+      .map((item) => `<span>${item.day.slice(5).replace('-', '/')}</span>`)
+      .join('');
+
+    // 今日 24 小时：每 6 小时标一个刻度
+    const maxHourPv = Math.max(1, ...hours.map((item) => item.pv));
+    document.getElementById('visitHours').innerHTML = hours
+      .map((item) => {
+        const height = item.pv ? Math.max(2, Math.round((item.pv / maxHourPv) * 100)) : 0;
+        return `<div class="visit-hour" title="${item.hour}:00 – ${item.hour + 1}:00 · 浏览 ${item.pv} · 访客 ${item.uv}">
+          <div class="visit-hour-track"><i style="height: ${height}%"></i></div>
+          <em>${item.hour % 6 === 0 ? item.hour : ''}</em>
+        </div>`;
+      })
+      .join('');
+
+    const pagesHost = document.getElementById('visitPages');
+    if (!pages.length) {
+      pagesHost.innerHTML = '<div class="empty">这段时间还没有访问记录。</div>';
+      return;
+    }
+    const maxPagePv = Math.max(1, ...pages.map((item) => item.pv));
+    pagesHost.innerHTML = `<table class="table">
+      <thead><tr><th>页面</th><th>浏览</th><th>访客</th><th>占比</th></tr></thead>
+      <tbody>${pages
+        .map(
+          (item) => `<tr>
+            <td>${BB.esc(item.label)}<div class="small muted mono">${BB.esc(item.path)}</div></td>
+            <td class="small">${BB.num(item.pv)}</td>
+            <td class="small">${BB.num(item.uv)}</td>
+            <td class="small"><span class="visit-share"><i style="width: ${Math.round((item.pv / maxPagePv) * 100)}%"></i></span></td>
+          </tr>`,
+        )
+        .join('')}</tbody>
+    </table>`;
   }
 
   function renderBoards() {

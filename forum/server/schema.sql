@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
   post_count    INTEGER NOT NULL DEFAULT 0,
   quiz_passed_at  INTEGER NOT NULL DEFAULT 0,
   quiz_best_score INTEGER NOT NULL DEFAULT -1,
+  email_verified_at INTEGER NOT NULL DEFAULT 0,
   created_at    INTEGER NOT NULL,
   last_seen_at  INTEGER NOT NULL DEFAULT 0
 );
@@ -44,6 +45,15 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+-- 邮箱验证码（一封邮箱同时只有一份有效码，重发即覆盖；只存哈希不存明文）
+CREATE TABLE IF NOT EXISTS email_codes (
+  email      TEXT PRIMARY KEY,
+  code_hash  TEXT    NOT NULL,
+  expires_at INTEGER NOT NULL,
+  attempts   INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
 
 -- 板块 ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS boards (
@@ -254,6 +264,31 @@ CREATE TABLE IF NOT EXISTS feedbacks (
 
 CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedbacks_user ON feedbacks(user_id, created_at DESC);
+
+-- 联机大厅（启动器把本机开好的房间发布到这里，网页端只读邀请码）-----------
+-- heartbeat_at 是最近一次心跳时间，超过 2 分钟没心跳就当作房间已关闭；
+-- 客户端在房间开着的时候每 40 秒续一次期，离开房间就主动删掉这一行。
+CREATE TABLE IF NOT EXISTS lobby_rooms (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title        TEXT    NOT NULL,
+  description  TEXT    NOT NULL DEFAULT '',
+  core         TEXT    NOT NULL DEFAULT 'custom',
+  invite_code  TEXT    NOT NULL DEFAULT '',
+  address      TEXT    NOT NULL DEFAULT '',
+  game_version TEXT    NOT NULL DEFAULT '',
+  loader       TEXT    NOT NULL DEFAULT '',
+  mods         TEXT    NOT NULL DEFAULT '[]',
+  max_players  INTEGER NOT NULL DEFAULT 8,
+  status       TEXT    NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'playing', 'full')),
+  join_count   INTEGER NOT NULL DEFAULT 0,
+  heartbeat_at INTEGER NOT NULL,
+  created_at   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lobby_rooms_owner ON lobby_rooms(owner_id);
+CREATE INDEX IF NOT EXISTS idx_lobby_rooms_active ON lobby_rooms(heartbeat_at DESC);
 
 -- 访问记录（页面浏览明细，管理后台的访问量 / 日活 / 月活都从这里算）---
 -- 只记真实用户打开的 HTML 页面：接口请求、图片等静态资源和爬虫都不记。

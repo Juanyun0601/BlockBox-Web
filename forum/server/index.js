@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { config, ROOT_DIR } from './config.js';
 import { db, purgeExpiredSessions, now } from './db.js';
+import { purgeExpiredEmailCodes } from './lib/email-code.js';
 import {
   HttpError,
   applySecurityHeaders,
@@ -26,6 +27,7 @@ import registerCommunity from './routes/community.js';
 import registerFriends from './routes/friends.js';
 import registerFeedback from './routes/feedback.js';
 import registerQuiz from './routes/quiz.js';
+import registerLobby from './routes/lobby.js';
 
 const VERSION = '0.1.0';
 
@@ -66,7 +68,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerFeedback, registerQuiz]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerFeedback, registerQuiz, registerLobby]) {
   register(router);
 }
 
@@ -238,6 +240,8 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve
 if (isMain) {
   bootstrapAdmin();
   purgeExpiredSessions();
+  purgeOldVisits();
+  purgeExpiredEmailCodes();
 
   const server = createServer();
   server.on('error', (error) => {
@@ -258,7 +262,11 @@ if (isMain) {
     console.log(`[论坛] 页面目录：${config.webDir}`);
   });
 
-  const timer = setInterval(purgeExpiredSessions, 6 * 60 * 60 * 1000);
+  const timer = setInterval(() => {
+    purgeExpiredSessions();
+    purgeOldVisits();
+    purgeExpiredEmailCodes();
+  }, 6 * 60 * 60 * 1000);
   timer.unref();
 
   const shutdown = (signal) => {

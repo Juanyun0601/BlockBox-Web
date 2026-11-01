@@ -384,6 +384,7 @@
           <nav class="nav-links" aria-label="主导航">
             <a href="/" data-nav="home"${is('home')}>首页</a>
             <a href="/#boards" data-nav="boards"${is('boards')}>板块</a>
+            <a href="/lobby.html" data-nav="lobby"${is('lobby')}>联机大厅</a>
             <a href="/search.html" data-nav="search"${is('search')}>搜索</a>
             ${me ? `<a href="/friends.html" data-nav="friends" id="navFriendLink"${is('friends')}>好友${friendBadge()}</a>` : ''}
             ${BB.isAdmin() ? `<a href="/admin.html" data-nav="admin"${is('admin')}>管理</a>` : ''}

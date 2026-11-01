@@ -44,7 +44,7 @@ const SESSION_USER_SQL = `
   SELECT u.id, u.username, u.display_name, u.email, u.bio, u.avatar, u.cover, u.role, u.status,
          u.muted_until, u.mute_scope, u.mute_reason,
          u.thread_count, u.post_count, u.quiz_passed_at, u.quiz_best_score,
-         u.created_at, u.last_seen_at,
+         u.email_verified_at, u.created_at, u.last_seen_at,
          s.expires_at
     FROM sessions s
     JOIN users u ON u.id = s.user_id
@@ -213,6 +213,7 @@ export function publicUser(row, { self = false } = {}) {
   };
   if (self || isAdminRole(row.role)) {
     data.email = row.email || '';
+    data.email_verified = !!row.email_verified_at;
     data.mute_scope = row.mute_scope || 'all';
     data.mute_reason = row.mute_reason || '';
     data.mute_by = row.mute_by || '';

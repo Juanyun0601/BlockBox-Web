@@ -2,6 +2,7 @@ import { db, now, paginate, refreshBoardCounts, transaction } from '../db.js';
 import { badRequest, forbidden, notFound } from '../lib/http.js';
 import { muteScopeList, normalizeMuteScope, publicUser, requireAdmin, requireHeadAdmin } from '../lib/auth.js';
 import { siteStats } from '../lib/queries.js';
+import { visitStats } from '../lib/visits.js';
 
 export default function register(router) {
   /** 到期的禁言自动恢复正常（永久禁言 muted_until 为 0，不动） */
@@ -56,6 +57,13 @@ export default function register(router) {
       recent_threads: recentThreads,
       recent_posts: reports,
     };
+  });
+
+  // ---------------- 访问数据 ----------------
+
+  router.get('/api/admin/visits', async (ctx) => {
+    requireAdmin(ctx.user);
+    return visitStats({ days: Number(ctx.url.searchParams.get('days') || 30) });
   });
 
   router.get('/api/admin/users', async (ctx) => {

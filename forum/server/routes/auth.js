@@ -2,6 +2,8 @@ import { db, now } from '../db.js';
 import { config } from '../config.js';
 import { badRequest, readRawBody } from '../lib/http.js';
 import { enforce } from '../lib/rate-limit.js';
+import { EMAIL_CODE_TTL, consumeEmailCode, issueEmailCode } from '../lib/email-code.js';
+import { sendMail } from '../lib/mail.js';
 import { removeUpload, saveImage } from '../lib/images.js';
 import { unreadNotifications } from '../lib/notify.js';
 import { socialUnread } from '../lib/social.js';
@@ -101,10 +103,15 @@ export default function register(router) {
     const displayName = text(body.display_name, { field: '昵称', max: 24, optional: true });
     const bio = text(body.bio, { field: '个人简介', max: 300, optional: true });
     const mail = emailField(body.email);
-    db.prepare('UPDATE users SET display_name = ?, bio = ?, email = ? WHERE id = ?').run(
+    // 换了邮箱就视为未验证；邮箱没变（或都是空）时保留验证记录
+    const current = db.prepare('SELECT email, email_verified_at FROM users WHERE id = ?').get(user.id);
+    const keepVerified =
+      !!current?.email_verified_at && !!current.email && current.email.toLowerCase() === mail.toLowerCase();
+    db.prepare('UPDATE users SET display_name = ?, bio = ?, email = ?, email_verified_at = ? WHERE id = ?').run(
       displayName,
       bio,
       mail,
+      keepVerified ? current.email_verified_at : 0,
       user.id,
     );
     return { user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id), { self: true }) };
@@ -122,6 +129,50 @@ export default function register(router) {
     // 改完密码把其他设备踢下线
     db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(user.id, ctx.token || '');
     return { ok: true };
+  });
+
+  // 邮箱验证码 · 第一步：发送验证码到填写的邮箱（10 分钟内有效）
+  router.post('/api/me/email/code', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`email-code-60s:${user.id}`, 1, 60 * 1000, '发送太频繁');
+    enforce(`email-code-hour:${user.id}`, 5, 60 * 60 * 1000, '发送太频繁');
+    enforce(`email-code-ip:${ctx.ip}`, 10, 60 * 60 * 1000, '发送太频繁');
+
+    const body = await ctx.json();
+    const mail = emailField(body.email);
+    if (!mail) throw badRequest('请先填写邮箱地址', 'email_required');
+    if (user.email_verified_at && user.email && user.email.toLowerCase() === mail.toLowerCase()) {
+      throw badRequest('这个邮箱已经验证过了', 'email_already_verified');
+    }
+
+    const { code, expiresIn } = issueEmailCode(mail);
+    await sendMail({
+      to: mail,
+      subject: `【${config.siteName}】邮箱验证码`,
+      text:
+        `你正在${config.siteName}验证邮箱地址。\n\n` +
+        `验证码：${code}\n\n` +
+        `${Math.round(EMAIL_CODE_TTL / 60)} 分钟内有效。请勿把验证码告诉任何人。\n` +
+        `如果不是你本人的操作，请忽略这封邮件。`,
+    });
+    return { ok: true, expires_in: expiresIn };
+  });
+
+  // 邮箱验证码 · 第二步：校验验证码，通过后绑定邮箱并标记已验证
+  router.post('/api/me/email/verify', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`email-verify:${user.id}`, 10, 60 * 60 * 1000, '验证尝试太频繁');
+
+    const body = await ctx.json();
+    const mail = emailField(body.email);
+    if (!mail) throw badRequest('请先填写邮箱地址', 'email_required');
+
+    const result = consumeEmailCode(mail, String(body.code || ''));
+    if (!result.ok) throw badRequest(result.message, 'email_code_invalid');
+
+    db.prepare('UPDATE users SET email = ?, email_verified_at = ? WHERE id = ?').run(mail, now(), user.id);
+    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+    return { user: publicUser(row, { self: true }) };
   });
 
   router.post('/api/me/avatar', async (ctx) => {

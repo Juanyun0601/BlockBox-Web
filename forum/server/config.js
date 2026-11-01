@@ -81,4 +81,15 @@ export const config = {
 
   adminBootstrapUser: (env.ADMIN_BOOTSTRAP_USER || '').trim(),
   adminBootstrapPass: env.ADMIN_BOOTSTRAP_PASS || '',
+
+  // 邮件发送（邮箱验证码用）：SMTP_HOST 留空表示不启用，相关接口会明确提示未配置。
+  // 465 端口用隐式 TLS（SMTP_SECURE=1）；587 端口配 SMTP_SECURE=0，会自动升级 STARTTLS
+  smtpHost: (env.SMTP_HOST || '').trim(),
+  smtpPort: num(env.SMTP_PORT, 465),
+  smtpSecure: bool(env.SMTP_SECURE, true),
+  smtpUser: (env.SMTP_USER || '').trim(),
+  smtpPass: env.SMTP_PASS || '',
+  mailFrom: (env.MAIL_FROM || '').trim(),
+  // 外部 SMTP 服务器用自签名证书时设 1（连本机 Postfix 不用配，自动信任）
+  smtpAllowSelfSigned: bool(env.SMTP_ALLOW_SELF_SIGNED, false),
 };

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>联机大厅 · 方块盒子论坛</title>
+<meta name="description" content="方块盒子联机大厅：查看玩家发布的联机房间与邀请码，安装方块盒子客户端可一键匹配实例并加入。">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261107a">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="lobby">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <section class="hero lobby-hero">
+      <h1>联机大厅</h1>
+      <p>这里汇总大家开好的联机房间。网页端可以查看和复制邀请码；装上方块盒子客户端，就能一键挑选合适的实例直接进游戏。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">下载方块盒子</a>
+        <a class="btn btn-ghost" href="/board.html?slug=help">联机求助</a>
+      </div>
+    </section>
+
+    <div class="card lobby-panel">
+      <div class="toolbar lobby-toolbar">
+        <input class="input" id="lobbySearch" type="search" placeholder="搜索房间名、房主…" aria-label="搜索联机房间">
+        <div class="tabs" id="coreTabs"></div>
+        <span class="small muted" id="lobbyStat" style="margin-left:auto"></span>
+        <button class="btn btn-ghost btn-sm" id="lobbyRefresh" type="button">刷新</button>
+      </div>
+      <div class="lobby-grid" id="lobbyGrid">
+        <div class="skeleton">正在加载房间…</div>
+      </div>
+    </div>
+
+    <div id="lobbyPager"></div>
+
+    <div class="card lobby-tip">
+      <h3>网页端只能查看邀请码 / 连接地址</h3>
+      <ul class="tips">
+        <li>网页端只能看到房间信息和邀请码 / 连接地址，没法直接启动游戏——把邀请码发给朋友，或用客户端加入。</li>
+        <li>在方块盒子客户端里打开「实例助手 → 联机 → 联机大厅」，点「一键加入」会自动挑一个版本、加载器和模组都合适的本地实例，直接启动游戏并连进房间。</li>
+        <li>房主在联机页点「发布到联机大厅」后，只要房间还开着就会一直显示在这里；关掉房间会自动下架。</li>
+      </ul>
+    </div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261107a"></script>
+<script src="/assets/page-lobby.js?v=20261107a"></script>
+</body>
+</html>

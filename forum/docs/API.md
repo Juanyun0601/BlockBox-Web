@@ -62,6 +62,31 @@
 ### PATCH /api/me
 
 `display_name`（≤24 字）、`bio`（≤300 字）、`email`，都可选，传什么改什么。
+把 `email` 改成别的地址后，原邮箱的验证状态会被清掉，需要重新走验证码验证。
+
+### POST /api/me/email/code · 发送邮箱验证码（需登录）
+
+向填写的邮箱发送 6 位数字验证码，10 分钟内有效。需要先在 `.env` 配置好
+`SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `MAIL_FROM`，否则返回
+`503 {"error": "邮件服务尚未配置，请联系管理员", "code": "mail_disabled"}`。
+
+```json
+{ "email": "user@example.com" }
+```
+
+成功返回 `{ "ok": true, "expires_in": 600 }`。限流：同一账号 60 秒内只能发一次、
+每小时最多 5 封，同一 IP 每小时最多 10 封。邮箱已经验证过再发同一地址会返回
+`email_already_verified`。
+
+### POST /api/me/email/verify · 校验邮箱验证码（需登录）
+
+```json
+{ "email": "user@example.com", "code": "123456" }
+```
+
+校验通过后**绑定该邮箱并标记已验证**，返回 `{ "user": { …, "email_verified": true } }`。
+每个验证码最多输错 5 次，超限或过期后需要重新发送。`/api/me` 与本接口返回的
+`user` 里，`email_verified` 表示邮箱是否已通过验证。
 
 ### POST /api/me/password
 
@@ -322,6 +347,95 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ```
 
 `status` 为 `resolved` / `ignored` / `open`（重开），`reply` 最多 500 字、可选；处理人与处理时间自动记录。返回 `{ "ok": true, "status": "resolved" }`。
+
+---
+
+## 联机大厅
+
+启动器在「实例助手 → 联机」里把本机开好的房间发布到大厅。房间靠心跳续命：客户端每 40 秒调一次心跳，
+超过 **2 分钟**没有心跳的房间会被自动清掉（离开房间时客户端也会主动删除）。网页端只展示邀请码 / 连接地址。
+
+### GET /api/lobby/rooms · 房间列表（公开）
+
+查询参数：`q`（房间名 / 简介 / 房主，最多 40 字）、`core`（`terracotta` / `hongshi` / `frp` / `custom`）、
+`version`（游戏版本前缀）、`page`、`per_page`（默认 30，最多 60）。
+
+```json
+{
+  "rooms": [
+    {
+      "id": 4,
+      "title": "1.20.1 原版生存",
+      "description": "长期开，欢迎萌新",
+      "core": "terracotta",
+      "core_label": "陶瓦联机",
+      "invite_code": "U/ABCD-EFGH-IJKL-MNOP",
+      "address": "",
+      "game_version": "1.20.1",
+      "loader": "Forge",
+      "mods": ["jei.jar", "sodium.jar"],
+      "max_players": 8,
+      "status": "waiting",
+      "join_count": 12,
+      "host": { "id": 2, "username": "红石工程师", "display_name": "红石工程师", "avatar": "" },
+      "created_at": 1793600000,
+      "updated_at": 1793600120,
+      "expires_in": 90,
+      "mine": false
+    }
+  ],
+  "total": 1,
+  "pagination": { "page": 1, "per_page": 30, "total": 1, "pages": 1 },
+  "server_time": 1793600130
+}
+```
+
+- `core`：`terracotta`（陶瓦联机，用 `invite_code`）/ `hongshi`（红石联机，用 `address`）/
+  `frp`（樱花或 OpenFrp 内网穿透，用 `address`）/ `custom`（直连地址）。
+- `status`：`waiting`（等待中）/ `playing`（游戏中）/ `full`（人数已满）。
+- `expires_in`：距离过期还有多少秒，`0` 表示已经过期（列表里不会出现）。
+- 登录后请求时 `mine` 表示这条房间是不是自己的；未登录一律 `false`。
+
+### POST /api/lobby/rooms · 发布 / 更新自己的房间（需登录）
+
+同一个账号只会保留一个房间，重复发布会覆盖上一条，并刷新心跳。
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `title` | 是 | 房间名，2–40 字 |
+| `description` | 否 | 简介，最多 200 字 |
+| `core` | 否 | `terracotta` / `hongshi` / `frp` / `custom`，默认 `custom` |
+| `invite_code` | 二选一 | 陶瓦邀请码，最多 120 字符 |
+| `address` | 二选一 | 红石 / frp 的连接地址（`主机:端口`），最多 120 字符 |
+| `game_version` | 否 | 游戏版本，最多 32 字符 |
+| `loader` | 否 | 加载器（`Vanilla` / `Forge` / `Fabric` / `NeoForge` / `Quilt`） |
+| `mods` | 否 | 模组文件名数组，最多 80 个、单个最多 120 字符 |
+| `max_players` | 否 | 1–64，默认 8 |
+| `status` | 否 | `waiting` / `playing` / `full`，默认 `waiting` |
+
+`invite_code` 与 `address` 至少要有一个，否则返回
+`400 {"error": "请提供邀请码或连接地址", "code": "lobby_join_info_required"}`。
+限流：同一账号每分钟 20 次。成功返回 `{ "room": { … } }`（结构同列表里的单条）。
+
+### POST /api/lobby/rooms/:id/heartbeat · 心跳续期（需登录，仅房主）
+
+```json
+{ "status": "playing" }
+```
+
+`status` 可选，用来同步「等待中 / 游戏中 / 已满」。房间已过期或不是自己的会返回
+`404 {"error": "房间已过期，请重新发布", "code": "lobby_room_gone"}`，客户端应重新发布。
+成功返回 `{ "ok": true, "room": { … } }`。
+
+### DELETE /api/lobby/rooms/:id · 关闭房间（需登录，房主或管理员）
+
+删除后大厅里立刻看不到。房间已经过期时返回 `{ "ok": true, "removed": false }`，不报错。
+
+### POST /api/lobby/rooms/:id/join · 记录一次加入（公开）
+
+客户端点「一键加入」时调用，给房间的 `join_count` 加一，并返回最新房间信息
+（`{ "room": { … } }`）。房间不存在或已过期返回 `404 lobby_room_gone`。
+限流：同一 IP 每分钟 60 次。
 
 ---
 
@@ -619,6 +733,36 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ### GET /api/admin/overview
 
 站点统计、全部板块、最近 10 个用户 / 主题 / 回复。
+
+### GET /api/admin/visits?days=30
+
+访问数据：浏览量（PV）、访客数（UV）、日活、月活。
+
+- 只统计真实打开的 HTML 页面，`/api/*` 接口、`/uploads`、`/assets` 静态资源、管理后台和常见爬虫都不计入。
+- 访客按「IP + 浏览器标识」的哈希去重，库里不存原始 IP；同一台设备换浏览器算两个人。
+- 明细保留 `VISIT_RETENTION_DAYS`（默认 400）天，`days` 最多取 365。
+
+```json
+{
+  "range_days": 30,
+  "retention_days": 400,
+  "summary": {
+    "today":     { "pv": 128, "uv": 26, "users": 8, "new_visitors": 4 },
+    "yesterday": { "pv": 96,  "uv": 21, "users": 7 },
+    "week":      { "pv": 720, "uv": 88, "users": 19 },
+    "month":     { "pv": 3100, "uv": 210, "users": 43 },
+    "total":     { "pv": 9800, "uv": 460, "last_seen_at": 1793451200 },
+    "peak":      { "day": "2026-10-20", "pv": 231 },
+    "online": 5
+  },
+  "series": [{ "day": "2026-10-03", "pv": 42, "uv": 11 }],
+  "hours": [{ "hour": 0, "pv": 3, "uv": 2 }],
+  "pages": [{ "path": "/thread.html", "label": "帖子页", "pv": 1200, "uv": 160 }]
+}
+```
+
+`summary.today.uv` 即日活（DAU），`summary.month.uv` 是近 30 天去重访客（月活 MAU）。
+`series` 一定包含请求范围里的每一天（没有访问的补 0），`hours` 固定 24 条。
 
 ### GET /api/admin/users?q=&page=1&per_page=30
 

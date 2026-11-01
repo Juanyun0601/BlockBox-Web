@@ -139,6 +139,9 @@ async function main() {
   const register = await request('POST', '/api/auth/register', { username: '测试管理员', password: 'test123456' });
   check('首个注册用户自动成为管理员', register.status === 200 && register.json?.user?.role === 'admin', register.text);
   const adminId = register.json?.user?.id;
+  // 发帖 / 回复要求先通过入站答题，这里直接上报及格成绩
+  const adminQuiz = await request('POST', '/api/quiz/complete', { score: 96 });
+  check('管理员通过入站答题', adminQuiz.json?.quiz_passed === true, adminQuiz.text);
 
   const dup = await request('POST', '/api/auth/register', { username: '测试管理员', password: 'test123456' });
   check('重复用户名被拒绝', dup.status === 400);
@@ -215,6 +218,8 @@ async function main() {
 
   const second = await request('POST', '/api/auth/register', { username: '普通玩家', password: 'test123456' });
   check('第二个用户是普通用户', second.json?.user?.role === 'user');
+  const playerQuiz = await request('POST', '/api/quiz/complete', { score: 96 });
+  check('普通玩家通过入站答题', playerQuiz.json?.quiz_passed === true, playerQuiz.text);
 
   const replyLocked = await request('POST', `/api/threads/${threadId}/posts`, { content: '锁定后还能回吗' });
   check('锁定后普通用户回复被拒绝', replyLocked.status === 400, replyLocked.text);
@@ -237,6 +242,8 @@ async function main() {
   const third = await request('POST', '/api/auth/register', { username: '路人甲', password: 'test123456' });
   check('第三个用户注册成功', third.status === 200 && third.json?.user?.id > 0, third.text);
   const thirdId = third.json?.user?.id;
+  const thirdQuiz = await request('POST', '/api/quiz/complete', { score: 96 });
+  check('路人甲通过入站答题', thirdQuiz.json?.quiz_passed === true, thirdQuiz.text);
 
   await request('POST', '/api/auth/login', { username: '普通玩家', password: 'test123456' });
   const mentionReply = await request('POST', `/api/threads/${notifyThreadId}/posts`, {
@@ -486,6 +493,113 @@ async function main() {
 
   const removeTag = await request('POST', '/api/admin/tags/delete', { tag: '社区测试' });
   check('删除标签', removeTag.status === 200, removeTag.text);
+
+  // ---------- 联机大厅 ----------
+
+  const lobbyEmpty = await request('GET', '/api/lobby/rooms');
+  check('联机大厅初始为空', Array.isArray(lobbyEmpty.json?.rooms), lobbyEmpty.text);
+
+  const lobbyInvalid = await request('POST', '/api/lobby/rooms', { title: '没有邀请码的房间' });
+  check(
+    '发布房间必须带邀请码或地址',
+    lobbyInvalid.status === 400 && lobbyInvalid.json?.code === 'lobby_join_info_required',
+    lobbyInvalid.text,
+  );
+
+  const lobbyPublish = await request('POST', '/api/lobby/rooms', {
+    title: '冒烟联机房间',
+    description: '来自冒烟测试',
+    core: 'terracotta',
+    invite_code: 'U/ABCD-EFGH-IJKL-MNOP',
+    game_version: '1.20.1',
+    loader: 'Forge',
+    mods: ['jei.jar', 'sodium.jar'],
+    max_players: 6,
+  });
+  check('发布联机房间', lobbyPublish.status === 200 && lobbyPublish.json?.room?.id > 0, lobbyPublish.text);
+  const lobbyRoomId = lobbyPublish.json?.room?.id;
+  check(
+    '房间带房主、模组和在线时长',
+    lobbyPublish.json?.room?.mine === true
+      && lobbyPublish.json?.room?.mods?.length === 2
+      && lobbyPublish.json?.room?.expires_in > 0,
+    lobbyPublish.text,
+  );
+
+  const lobbyList = await request('GET', '/api/lobby/rooms');
+  const listedRoom = (lobbyList.json?.rooms || []).find((room) => room.id === lobbyRoomId);
+  check('大厅列表能看到刚发布的房间', !!listedRoom, lobbyList.text);
+  check('大厅房间带邀请码（网页端只读）', listedRoom?.invite_code === 'U/ABCD-EFGH-IJKL-MNOP', lobbyList.text);
+
+  const lobbyHeartbeat = await request('POST', `/api/lobby/rooms/${lobbyRoomId}/heartbeat`, {
+    status: 'playing',
+  });
+  check('心跳续期并同步状态', lobbyHeartbeat.json?.room?.status === 'playing', lobbyHeartbeat.text);
+
+  const lobbyJoin = await request('POST', `/api/lobby/rooms/${lobbyRoomId}/join`, {});
+  check('记录一次加入', lobbyJoin.json?.room?.join_count === 1, lobbyJoin.text);
+
+  const lobbyUpdate = await request('POST', '/api/lobby/rooms', {
+    title: '冒烟联机房间（改名）',
+    core: 'terracotta',
+    invite_code: 'U/ABCD-EFGH-IJKL-MNOP',
+  });
+  check('重复发布是覆盖而不是新增', lobbyUpdate.json?.room?.id === lobbyRoomId, lobbyUpdate.text);
+  const lobbyAfterUpdate = await request('GET', '/api/lobby/rooms');
+  check(
+    '同一账号只保留一个房间',
+    (lobbyAfterUpdate.json?.rooms || []).filter((room) => room.id === lobbyRoomId).length === 1,
+    lobbyAfterUpdate.text,
+  );
+
+  // 未登录也能看列表，但 mine 是 false，也不能关闭房间
+  await request('POST', '/api/auth/logout');
+  const lobbyAnon = await request('GET', '/api/lobby/rooms');
+  const anonRoom = (lobbyAnon.json?.rooms || []).find((room) => room.id === lobbyRoomId);
+  check('未登录可见房间但 mine 为 false', !!anonRoom && anonRoom.mine === false, lobbyAnon.text);
+  const lobbyAnonClose = await request('DELETE', `/api/lobby/rooms/${lobbyRoomId}`);
+  check('未登录不能关闭房间', lobbyAnonClose.status === 401, lobbyAnonClose.text);
+
+  await request('POST', '/api/auth/login', { username: '测试管理员', password: 'test123456' });
+  const lobbyClose = await request('DELETE', `/api/lobby/rooms/${lobbyRoomId}`);
+  check('关闭联机房间', lobbyClose.status === 200 && lobbyClose.json?.removed === true, lobbyClose.text);
+  const lobbyAfterClose = await request('GET', '/api/lobby/rooms');
+  check(
+    '关闭后大厅不再列出',
+    !(lobbyAfterClose.json?.rooms || []).some((room) => room.id === lobbyRoomId),
+    lobbyAfterClose.text,
+  );
+
+  // ---------- 访问统计 ----------
+
+  await request('GET', '/');
+  await request('GET', '/board.html?slug=general');
+  await request('GET', '/thread.html?id=1');
+  await request('GET', '/admin.html'); // 管理后台自己不算访问量
+
+  const visits = await request('GET', '/api/admin/visits?days=7');
+  const visitSummary = visits.json?.summary || {};
+  check('访问统计：今日浏览量', visitSummary.today?.pv >= 3, visits.text);
+  check('访问统计：今日访客（日活）', visitSummary.today?.uv >= 1, visits.text);
+  check('访问统计：近 30 天访客（月活）', visitSummary.month?.uv >= 1, visits.text);
+  check('访问统计：累计浏览量', visitSummary.total?.pv >= 3, visits.text);
+  check('访问统计：趋势图补齐到请求天数', (visits.json?.series || []).length === 7, visits.text);
+  check('访问统计：今日 24 小时固定 24 条', (visits.json?.hours || []).length === 24, visits.text);
+  check(
+    '访问统计：热门页面里有帖子页',
+    (visits.json?.pages || []).some((item) => item.path === '/thread.html'),
+    visits.text,
+  );
+  check(
+    '访问统计：管理后台浏览量不计入',
+    !(visits.json?.pages || []).some((item) => item.path === '/admin.html'),
+    visits.text,
+  );
+
+  await request('POST', '/api/auth/logout', {});
+  const visitsAnon = await request('GET', '/api/admin/visits');
+  check('访问统计：未登录看不到', visitsAnon.status === 401, visitsAnon.text);
+  await request('POST', '/api/auth/login', { username: '测试管理员', password: 'test123456' });
 
   const notFoundPage = await request('GET', '/no-such-page');
   check('未知页面返回 404 页面', notFoundPage.status === 404);

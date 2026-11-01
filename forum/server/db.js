@@ -113,6 +113,10 @@ export function migrate() {
   if (addedMuteReason) console.log('[论坛] 数据库已升级：users 增加 mute_reason（禁言理由）');
   const addedMuteBy = ensureColumn('users', 'mute_by', "TEXT NOT NULL DEFAULT ''");
   if (addedMuteBy) console.log('[论坛] 数据库已升级：users 增加 mute_by（禁言操作人）');
+
+  // 邮箱验证：记录通过验证码验证的时间（0 = 未验证）；改绑新邮箱会清零
+  const addedEmailVerified = ensureColumn('users', 'email_verified_at', 'INTEGER NOT NULL DEFAULT 0');
+  if (addedEmailVerified) console.log('[论坛] 数据库已升级：users 增加 email_verified_at（邮箱验证时间）');
 }
 
 migrate();

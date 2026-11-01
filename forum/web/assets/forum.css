@@ -1182,3 +1182,229 @@ body.modal-open { overflow: hidden; }
   line-height: 1.6;
 }
 
+
+
+/* ============================================================
+   管理后台 · 访问数据（浏览量 / 日活 / 月活）
+   ============================================================ */
+
+.visit-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.visit-head h2 { margin-bottom: 0; }
+.visit-range { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+.visit-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.visit-stat {
+  background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+}
+.visit-stat b { display: block; font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
+.visit-stat span { font-size: 12px; color: var(--ink-3); }
+.visit-stat em { display: block; margin-top: 2px; font-style: normal; font-size: 11.5px; color: var(--ink-3); }
+.visit-note { margin: 10px 0 0; }
+
+.visit-chart-box {
+  margin-top: 14px; padding: 12px 12px 8px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--card-2);
+}
+.visit-chart-head { display: flex; align-items: center; gap: 10px; font-size: 13px; margin-bottom: 10px; }
+.visit-chart-head b { font-weight: 700; }
+.visit-legend { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-3); }
+.visit-legend .visit-dot + .visit-dot { margin-left: 10px; }
+.visit-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.visit-dot-uv { background: var(--g700); }
+.visit-dot-pv { background: var(--g200); }
+
+.visit-chart { display: flex; align-items: flex-end; gap: 3px; height: 150px; }
+.visit-bar-col { flex: 1 1 0; min-width: 0; height: 100%; }
+.visit-bar-track { position: relative; height: 100%; border-radius: 5px; background: var(--bg-tint); overflow: hidden; }
+.visit-bar-pv, .visit-bar-uv {
+  position: absolute; left: 0; right: 0; bottom: 0; display: block;
+  border-radius: 4px 4px 0 0; transition: height 0.25s ease;
+}
+.visit-bar-pv { background: var(--g200); }
+.visit-bar-uv { background: var(--g700); }
+.visit-bar-col:hover .visit-bar-pv { background: var(--g300); }
+[data-theme="dark"] .visit-bar-pv { background: rgba(102, 187, 106, 0.3); }
+[data-theme="dark"] .visit-bar-uv { background: var(--g500); }
+
+.visit-axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--ink-3); }
+
+.visit-hours { display: flex; align-items: flex-end; gap: 2px; height: 62px; }
+.visit-hour { flex: 1 1 0; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+.visit-hour-track {
+  height: calc(100% - 17px); display: flex; align-items: flex-end;
+  border-radius: 3px; background: var(--bg-tint); overflow: hidden;
+}
+.visit-hour-track i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--g500); }
+.visit-hour em {
+  display: block; height: 14px; margin-top: 3px; font-style: normal;
+  font-size: 10px; line-height: 14px; text-align: center; color: var(--ink-3);
+}
+
+.visit-share { display: block; min-width: 56px; height: 6px; border-radius: 3px; background: var(--bg-tint); overflow: hidden; }
+.visit-share i { display: block; height: 100%; border-radius: 3px; background: var(--g500); }
+
+@media (max-width: 900px) {
+  .visit-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .visit-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .visit-chart { height: 110px; }
+  .visit-hours { height: 52px; }
+}
+
+/* ---------------- 联机大厅 ---------------- */
+
+.lobby-hero { margin-bottom: 18px; }
+
+.lobby-panel { padding: 0; overflow: hidden; }
+
+.lobby-toolbar { flex-wrap: wrap; }
+
+.lobby-toolbar .input {
+  width: 220px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+
+.lobby-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+
+.lobby-room {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 16px 18px;
+  min-width: 0;
+  transition: border-color 0.18s, transform 0.18s;
+}
+
+.lobby-room:hover { border-color: var(--brand-line); }
+
+.lobby-room-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.lobby-room-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.lobby-room-title h3 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  word-break: break-word;
+}
+
+.lobby-room-host {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  max-width: 150px;
+}
+
+.lobby-room-host:hover { color: var(--brand); }
+
+.lobby-room-host span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-room-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lobby-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-tint);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lobby-room-desc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  word-break: break-word;
+}
+
+.lobby-room-mods {
+  font-size: 12px;
+  color: var(--ink-3);
+  word-break: break-word;
+}
+
+.lobby-room-join {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line-2);
+  background: var(--bg-tint);
+}
+
+.lobby-join-label {
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.lobby-code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--brand);
+  word-break: break-all;
+}
+
+.lobby-room-note {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+.lobby-room-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.lobby-room-foot .dot { color: var(--line-2); }
+
+.lobby-tip { margin-top: 16px; padding: 16px 18px; }
+.lobby-tip h3 { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+
+@media (max-width: 720px) {
+  .lobby-grid { grid-template-columns: 1fr; padding: 12px; }
+  .lobby-toolbar .input { width: 100%; }
+}
