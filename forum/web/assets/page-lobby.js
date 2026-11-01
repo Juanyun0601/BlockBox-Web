@@ -111,7 +111,12 @@ BB.boot(async () => {
     </article>`;
   }
 
+  let searchTimer = null;
+  let loading = false;
+
   async function load(showSkeleton) {
+    if (loading) return;
+    loading = true;
     if (showSkeleton) grid.innerHTML = '<div class="skeleton">正在加载房间…</div>';
     refreshBtn.disabled = true;
     try {
@@ -131,6 +136,7 @@ BB.boot(async () => {
     } catch (error) {
       grid.innerHTML = `<div class="empty">加载失败：${BB.esc(error.message || '请稍后重试')}</div>`;
     } finally {
+      loading = false;
       refreshBtn.disabled = false;
     }
   }
@@ -160,7 +166,6 @@ BB.boot(async () => {
     }
   });
 
-  let searchTimer = null;
   search.addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
