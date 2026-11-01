@@ -38,6 +38,16 @@ export function migrate() {
   // 通知区分「回复主题」和「回复我的楼层」
   const addedKind = ensureColumn('notifications', 'target_kind', "TEXT NOT NULL DEFAULT 'thread'");
   if (addedKind) console.log('[论坛] 数据库已升级：notifications 增加 target_kind');
+
+  // 个人主页封面图
+  const addedCover = ensureColumn('users', 'cover', "TEXT NOT NULL DEFAULT ''");
+  if (addedCover) console.log('[论坛] 数据库已升级：users 增加 cover（个人主页封面）');
+
+  // 入站答题：通过时间与历史最高分（0 表示尚未通过）
+  const addedQuizPassed = ensureColumn('users', 'quiz_passed_at', 'INTEGER NOT NULL DEFAULT 0');
+  if (addedQuizPassed) console.log('[论坛] 数据库已升级：users 增加 quiz_passed_at（入站答题通过时间）');
+  const addedQuizScore = ensureColumn('users', 'quiz_best_score', 'INTEGER NOT NULL DEFAULT -1');
+  if (addedQuizScore) console.log('[论坛] 数据库已升级：users 增加 quiz_best_score（答题历史最高分）');
 }
 
 migrate();

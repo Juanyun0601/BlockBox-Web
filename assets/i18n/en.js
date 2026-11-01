@@ -4,6 +4,7 @@ window.BB_I18N_DICT = {
 "方块盒子": "BlockBox",
 "编码方块": "CodeBlock",
 "开发文档": "Developer Docs",
+"论坛": "Forum",
 "免费下载": "Download Free",
 "下载": "Download",
 "看看有什么不一样": "See what makes it different",

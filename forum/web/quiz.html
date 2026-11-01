@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>入站答题 · 方块盒子论坛</title>
+<meta name="description" content="通过入站答题，解锁发帖和回复">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261101c">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="quiz">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap" style="max-width: 820px">
+    <div class="crumbs"><a href="/">首页</a><span>›</span><span>入站答题</span></div>
+    <div id="quizHost">
+      <div class="card composer">
+        <h3>入站答题</h3>
+        <p class="muted small">正在加载…</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261101b"></script>
+<script src="/assets/page-quiz.js?v=20261101b"></script>
+</body>
+</html>

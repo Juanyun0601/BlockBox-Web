@@ -22,6 +22,7 @@ import registerUsers from './routes/users.js';
 import registerSearch from './routes/search.js';
 import registerAdmin from './routes/admin.js';
 import registerCommunity from './routes/community.js';
+import registerQuiz from './routes/quiz.js';
 
 const VERSION = '0.1.0';
 
@@ -62,7 +63,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerQuiz]) {
   register(router);
 }
 

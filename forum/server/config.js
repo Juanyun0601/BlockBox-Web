@@ -63,12 +63,14 @@ export const config = {
 
   maxBodyBytes: num(env.MAX_BODY_BYTES, 256 * 1024),
   maxAvatarBytes: num(env.MAX_AVATAR_BYTES, 512 * 1024),
+  maxCoverBytes: num(env.MAX_COVER_BYTES, 3 * 1024 * 1024),
   maxImageBytes: num(env.MAX_IMAGE_BYTES, 4 * 1024 * 1024),
 
   // 图片处理：原图长边上限、缩略图长边上限、头像边长
   imageMaxDimension: num(env.MAX_IMAGE_DIMENSION, 2560),
   thumbSize: num(env.THUMB_SIZE, 520),
   avatarSize: num(env.AVATAR_SIZE, 256),
+  coverMaxDimension: num(env.MAX_COVER_DIMENSION, 1920),
 
   adminBootstrapUser: (env.ADMIN_BOOTSTRAP_USER || '').trim(),
   adminBootstrapPass: env.ADMIN_BOOTSTRAP_PASS || '',

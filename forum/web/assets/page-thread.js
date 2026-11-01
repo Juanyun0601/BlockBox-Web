@@ -14,10 +14,10 @@ BB.boot(async () => {
 
   // ---------------------------------------------------------------- 渲染
 
-  function likeButton(post, compact) {
+  function likeButton(post) {
     const liked = post.liked ? ' liked' : '';
-    return `<button type="button" class="${compact ? '' : ''}${liked}" data-act="like" data-post="${post.id}">
-      👍 <span data-like-count>${post.likes || 0}</span>
+    return `<button type="button" class="act${liked}" data-act="like" data-post="${post.id}" title="给这一楼点个赞">
+      <span class="act-ico">👍</span><span data-like-count>${post.likes || 0}</span>
     </button>`;
   }
 
@@ -30,18 +30,18 @@ BB.boot(async () => {
       <div class="child-body">
         <div class="child-head">
           <a class="name" href="/user.html?id=${author.id}">${BB.esc(name)}</a>
-          ${author.role === 'admin' ? '<span class="chip">管理员</span>' : ''}
-          <span>${BB.time(child.created_at)}</span>
+          ${author.role === 'admin' ? '<span class="chip chip-grey">管理员</span>' : ''}
+          <span class="child-time">${BB.time(child.created_at)}</span>
           <span class="floor">#${child.floor}</span>
         </div>
         <div class="child-content">${
           child.deleted ? '<span class="deleted">该楼层已删除</span>' : BB.md(child.content)
         }</div>
         <div class="child-actions">
-          ${child.deleted ? '' : `<button type="button" data-act="reply" data-post="${child.id}">回复</button>`}
-          ${child.deleted ? '' : likeButton(child, true)}
-          ${!child.deleted && !mine && me ? `<button type="button" data-act="report" data-post="${child.id}">举报</button>` : ''}
-          ${mine && !child.deleted ? `<button type="button" data-act="delete-child" data-post="${child.id}">删除</button>` : ''}
+          ${child.deleted ? '' : `<button type="button" class="act" data-act="reply" data-post="${child.id}">回复</button>`}
+          ${child.deleted ? '' : likeButton(child)}
+          ${!child.deleted && !mine && me ? `<button type="button" class="act" data-act="report" data-post="${child.id}">举报</button>` : ''}
+          ${mine && !child.deleted ? `<button type="button" class="act danger" data-act="delete-child" data-post="${child.id}">删除</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -56,33 +56,37 @@ BB.boot(async () => {
     const visible = children.slice(0, 6);
     const hidden = children.slice(6);
     const hasHidden = hidden.length > 0;
+    const isOp = post.floor === 1;
 
-    return `<article class="post" id="post-${post.id}" data-post-id="${post.id}">
+    return `<article class="post${isOp ? ' is-op' : ''}" id="post-${post.id}" data-post-id="${post.id}">
       <div class="post-side">
         ${BB.avatar(author)}
         <a class="name" href="/user.html?id=${author.id}">${BB.esc(name)}</a>
-        <div class="role">${author.role === 'admin' ? '<span class="chip">管理员</span>' : ''}</div>
+        <div class="role">${author.role === 'admin' ? '<span class="chip chip-grey">管理员</span>' : ''}</div>
         <div class="counts">
-          ${BB.num(author.post_count || 0)} 帖 · ${BB.num(author.thread_count || 0)} 主题<br>${joined}
+          <span>${BB.num(author.post_count || 0)} 帖 · ${BB.num(author.thread_count || 0)} 主题</span>
+          ${joined ? `<span>${joined}</span>` : ''}
         </div>
       </div>
       <div class="post-body">
         <div class="post-head">
-          ${post.floor === 1 ? '<span class="chip">楼主</span>' : ''}
-          <span title="${BB.datetime(post.created_at)}">${BB.time(post.created_at)}</span>
-          ${post.edit_count > 0 ? '<span class="muted small">已编辑</span>' : ''}
+          ${isOp ? '<span class="chip chip-op">楼主</span>' : ''}
+          <span class="post-time" title="${BB.datetime(post.created_at)}">${BB.time(post.created_at)}</span>
+          ${post.edit_count > 0 ? '<span class="edited">已编辑</span>' : ''}
           <span class="floor">${post.floor} 楼</span>
         </div>
         <div class="post-content">${
           post.deleted ? '<span class="deleted">该楼层已被作者或管理员删除</span>' : BB.md(post.content)
         }</div>
         <div class="post-actions">
-          ${post.deleted ? '' : `<button type="button" data-act="reply" data-post="${post.id}">回复</button>`}
-          ${post.deleted ? '' : likeButton(post, false)}
-          ${post.deleted ? '' : `<button type="button" data-act="quote" data-post="${post.id}">引用</button>`}
-          ${canEditPost(post) ? `<button type="button" data-act="edit" data-post="${post.id}">编辑</button>` : ''}
-          ${canEditPost(post) ? `<button type="button" class="danger" data-act="delete" data-post="${post.id}">删除</button>` : ''}
-          ${!post.deleted && !mine && me ? `<button type="button" data-act="report" data-post="${post.id}">举报</button>` : ''}
+          ${post.deleted ? '' : `<button type="button" class="act" data-act="reply" data-post="${post.id}">回复</button>`}
+          ${post.deleted ? '' : `<button type="button" class="act" data-act="quote" data-post="${post.id}">引用</button>`}
+          ${post.deleted ? '' : likeButton(post)}
+          <button type="button" class="act" data-act="copy-link" data-post="${post.id}">复制链接</button>
+          <span class="act-gap"></span>
+          ${canEditPost(post) ? `<button type="button" class="act" data-act="edit" data-post="${post.id}">编辑</button>` : ''}
+          ${!post.deleted && !mine && me ? `<button type="button" class="act" data-act="report" data-post="${post.id}">举报</button>` : ''}
+          ${canEditPost(post) ? `<button type="button" class="act danger" data-act="delete" data-post="${post.id}">删除</button>` : ''}
         </div>
         ${
           children.length
@@ -98,8 +102,9 @@ BB.boot(async () => {
   }
 
   function renderHead(thread) {
-    const pinned = thread.pinned ? '<span class="chip chip-warn">置顶</span>' : '';
-    const locked = thread.locked ? '<span class="chip chip-grey">已锁定</span>' : '';
+    const flags = `${thread.pinned ? '<span class="chip chip-warn">置顶</span>' : ''}${
+      thread.locked ? '<span class="chip chip-grey">已锁定</span>' : ''
+    }`;
     const tags = (thread.tags || [])
       .map(
         (tag) =>
@@ -108,10 +113,10 @@ BB.boot(async () => {
       .join('');
 
     const adminActions = BB.isAdmin()
-      ? `<div class="post-actions" style="margin-top: 10px">
-           <button type="button" data-admin="pin">${thread.pinned ? '取消置顶' : '置顶'}</button>
-           <button type="button" data-admin="lock">${thread.locked ? '取消锁定' : '锁定'}</button>
-           <button type="button" class="danger" data-admin="delete">删除主题</button>
+      ? `<div class="post-actions thread-admin">
+           <button type="button" class="act" data-admin="pin">${thread.pinned ? '取消置顶' : '置顶'}</button>
+           <button type="button" class="act" data-admin="lock">${thread.locked ? '取消锁定' : '锁定'}</button>
+           <button type="button" class="act danger" data-admin="delete">删除主题</button>
          </div>`
       : '';
 
@@ -119,16 +124,23 @@ BB.boot(async () => {
       ? `<button type="button" class="btn btn-ghost btn-sm bookmark-btn${thread.bookmarked ? ' active' : ''}" data-bookmark="${thread.id}">
            ${thread.bookmarked ? '★ 已收藏' : '☆ 收藏'}
          </button>`
-      : `<a class="btn btn-ghost btn-sm" href="${BB.loginLink()}">☆ 收藏</a>`;
+      : `<a class="btn btn-ghost btn-sm bookmark-btn" href="${BB.loginLink()}">☆ 收藏</a>`;
 
     document.getElementById('threadHead').innerHTML = `
-      <h1>${pinned}${locked}${BB.esc(thread.title)}</h1>
+      ${flags ? `<div class="thread-flags">${flags}</div>` : ''}
+      <h1>${BB.esc(thread.title)}</h1>
       <div class="meta">
         ${BB.boardTag(thread.board)}
-        <a href="/user.html?id=${thread.author.id}">${BB.esc(thread.author.display_name)}</a>
-        <span>· 发布于 ${BB.datetime(thread.created_at)}</span>
-        <span>· ${BB.num(thread.views)} 次浏览</span>
-        <span>· ${BB.num(thread.reply_count)} 条回复</span>
+        <a class="meta-author" href="/user.html?id=${thread.author.id}">
+          ${BB.avatar(thread.author, 'avatar-xs')}
+          <span>${BB.esc(thread.author.display_name)}</span>
+        </a>
+        <span class="meta-dot">·</span>
+        <span>发布于 ${BB.datetime(thread.created_at)}</span>
+        <span class="meta-dot">·</span>
+        <span>${BB.num(thread.views)} 次浏览</span>
+        <span class="meta-dot">·</span>
+        <span>${BB.num(thread.reply_count)} 条回复</span>
         ${bookmark}
       </div>
       ${tags ? `<div class="post-tags">${tags}</div>` : ''}
@@ -168,6 +180,80 @@ BB.boot(async () => {
     });
   }
 
+  // ---------------------------------------------------------------- 右侧栏
+
+  async function renderRail(thread) {
+    const rail = document.getElementById('threadRail');
+    if (!rail) return;
+    const board = thread.board || {};
+    const lockedNote = thread.locked
+      ? '<div class="rail-note">该主题已锁定，暂不接受新回复</div>'
+      : '';
+
+    rail.innerHTML = `
+      <section class="card rail-card">
+        <h3 class="rail-title">主题信息</h3>
+        <div class="rail-stats">
+          <div><b>${BB.num(thread.views)}</b><span>浏览</span></div>
+          <div><b>${BB.num(thread.reply_count)}</b><span>回复</span></div>
+        </div>
+        <div class="rail-info">
+          <div class="row"><span class="k">版块</span><span class="v"><a href="/board.html?slug=${encodeURIComponent(
+            board.slug,
+          )}">${board.icon ? `${board.icon} ` : ''}${BB.esc(board.name)}</a></span></div>
+          <div class="row"><span class="k">楼主</span><span class="v"><a href="/user.html?id=${
+            thread.author.id
+          }">${BB.esc(thread.author.display_name)}</a></span></div>
+          <div class="row"><span class="k">发布</span><span class="v">${BB.datetime(thread.created_at)}</span></div>
+          <div class="row"><span class="k">最后回复</span><span class="v">${BB.time(thread.last_post_at) || '—'}</span></div>
+        </div>
+        ${lockedNote}
+        <button type="button" class="rail-share" data-share>复制本页链接</button>
+      </section>
+
+      <section class="card rail-card">
+        <h3 class="rail-title">同版块主题</h3>
+        <div class="rail-list" id="railBoardList"><div class="rail-empty">加载中…</div></div>
+      </section>
+
+      <section class="card rail-card">
+        <h3 class="rail-title">社区提示</h3>
+        <ul class="rail-tips">
+          <li>友善交流，就事论事</li>
+          <li>提问前先搜一下同类问题</li>
+          <li>图片可直接粘贴进回复框</li>
+        </ul>
+      </section>`;
+
+    const shareButton = rail.querySelector('[data-share]');
+    if (shareButton) {
+      shareButton.addEventListener('click', () => copyLink(location.href, '本页链接已复制'));
+    }
+
+    const list = document.getElementById('railBoardList');
+    if (!board.slug || !list) return;
+    try {
+      const data = await BB.api(`/api/boards/${encodeURIComponent(board.slug)}?sort=latest`);
+      const items = (data.threads || []).filter((item) => item.id !== thread.id).slice(0, 5);
+      list.innerHTML = items.length
+        ? items
+            .map(
+              (item) => `<a class="rail-thread" href="/thread.html?id=${item.id}">
+                <span class="t">${BB.esc(item.title)}</span>
+                <span class="m">${BB.esc((item.author && item.author.display_name) || '匿名')} · ${BB.num(
+                  item.reply_count,
+                )} 回复</span>
+              </a>`,
+            )
+            .join('')
+        : '<div class="rail-empty">这个版块还没有其他主题</div>';
+    } catch {
+      list.innerHTML = '<div class="rail-empty">暂时读不到同版块主题</div>';
+    }
+  }
+
+  // ---------------------------------------------------------------- 回复框
+
   function replyTargetHtml() {
     if (!replyTarget) return '';
     return `<div class="reply-target" id="replyTargetBar">
@@ -187,6 +273,18 @@ BB.boot(async () => {
       return;
     }
 
+    // 入站答题和账号绑定：没通过的账号先去答题，通过后回来就能回复
+    if (!me.quiz_passed) {
+      host.innerHTML = `<section class="card composer">
+        <h3>先通过入站答题，再来回复</h3>
+        <p class="muted small" style="margin-bottom: 12px">答题结果记在你的账号上：随机抽 50 题、80 分通过，答错会立刻给出答案和解析。</p>
+        <div class="composer-foot"><a class="btn btn-primary" href="/quiz.html?next=${encodeURIComponent(
+          `/thread.html?id=${thread.id}`,
+        )}">去答题</a></div>
+      </section>`;
+      return;
+    }
+
     if (thread.locked && !BB.isAdmin()) {
       host.innerHTML = `<section class="card composer">
         <h3>主题已锁定</h3>
@@ -196,12 +294,17 @@ BB.boot(async () => {
     }
 
     host.innerHTML = `<section class="card composer" id="composerCard">
-      <h3>回复主题</h3>
+      <div class="composer-head">
+        ${BB.avatar(me, 'avatar-sm')}
+        <h3>回复主题</h3>
+        <span class="composer-hint">支持 Markdown · 可直接粘贴图片</span>
+      </div>
       <div id="composerTarget">${replyTargetHtml()}</div>
       <div id="composerError"></div>
       <textarea class="textarea" id="replyBox" placeholder="说点什么…支持 Markdown：**加粗**、\`代码\`、> 引用；输入 @ 可以选人，也能直接粘贴或拖入图片" style="min-height:140px"></textarea>
-      <div class="composer-foot" style="margin-top: 12px">
-        <span class="muted">以 ${BB.esc(me.display_name || me.username)} 的身份回复 · 内容会自动保存草稿</span>
+      <div class="composer-foot">
+        <span class="muted small">以 ${BB.esc(me.display_name || me.username)} 的身份回复 · 草稿自动保存 · Ctrl + Enter 发送</span>
+        <span class="composer-count" id="replyCount">0 字</span>
         <button class="btn btn-primary" id="replyBtn">发表回复</button>
       </div>
     </section>`;
@@ -209,13 +312,14 @@ BB.boot(async () => {
     const box = document.getElementById('replyBox');
     const errorHost = document.getElementById('composerError');
     const submit = document.getElementById('replyBtn');
+    const counter = document.getElementById('replyCount');
 
-    BB.attachImagePaste(box);
-    BB.attachMentions(box);
-    BB.bindDraft(box, `reply:${thread.id}`);
-    bindReplyTargetButtons();
+    const updateCount = () => {
+      if (!counter) return;
+      counter.textContent = `${[...box.value.trim()].length} 字`;
+    };
 
-    submit.addEventListener('click', async () => {
+    const sendReply = async () => {
       const content = box.value.trim();
       if (!content) {
         BB.showError(errorHost, '回复内容不能为空');
@@ -237,11 +341,26 @@ BB.boot(async () => {
         submit.disabled = false;
         submit.textContent = '发表回复';
       }
+    };
+
+    BB.attachImagePaste(box);
+    BB.attachMentions(box);
+    BB.bindDraft(box, `reply:${thread.id}`);
+    bindReplyTargetButtons();
+
+    box.addEventListener('input', updateCount);
+    box.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        sendReply();
+      }
     });
+    submit.addEventListener('click', sendReply);
 
     if (BB.param('quote')) {
       box.value = `> ${BB.param('quote')}\n\n`;
     }
+    updateCount();
   }
 
   function bindReplyTargetButtons() {
@@ -271,8 +390,51 @@ BB.boot(async () => {
         if (!box.value.trim()) box.value = `回复 @${author.username}：`;
         box.focus();
         box.setSelectionRange(box.value.length, box.value.length);
+        box.dispatchEvent(new Event('input'));
       }
     }
+  }
+
+  // ---------------------------------------------------------------- 复制链接 / 滚动条
+
+  async function copyLink(text, okMessage) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const helper = document.createElement('textarea');
+        helper.value = text;
+        helper.setAttribute('readonly', '');
+        helper.style.position = 'fixed';
+        helper.style.opacity = '0';
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand('copy');
+        helper.remove();
+      }
+      BB.toast(okMessage || '链接已复制', 'ok');
+    } catch {
+      BB.toast('复制失败，可手动复制地址栏链接', 'error');
+    }
+  }
+
+  function bindScrollChrome() {
+    const bar = document.getElementById('readProgress');
+    const toTop = document.getElementById('toTop');
+    const onScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      if (toTop) toTop.classList.toggle('show', y > 480);
+      if (bar) {
+        const span = document.documentElement.scrollHeight - window.innerHeight;
+        bar.style.width = `${span > 0 ? Math.min(100, Math.max(0, (y / span) * 100)) : 0}%`;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    if (toTop) {
+      toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    }
+    onScroll();
   }
 
   // ---------------------------------------------------------------- 交互
@@ -299,9 +461,21 @@ BB.boot(async () => {
         return;
       }
 
+      if (action === 'copy-link') {
+        button.addEventListener('click', () => {
+          copyLink(`${location.origin}/thread.html?id=${threadId}#post-${postId}`, '这一楼的链接已复制');
+        });
+        return;
+      }
+
       button.addEventListener('click', async () => {
         try {
           if (action === 'reply') {
+            // 未通过入站答题时回复框不存在，引导去答题
+            if (me && !me.quiz_passed) {
+              location.href = `/quiz.html?next=${encodeURIComponent(`/thread.html?id=${threadId}`)}`;
+              return;
+            }
             if (post) setReplyTarget(post);
           } else if (action === 'quote') {
             const box = document.getElementById('replyBox');
@@ -310,6 +484,7 @@ BB.boot(async () => {
             const plain = new DOMParser().parseFromString(text, 'text/html').body.innerText || '';
             box.value = `> ${plain.trim().slice(0, 160).replace(/\n+/g, ' ')}\n\n${box.value}`;
             box.focus();
+            box.dispatchEvent(new Event('input'));
             setReplyTarget(post);
           } else if (action === 'delete') {
             if (!confirm('确定删除这条回复吗？')) return;
@@ -343,7 +518,7 @@ BB.boot(async () => {
     if (!post || !element) return;
     element.innerHTML = `
       <textarea class="textarea" style="min-height:150px"></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px">
+      <div class="edit-actions">
         <button type="button" class="btn btn-primary btn-sm" data-save>保存</button>
         <button type="button" class="btn btn-ghost btn-sm" data-cancel>取消</button>
       </div>`;
@@ -387,6 +562,7 @@ BB.boot(async () => {
     );
     renderComposer(thread);
     bindActions();
+    renderRail(thread);
 
     const hash = location.hash || '';
     if (hash.startsWith('#post-')) {
@@ -399,5 +575,6 @@ BB.boot(async () => {
     }
   }
 
+  bindScrollChrome();
   await load();
 });

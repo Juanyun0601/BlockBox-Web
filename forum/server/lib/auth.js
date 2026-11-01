@@ -41,8 +41,9 @@ export function createSession(userId, { ip = '', ua = '' } = {}) {
 }
 
 const SESSION_USER_SQL = `
-  SELECT u.id, u.username, u.display_name, u.email, u.bio, u.avatar, u.role, u.status,
-         u.muted_until, u.thread_count, u.post_count, u.created_at, u.last_seen_at,
+  SELECT u.id, u.username, u.display_name, u.email, u.bio, u.avatar, u.cover, u.role, u.status,
+         u.muted_until, u.thread_count, u.post_count, u.quiz_passed_at, u.quiz_best_score,
+         u.created_at, u.last_seen_at,
          s.expires_at
     FROM sessions s
     JOIN users u ON u.id = s.user_id
@@ -110,6 +111,10 @@ export function assertCanPost(user) {
       : '管理员解除为止';
     throw new HttpError(403, `账号已被禁言（${until}）`, 'muted');
   }
+  // 入站答题和账号绑定：没通过的账号不能发帖、不能回复
+  if (!user.quiz_passed_at) {
+    throw new HttpError(403, '发帖或回复前，需要先通过入站答题', 'quiz_required');
+  }
   return user;
 }
 
@@ -122,11 +127,15 @@ export function publicUser(row, { self = false } = {}) {
     display_name: row.display_name || row.username,
     bio: row.bio || '',
     avatar: row.avatar || '',
+    cover: row.cover || '',
     role: row.role,
     status: row.status,
     muted_until: row.muted_until || 0,
     thread_count: row.thread_count || 0,
     post_count: row.post_count || 0,
+    quiz_passed: !!row.quiz_passed_at,
+    quiz_passed_at: row.quiz_passed_at || 0,
+    quiz_best_score: row.quiz_best_score ?? -1,
     created_at: row.created_at,
     last_seen_at: row.last_seen_at || 0,
   };

@@ -80,8 +80,11 @@
      插入的脚本会在本脚本返回后、body 解析前执行，所以正文脚本（main.js）
      只要经过 BB.t() 就能直接读到 window.BB_I18N_DICT。 */
 
+  /* 字典版本号：改了字典就改这里，让浏览器重新下载，别用旧译文 */
+  var DICT_VER = "20261101";
+
   function dictPath(code) {
-    return "assets/i18n/" + code + ".js";
+    return "assets/i18n/" + code + ".js?v=" + DICT_VER;
   }
 
   function loadDict(code) {
@@ -238,7 +241,7 @@
 
   /* ---------------- 语言切换器 ---------------- */
 
-  var MOBILE_BP = "(max-width: 760px)";
+  var MOBILE_BP = "(max-width: 1024px)";
 
   function isNarrow() {
     if (window.matchMedia) return window.matchMedia(MOBILE_BP).matches;

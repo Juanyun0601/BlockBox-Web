@@ -147,4 +147,31 @@ export default function register(router) {
     removeUpload(old);
     return { ok: true };
   });
+
+  // 个人主页封面：与头像同一套流程，只是尺寸上限更宽、不生成缩略图
+  router.post('/api/me/cover', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`cover:${user.id}`, 10, 60 * 60 * 1000, '换封面太频繁');
+
+    const raw = await readRawBody(ctx.req, config.maxCoverBytes);
+    const saved = await saveImage(raw, {
+      userId: user.id,
+      kind: 'cover',
+      maxBytes: config.maxCoverBytes,
+    });
+
+    const old = db.prepare('SELECT cover FROM users WHERE id = ?').get(user.id)?.cover || '';
+    db.prepare('UPDATE users SET cover = ? WHERE id = ?').run(saved.url, user.id);
+    removeUpload(old);
+
+    return { cover: saved.url };
+  });
+
+  router.delete('/api/me/cover', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const old = db.prepare('SELECT cover FROM users WHERE id = ?').get(user.id)?.cover || '';
+    db.prepare("UPDATE users SET cover = '' WHERE id = ?").run(user.id);
+    removeUpload(old);
+    return { ok: true };
+  });
 }

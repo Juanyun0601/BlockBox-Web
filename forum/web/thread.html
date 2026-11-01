@@ -6,7 +6,7 @@
 <title>主题 · 方块盒子论坛</title>
 <meta name="description" content="方块盒子论坛主题详情">
 <link rel="icon" href="/assets/img/icon.ico">
-<link rel="stylesheet" href="/assets/forum.css?v=20261031f">
+<link rel="stylesheet" href="/assets/forum.css?v=20261101c">
 <script>
   (function () {
     try {
@@ -19,26 +19,32 @@
 </script>
 </head>
 <body data-page="thread">
+<div class="read-progress" id="readProgress"></div>
 <div id="siteNav"></div>
 
 <main class="page">
   <div class="wrap">
-    <div class="crumbs" id="crumbs"><a href="/">首页</a><span>›</span><span>主题</span></div>
+    <nav class="crumbs" id="crumbs"><a href="/">首页</a><span>›</span><span>主题</span></nav>
 
-    <article class="card" id="threadCard">
-      <div class="thread-head" id="threadHead">
-        <h1>加载中…</h1>
+    <div class="thread-layout">
+      <div class="thread-main">
+        <article class="card thread-hero" id="threadHead">
+          <h1>加载中…</h1>
+        </article>
+        <div id="postList" class="floor-list"></div>
+        <div id="pager"></div>
+        <section id="composerHost"></section>
       </div>
-      <div id="postList"></div>
-    </article>
 
-    <div id="pager"></div>
-    <section id="composerHost"></section>
+      <aside class="thread-rail" id="threadRail" aria-label="主题信息"></aside>
+    </div>
   </div>
 </main>
 
+<button type="button" class="to-top" id="toTop" title="回到顶部" aria-label="回到顶部">↑</button>
+
 <footer class="footer" id="siteFooter"></footer>
-<script src="/assets/core.js?v=20261031f"></script>
-<script src="/assets/page-thread.js?v=20261031f"></script>
+<script src="/assets/core.js?v=20261101a"></script>
+<script src="/assets/page-thread.js?v=20261101c"></script>
 </body>
 </html>

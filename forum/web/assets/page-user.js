@@ -22,24 +22,40 @@ BB.boot(async () => {
         ? '<span class="chip chip-warn">已禁言</span>'
         : '';
 
+  const coverHtml = user.cover
+    ? `<img src="${BB.esc(user.cover)}" alt="" loading="lazy">`
+    : isSelf
+      ? '<span class="profile-cover-hint">还没有设置封面图</span>'
+      : '';
+  const coverAction = isSelf
+    ? `<label class="profile-cover-action" title="上传或更换封面">📷 换封面
+         <input type="file" id="coverInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+       </label>`
+    : '';
+
   document.getElementById('profileCard').innerHTML = `
-    ${BB.avatar(user, 'avatar-lg')}
-    <div class="info">
-      <h1>${BB.esc(user.display_name || user.username)} ${roleChip}${statusChip}</h1>
-      <div class="uname">@${BB.esc(user.username)}</div>
-      <div class="bio">${user.bio ? BB.esc(user.bio) : '<span class="muted">这位玩家还没写简介</span>'}</div>
-      <div class="profile-stats">
-        <span><b>${BB.num(user.thread_count)}</b> 主题</span>
-        <span><b>${BB.num(user.post_count)}</b> 帖子</span>
-        <span>加入于 ${BB.datetime(user.created_at).slice(0, 10)}</span>
-        <span>最近活跃 ${BB.time(user.last_seen_at) || '很久前'}</span>
+    <div class="profile-cover">${coverHtml}${coverAction}</div>
+    <div class="profile-body">
+      ${BB.avatar(user, 'avatar-lg')}
+      <div class="info">
+        <h1>${BB.esc(user.display_name || user.username)} ${roleChip}${statusChip}</h1>
+        <div class="uname">@${BB.esc(user.username)}</div>
+        <div class="bio">${user.bio ? BB.esc(user.bio) : '<span class="muted">这位玩家还没写简介</span>'}</div>
+        <div class="profile-stats">
+          <span><b>${BB.num(user.thread_count)}</b> 主题</span>
+          <span><b>${BB.num(user.post_count)}</b> 帖子</span>
+          <span>加入于 ${BB.datetime(user.created_at).slice(0, 10)}</span>
+          <span>最近活跃 ${BB.time(user.last_seen_at) || '很久前'}</span>
+        </div>
       </div>
-    </div>
-    <div class="profile-actions">
-      ${isSelf ? '<a class="btn btn-ghost btn-sm" href="/gallery.html">我的相册</a>' : ''}
-      ${isSelf ? '<button class="btn btn-ghost btn-sm" id="editProfileBtn">编辑资料</button>' : ''}
-      ${isSelf && user.role === 'admin' ? '<a class="btn btn-ghost btn-sm" href="/admin.html">管理后台</a>' : ''}
+      <div class="profile-actions">
+        ${isSelf ? '<a class="btn btn-ghost btn-sm" href="/gallery.html">我的相册</a>' : ''}
+        ${isSelf ? '<button class="btn btn-ghost btn-sm" id="editProfileBtn">编辑资料</button>' : ''}
+        ${isSelf && user.role === 'admin' ? '<a class="btn btn-ghost btn-sm" href="/admin.html">管理后台</a>' : ''}
+      </div>
     </div>`;
+
+  if (isSelf) bindCoverInput('coverInput');
 
   const tabs = [
     ['threads', `主题 ${data.thread_total}`],
@@ -165,12 +181,17 @@ BB.boot(async () => {
           <label>邮箱（可选，仅用于联系）</label>
           <input class="input" id="emailInput" maxlength="120" value="${BB.esc(currentUser.email || '')}" placeholder="you@example.com">
         </div>
-        <div class="composer-foot">
-          <span class="muted">头像支持 PNG / JPG / WebP / GIF，512 KB 以内</span>
+        <div class="composer-foot" style="flex-wrap: wrap">
+          <span class="muted">头像 / 封面支持 PNG、JPG、WebP、GIF，上传前可以先拖动裁切</span>
           <label class="btn btn-ghost btn-sm" style="cursor:pointer">
             换头像
             <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
           </label>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+            ${currentUser.cover ? '换封面' : '上传封面'}
+            <input type="file" id="coverInputPanel" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          </label>
+          ${currentUser.cover ? '<button class="btn btn-ghost btn-sm" id="removeCoverBtn">删除封面</button>' : ''}
           <button class="btn btn-primary btn-sm" id="saveProfileBtn">保存资料</button>
         </div>
       </section>
@@ -264,6 +285,50 @@ BB.boot(async () => {
         document.getElementById('newPassword').value = '';
       } catch (error) {
         BB.showError(errorHost, error.message);
+      }
+    });
+
+    // 编辑面板里的封面：上传 / 删除
+    bindCoverInput('coverInputPanel');
+    const removeCoverBtn = document.getElementById('removeCoverBtn');
+    if (removeCoverBtn) {
+      removeCoverBtn.addEventListener('click', async () => {
+        try {
+          await BB.api('/api/me/cover', { method: 'DELETE' });
+          BB.toast('封面已删除', 'ok');
+          setTimeout(() => location.reload(), 400);
+        } catch (error) {
+          BB.toast(error.message, 'error');
+        }
+      });
+    }
+  }
+
+  /** 选图 → 裁成 3:1 横图 → 上传；个人主页封面按钮和编辑面板共用 */
+  function bindCoverInput(id) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.addEventListener('change', async (event) => {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+      if (file.size > 12 * 1024 * 1024) {
+        BB.toast('图片太大了，请选 12 MB 以内的图片', 'error');
+        return;
+      }
+      const cropped = await BB.cropCover(file);
+      if (!cropped) return;
+      try {
+        await BB.api('/api/me/cover', {
+          method: 'POST',
+          raw: true,
+          headers: { 'content-type': 'image/png' },
+          body: cropped,
+        });
+        BB.toast('封面已更新', 'ok');
+        setTimeout(() => location.reload(), 400);
+      } catch (error) {
+        BB.toast(error.message, 'error');
       }
     });
   }

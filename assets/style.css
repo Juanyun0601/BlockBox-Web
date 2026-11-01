@@ -190,7 +190,7 @@ section[id] { scroll-margin-top: calc(var(--nav-h) + 12px); }
 .brand-logo { height: 40px; width: auto; }
 
 .nav-links { display: flex; align-items: center; gap: 26px; margin-left: auto; }
-.nav-links > a:not(.btn) { font-size: 15px; font-weight: 500; color: var(--ink-2); position: relative; transition: color .2s; }
+.nav-links > a:not(.btn) { font-size: 15px; font-weight: 500; color: var(--ink-2); position: relative; transition: color .2s; white-space: nowrap; }
 .nav-links > a:not(.btn)::after {
   content: ""; position: absolute; left: 0; right: 100%; bottom: -6px; height: 2px;
   background: var(--g600); transition: right .25s ease; border-radius: 2px;
@@ -1081,6 +1081,36 @@ section[id] { scroll-margin-top: calc(var(--nav-h) + 12px); }
   .chat { margin: 0 auto; }
   .trio { grid-template-columns: 1fr 1fr 1fr; }
   .footer-inner { grid-template-columns: 1fr 1fr; }
+}
+
+/* 导航项多了（论坛），外文标签也更长，宽屏笔记本先把间距和字号收一收，避免导航文字断成两行 */
+@media (max-width: 1200px) {
+  .nav-links { gap: 18px; }
+  .nav-links > a:not(.btn) { font-size: 14.5px; }
+  .brand-logo { height: 36px; }
+}
+
+@media (max-width: 1100px) {
+  .nav-links { gap: 12px; }
+  .nav-links > a:not(.btn) { font-size: 14px; }
+  .brand-logo { height: 34px; }
+}
+
+/* 再窄就放不下一整排了，提前收进折叠菜单（折叠后手机上依然是同一套菜单） */
+@media (max-width: 1024px) {
+  .nav-links {
+    position: fixed; top: var(--nav-h); left: 0; right: 0; z-index: 99;
+    flex-direction: column; align-items: stretch; gap: 4px;
+    background: var(--nav-solid); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line); padding: 14px 24px 20px;
+    box-shadow: 0 20px 40px rgba(23, 37, 26, .08);
+    transform: translateY(-12px); opacity: 0; pointer-events: none; transition: all .25s ease;
+  }
+  .nav-links.open { transform: none; opacity: 1; pointer-events: auto; }
+  .nav-links > a:not(.btn) { padding: 11px 6px; font-size: 16px; }
+  .nav-links .btn { margin-top: 8px; }
+  .brand-logo { height: 40px; }
+  .nav-toggle { display: flex; }
 }
 
 @media (max-width: 760px) {

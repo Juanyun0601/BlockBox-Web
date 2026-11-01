@@ -45,7 +45,7 @@
 
 ```json
 {
-  "user": { "id": 1, "username": "admin", "display_name": "admin", "role": "admin", "avatar": "" },
+  "user": { "id": 1, "username": "admin", "display_name": "admin", "role": "admin", "avatar": "", "cover": "" },
   "unread": 3,
   "site": { "name": "方块盒子论坛", "desc": "…", "register_open": true }
 }
@@ -80,6 +80,47 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/me/avatar \
 ```
 
 ### DELETE /api/me/avatar · 删除头像
+
+### POST /api/me/cover · 上传个人主页封面
+
+请求体同样是一张图片的原始字节，格式限 PNG / JPG / WebP / GIF，默认最大 3 MB
+（`.env` 里的 `MAX_COVER_BYTES`）。服务端会把长边压到 `MAX_COVER_DIMENSION`（默认 1920）以内，
+不生成缩略图。返回 `{ "cover": "/uploads/cover-1-1793426400000.png" }`。
+
+建议上传 3:1 的横图（例如 1440×480），显示时会按比例居中裁切。
+
+```bash
+curl -b cookie.txt -X POST http://127.0.0.1:3210/api/me/cover \
+  -H "Content-Type: image/png" --data-binary @cover.png
+```
+
+### DELETE /api/me/cover · 删除个人主页封面
+
+封面地址随用户资料一起返回（`user.cover`），个人主页接口 `/api/users/:id` 同样带这个字段。
+
+---
+
+## 入站答题
+
+发主题和回复都要求账号先通过入站答题（`assertCanPost` 统一拦截），未通过时返回
+`403 {"error": "发帖或回复前，需要先通过入站答题", "code": "quiz_required"}`。
+答题结果绑定账号（`users.quiz_passed_at / quiz_best_score`），`/api/me` 的 `user` 里带
+`quiz_passed / quiz_passed_at / quiz_best_score`。
+
+### GET /api/quiz/bank · 题库（需登录）
+
+返回 `rules`（`question_count: 50` / `points_per_question: 2` / `pass_score: 80`）、题目总数
+`count`，以及全部题目 `questions`：每题含 `id / text / options[4] / answer_index / explanation`。
+判分在客户端完成，答案随题库下发。
+
+### POST /api/quiz/complete · 记录答题结果（需登录）
+
+请求体 `{"score": 96}`（0–100 整数，限每小时 12 次）。达到及格线才把账号标记为已通过，
+`quiz_best_score` 保留历史最高分：
+
+```json
+{ "ok": true, "quiz_passed": true, "quiz_best_score": 96, "first_time": true }
+```
 
 ---
 
@@ -213,7 +254,8 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ```json
 {
-  "user": { "id": 2, "username": "小白玩家", "display_name": "小白玩家", "bio": "", "role": "user",
+  "user": { "id": 2, "username": "小白玩家", "display_name": "小白玩家", "bio": "", "avatar": "",
+            "cover": "/uploads/cover-2-1793426400000.png", "role": "user",
             "status": "active", "thread_count": 1, "post_count": 1, "created_at": 1793426400 },
   "threads": [ /* 最近 8 个主题 */ ],
   "replies": [ { "thread_id": 3, "thread_title": "…", "snippet": "…" } ],
@@ -324,6 +366,30 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ### GET /api/me/bookmarks?page=1&per_page=20
 
 我收藏的主题，返回 `{ "threads": [...], "pagination": {...} }`。
+
+### POST /api/me/content-favorites · 收藏启动器在线资源
+
+启动器「资源」页的收藏（模组 / 整合包等，CurseForge / Modrinth），跟论坛帖子收藏相互独立。
+
+```json
+{ "source": "curseforge", "remote_id": "12345", "content_type": "Mod",
+  "meta": { "name": "JEI", "chineseName": "...", "iconUrl": "...", "author": "..." } }
+```
+
+- `source` 仅支持 `curseforge` / `modrinth`；`meta` 是客户端资源快照，最大 8KB
+- 同一资源重复收藏会刷新 `content_type` / `meta`，返回 `{ "ok": true }`
+
+### GET /api/me/content-favorites?page=1&per_page=20
+
+我收藏的在线资源，返回 `{ "items": [{ "source", "remote_id", "content_type", "meta", "created_at" }], "pagination": {...} }`，按收藏时间倒序。
+
+### DELETE /api/me/content-favorites/:source/:remote_id
+
+取消收藏一个在线资源，返回 `{ "ok": true }`；不存在返回 404。
+
+### POST /api/me/content-favorites/bulk · 批量补传
+
+登录后对账用：body 为 `{ "items": [上面的单条格式] }`（单次最多 200 条），只插入云端缺失的，返回 `{ "added": N }`。
 
 ---
 

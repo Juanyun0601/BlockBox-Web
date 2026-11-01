@@ -66,7 +66,7 @@ export async function imageEngine() {
   return (await getSharp()) ? 'sharp' : 'builtin-png';
 }
 
-async function processWithSharp(sharp, buffer, { isAvatar, maxDimension, thumbSize }) {
+async function processWithSharp(sharp, buffer, { isAvatar, isCover, maxDimension, thumbSize }) {
   const meta = await sharp(buffer, { failOn: 'none' }).metadata();
   const sourceWidth = meta.width || 0;
   const sourceHeight = meta.height || 0;
@@ -85,11 +85,11 @@ async function processWithSharp(sharp, buffer, { isAvatar, maxDimension, thumbSi
   const encoded = await pipeline.toBuffer();
   const resized = target.width !== sourceWidth || target.height !== sourceHeight;
   // 超过长边上限时以"缩到上限内"为准；没超限就只在体积确实变小时才替换原图
-  const useEncoded = resized || isAvatar || encoded.length < buffer.length;
+  const useEncoded = resized || isAvatar || isCover || encoded.length < buffer.length;
 
   const thumbTarget = fitSize(sourceWidth, sourceHeight, thumbSize);
   let thumbBuffer = null;
-  if (thumbTarget.width < sourceWidth || thumbTarget.height < sourceHeight) {
+  if (thumbSize > 0 && (thumbTarget.width < sourceWidth || thumbTarget.height < sourceHeight)) {
     thumbBuffer = await sharp(buffer, { failOn: 'none' })
       .rotate()
       .resize({ width: thumbTarget.width, height: thumbTarget.height, fit: 'inside', withoutEnlargement: true })
@@ -110,7 +110,7 @@ async function processWithSharp(sharp, buffer, { isAvatar, maxDimension, thumbSi
 
 // ------------------------------------------------------------ 内置 PNG 处理
 
-function processBuiltinPng(buffer, { isAvatar, maxDimension, thumbSize }) {
+function processBuiltinPng(buffer, { isAvatar, isCover, maxDimension, thumbSize }) {
   const decoded = decodePng(buffer);
   if (!decoded) return null;
 
@@ -130,8 +130,8 @@ function processBuiltinPng(buffer, { isAvatar, maxDimension, thumbSize }) {
     width = target.width;
     height = target.height;
     optimized = encoded.length < buffer.length;
-  } else if (isAvatar && buffer.length > 128 * 1024) {
-    // 头像在尺寸内但文件特别大时，重压一遍
+  } else if ((isAvatar || isCover) && buffer.length > 128 * 1024) {
+    // 头像 / 封面在尺寸内但文件特别大时，重压一遍
     const encoded = encodePng({ width: sourceWidth, height: sourceHeight, data });
     if (encoded.length < buffer.length) {
       output = encoded;
@@ -141,7 +141,7 @@ function processBuiltinPng(buffer, { isAvatar, maxDimension, thumbSize }) {
 
   const thumbTarget = fitSize(sourceWidth, sourceHeight, thumbSize);
   let thumbBuffer = null;
-  if (thumbTarget.width < sourceWidth || thumbTarget.height < sourceHeight) {
+  if (thumbSize > 0 && (thumbTarget.width < sourceWidth || thumbTarget.height < sourceHeight)) {
     const thumbData = resizeRgba(data, sourceWidth, sourceHeight, thumbTarget.width, thumbTarget.height);
     thumbBuffer = encodePng({ width: thumbTarget.width, height: thumbTarget.height, data: thumbData });
   }
@@ -163,10 +163,17 @@ function processBuiltinPng(buffer, { isAvatar, maxDimension, thumbSize }) {
  */
 export async function processImage(buffer, { kind = 'img' } = {}) {
   const isAvatar = kind === 'avatar';
+  const isCover = kind === 'cover';
   const options = {
     isAvatar,
-    maxDimension: isAvatar ? config.avatarSize : config.imageMaxDimension,
-    thumbSize: isAvatar ? config.avatarSize : config.thumbSize,
+    isCover,
+    maxDimension: isAvatar
+      ? config.avatarSize
+      : isCover
+        ? config.coverMaxDimension
+        : config.imageMaxDimension,
+    // 头像 / 封面用不到缩略图，传 0 让处理流程跳过
+    thumbSize: isAvatar || isCover ? 0 : config.thumbSize,
   };
 
   const sharp = await getSharp();
@@ -198,7 +205,7 @@ export async function processImage(buffer, { kind = 'img' } = {}) {
 
 /**
  * 校验并保存一张图片，返回可直接放进 <img src> 的站内路径。
- * kind 只影响文件名前缀（avatar / img），方便以后按类型清理。
+ * kind 决定文件名前缀与处理规格（avatar 头像 / cover 主页封面 / img 帖子配图）。
  */
 export async function saveImage(buffer, { userId, kind = 'img', maxBytes = config.maxImageBytes } = {}) {
   if (!buffer || buffer.length < 16) throw badRequest('图片内容为空');
@@ -218,7 +225,7 @@ export async function saveImage(buffer, { userId, kind = 'img', maxBytes = confi
   await fs.promises.writeFile(path.join(config.uploadDir, filename), processed.buffer);
 
   let thumbUrl = null;
-  if (kind !== 'avatar' && processed.thumbBuffer && processed.thumbExt) {
+  if (kind === 'img' && processed.thumbBuffer && processed.thumbExt) {
     fs.mkdirSync(thumbsDir, { recursive: true });
     const thumbName = `${base}.${processed.thumbExt}`;
     await fs.promises.writeFile(path.join(thumbsDir, thumbName), processed.thumbBuffer);

@@ -853,14 +853,30 @@
     }
   };
 
-  // ------------------------------------------------------------ 头像裁剪
+  // ------------------------------------------------------------ 图片裁剪
 
   /**
-   * 弹出裁剪框：拖动平移、滑块/滚轮缩放，确认后导出 size×size 的 PNG。
+   * 弹出裁剪框：拖动平移、滑块 / 滚轮缩放，确认后导出指定比例的 PNG。
    * 取消时 resolve(null)。
+   * 头像用方形（圆形参考线），个人主页封面用 3:1 的横框。
    */
-  BB.cropSquare = (file, { size = 256 } = {}) =>
+  BB.cropImage = (file, options = {}) =>
     new Promise((resolve) => {
+      const config = {
+        aspect: 1,
+        stageWidth: 320,
+        outWidth: 256,
+        round: false,
+        title: '裁剪头像',
+        hint: '拖动图片调整位置，滚轮或滑块缩放。',
+        ...options,
+      };
+      // 手机窄屏上按可视宽度缩小舞台，避免裁剪框撑出屏幕
+      const STAGE_W = Math.min(config.stageWidth, Math.max(240, Math.round(window.innerWidth - 76)));
+      const STAGE_H = Math.max(1, Math.round(STAGE_W / config.aspect));
+      const OUT_W = config.outWidth;
+      const OUT_H = Math.max(1, Math.round(OUT_W / config.aspect));
+
       const objectUrl = URL.createObjectURL(file);
       const image = new Image();
 
@@ -871,14 +887,15 @@
       };
 
       image.onload = () => {
-        const STAGE = 320;
         const box = document.createElement('div');
         box.className = 'crop-mask';
         box.innerHTML = `
-          <div class="crop-card" role="dialog" aria-label="裁剪头像">
-            <h3>裁剪头像</h3>
-            <p class="muted small">拖动图片调整位置，滚轮或滑块缩放；圆形区域内的部分会作为头像。</p>
-            <div class="crop-stage"><canvas width="${STAGE}" height="${STAGE}"></canvas></div>
+          <div class="crop-card${STAGE_W > 400 ? ' wide' : ''}" role="dialog" aria-label="${config.title}">
+            <h3>${config.title}</h3>
+            <p class="muted small">${config.hint}</p>
+            <div class="crop-stage" style="width:${STAGE_W}px;height:${STAGE_H}px">
+              <canvas width="${STAGE_W}" height="${STAGE_H}"></canvas>
+            </div>
             <input type="range" min="100" max="320" value="100" class="crop-zoom" aria-label="缩放">
             <div class="crop-actions">
               <button type="button" class="btn btn-ghost btn-sm" data-cancel>取消</button>
@@ -892,30 +909,38 @@
         const context = canvas.getContext('2d');
         const zoom = box.querySelector('.crop-zoom');
 
-        const minScale = Math.max(STAGE / image.width, STAGE / image.height);
+        const minScale = Math.max(STAGE_W / image.width, STAGE_H / image.height);
         let scale = minScale;
-        let offsetX = (STAGE - image.width * scale) / 2;
-        let offsetY = (STAGE - image.height * scale) / 2;
+        let offsetX = (STAGE_W - image.width * scale) / 2;
+        let offsetY = (STAGE_H - image.height * scale) / 2;
 
         const clamp = () => {
           const width = image.width * scale;
           const height = image.height * scale;
-          offsetX = width <= STAGE ? (STAGE - width) / 2 : Math.min(0, Math.max(STAGE - width, offsetX));
-          offsetY = height <= STAGE ? (STAGE - height) / 2 : Math.min(0, Math.max(STAGE - height, offsetY));
+          offsetX = width <= STAGE_W ? (STAGE_W - width) / 2 : Math.min(0, Math.max(STAGE_W - width, offsetX));
+          offsetY = height <= STAGE_H ? (STAGE_H - height) / 2 : Math.min(0, Math.max(STAGE_H - height, offsetY));
+        };
+
+        const paint = () => {
+          context.clearRect(0, 0, STAGE_W, STAGE_H);
+          context.drawImage(image, offsetX, offsetY, image.width * scale, image.height * scale);
+          context.save();
+          context.strokeStyle = 'rgba(255,255,255,.92)';
+          context.lineWidth = 2;
+          if (config.round) {
+            context.beginPath();
+            context.arc(STAGE_W / 2, STAGE_H / 2, Math.min(STAGE_W, STAGE_H) / 2 - 10, 0, Math.PI * 2);
+            context.stroke();
+          } else {
+            context.strokeRect(1, 1, STAGE_W - 2, STAGE_H - 2);
+          }
+          context.restore();
         };
 
         const draw = () => {
           scale = minScale * (Number(zoom.value) / 100);
           clamp();
-          context.clearRect(0, 0, STAGE, STAGE);
-          context.drawImage(image, offsetX, offsetY, image.width * scale, image.height * scale);
-          context.save();
-          context.strokeStyle = 'rgba(255,255,255,.92)';
-          context.lineWidth = 2;
-          context.beginPath();
-          context.arc(STAGE / 2, STAGE / 2, STAGE / 2 - 10, 0, Math.PI * 2);
-          context.stroke();
-          context.restore();
+          paint();
         };
 
         let dragging = false;
@@ -934,15 +959,7 @@
           lastX = event.clientX;
           lastY = event.clientY;
           clamp();
-          context.clearRect(0, 0, STAGE, STAGE);
-          context.drawImage(image, offsetX, offsetY, image.width * scale, image.height * scale);
-          context.save();
-          context.strokeStyle = 'rgba(255,255,255,.92)';
-          context.lineWidth = 2;
-          context.beginPath();
-          context.arc(STAGE / 2, STAGE / 2, STAGE / 2 - 10, 0, Math.PI * 2);
-          context.stroke();
-          context.restore();
+          paint();
         });
         stage.addEventListener('pointerup', () => {
           dragging = false;
@@ -970,9 +987,9 @@
         box.querySelector('[data-cancel]').addEventListener('click', () => finish(null));
         box.querySelector('[data-ok]').addEventListener('click', () => {
           const output = document.createElement('canvas');
-          output.width = size;
-          output.height = size;
-          output.getContext('2d').drawImage(canvas, 0, 0, STAGE, STAGE, 0, 0, size, size);
+          output.width = OUT_W;
+          output.height = OUT_H;
+          output.getContext('2d').drawImage(canvas, 0, 0, STAGE_W, STAGE_H, 0, 0, OUT_W, OUT_H);
           output.toBlob((blob) => finish(blob), 'image/png');
         });
 
@@ -980,6 +997,27 @@
       };
 
       image.src = objectUrl;
+    });
+
+  /** 头像：裁成方形，圆形参考线 */
+  BB.cropSquare = (file, { size = 256 } = {}) =>
+    BB.cropImage(file, {
+      aspect: 1,
+      stageWidth: 320,
+      outWidth: size,
+      round: true,
+      title: '裁剪头像',
+      hint: '拖动图片调整位置，滚轮或滑块缩放；圆形区域内的部分会作为头像。',
+    });
+
+  /** 个人主页封面：裁成 3:1 横图（默认 1440×480） */
+  BB.cropCover = (file, { width = 1440 } = {}) =>
+    BB.cropImage(file, {
+      aspect: 3,
+      stageWidth: 432,
+      outWidth: width,
+      title: '裁剪封面',
+      hint: '拖动图片调整位置，滚轮或滑块缩放；框内的横条会显示在个人主页顶部（建议用 3:1 的横图）。',
     });
 
   window.BB = BB;

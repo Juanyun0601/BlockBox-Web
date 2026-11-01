@@ -15,11 +15,14 @@ CREATE TABLE IF NOT EXISTS users (
   email         TEXT    NOT NULL DEFAULT '',
   bio           TEXT    NOT NULL DEFAULT '',
   avatar        TEXT    NOT NULL DEFAULT '',
+  cover         TEXT    NOT NULL DEFAULT '',
   role          TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   status        TEXT    NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'muted', 'banned')),
   muted_until   INTEGER NOT NULL DEFAULT 0,
   thread_count  INTEGER NOT NULL DEFAULT 0,
   post_count    INTEGER NOT NULL DEFAULT 0,
+  quiz_passed_at  INTEGER NOT NULL DEFAULT 0,
+  quiz_best_score INTEGER NOT NULL DEFAULT -1,
   created_at    INTEGER NOT NULL,
   last_seen_at  INTEGER NOT NULL DEFAULT 0
 );
@@ -110,6 +113,19 @@ CREATE TABLE IF NOT EXISTS bookmarks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookmarks_thread ON bookmarks(thread_id);
+
+-- 资源收藏（启动器在线资源：模组 / 整合包等，meta 为客户端资源快照 JSON）--
+CREATE TABLE IF NOT EXISTS content_favorites (
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source       TEXT    NOT NULL,
+  remote_id    TEXT    NOT NULL,
+  content_type TEXT    NOT NULL DEFAULT '',
+  meta         TEXT    NOT NULL DEFAULT '{}',
+  created_at   INTEGER NOT NULL,
+  PRIMARY KEY (user_id, source, remote_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_content_favorites_user ON content_favorites(user_id);
 
 -- 主题标签 ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS thread_tags (

@@ -113,6 +113,7 @@ body {
     position: relative;
     text-decoration: none;
     transition: color 0.2s;
+    white-space: nowrap;
 }
 
 .nav-links > a:not(.btn)::after {
@@ -1091,8 +1092,33 @@ body {
     }
 }
 
-/* 移动端顶部导航（与官网首页一致） */
-@media (max-width: 760px) {
+/* 导航项多了（论坛），外文标签也更长，宽屏笔记本先把间距和字号收一收，避免导航文字断成两行 */
+@media (max-width: 1200px) {
+    .nav-links {
+        gap: 18px;
+    }
+    .nav-links > a:not(.btn) {
+        font-size: 14.5px;
+    }
+    .brand-logo {
+        height: 36px;
+    }
+}
+
+@media (max-width: 1100px) {
+    .nav-links {
+        gap: 12px;
+    }
+    .nav-links > a:not(.btn) {
+        font-size: 14px;
+    }
+    .brand-logo {
+        height: 34px;
+    }
+}
+
+/* 移动端顶部导航（与官网首页一致，折叠宽度提高到 1024，避免导航挤成两行） */
+@media (max-width: 1024px) {
     .nav-links {
         position: fixed;
         top: var(--nav-h);

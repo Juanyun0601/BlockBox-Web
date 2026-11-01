@@ -267,6 +267,107 @@ export default function register(router) {
     return { bookmarked: want };
   });
 
+  // ---------------- 资源收藏（启动器在线资源） ----------------
+
+  const VALID_CONTENT_SOURCES = new Set(['curseforge', 'modrinth']);
+  const CONTENT_META_MAX = 8 * 1024;
+
+  /** 校验并规整一条资源收藏（单个上报 / 批量补传共用） */
+  function normalizeContentFavorite(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw badRequest('收藏条目格式不正确');
+    const source = text(raw.source, { field: '资源来源', max: 32 });
+    if (!VALID_CONTENT_SOURCES.has(source)) throw badRequest('资源来源无效');
+    const remoteId = text(raw.remote_id, { field: '资源 ID', max: 64 });
+    const contentType = text(raw.content_type, { field: '资源类型', max: 32, optional: true });
+    let meta = raw.meta;
+    if (meta === undefined || meta === null || meta === '') meta = {};
+    if (typeof meta !== 'object' || Array.isArray(meta)) throw badRequest('资源信息格式不正确');
+    const metaText = JSON.stringify(meta);
+    if (metaText.length > CONTENT_META_MAX) throw badRequest('资源信息过大');
+    return { source, remoteId, contentType, metaText };
+  }
+
+  /** 启动器在线资源收藏列表 */
+  router.get('/api/me/content-favorites', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const { page, perPage, offset } = paginate(ctx.url.searchParams, 20);
+    const rows = db
+      .prepare(
+        `SELECT source, remote_id, content_type, meta, created_at
+           FROM content_favorites
+          WHERE user_id = ?
+          ORDER BY created_at DESC
+          LIMIT ? OFFSET ?`,
+      )
+      .all(user.id, perPage, offset);
+    const total = db
+      .prepare('SELECT COUNT(*) AS n FROM content_favorites WHERE user_id = ?')
+      .get(user.id).n;
+    return {
+      items: rows.map((row) => {
+        let meta;
+        try {
+          meta = JSON.parse(row.meta || '{}');
+        } catch {
+          meta = {};
+        }
+        return { ...row, meta };
+      }),
+      pagination: { page, per_page: perPage, total, pages: Math.max(1, Math.ceil(total / perPage)) },
+    };
+  });
+
+  /** 收藏一个在线资源（已存在则刷新内容） */
+  router.post('/api/me/content-favorites', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`content-fav:${user.id}`, 200, 10 * 60 * 1000, '收藏太频繁');
+    const body = await ctx.json().catch(() => ({}));
+    const item = normalizeContentFavorite(body);
+    db.prepare(
+      `INSERT INTO content_favorites (user_id, source, remote_id, content_type, meta, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (user_id, source, remote_id)
+       DO UPDATE SET content_type = excluded.content_type, meta = excluded.meta`,
+    ).run(user.id, item.source, item.remoteId, item.contentType, item.metaText, now());
+    return { ok: true };
+  });
+
+  /** 取消收藏一个在线资源 */
+  router.delete('/api/me/content-favorites/:source/:remoteId', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const result = db
+      .prepare('DELETE FROM content_favorites WHERE user_id = ? AND source = ? AND remote_id = ?')
+      .run(user.id, ctx.params.source, ctx.params.remoteId);
+    if (result.changes === 0) throw notFound('该资源不在收藏中');
+    return { ok: true };
+  });
+
+  /** 批量补传（登录后对账：只插入云端缺失的，返回新增数） */
+  router.post('/api/me/content-favorites/bulk', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`content-fav-bulk:${user.id}`, 20, 10 * 60 * 1000, '同步太频繁');
+    const body = await ctx.json().catch(() => ({}));
+    if (!Array.isArray(body.items) || body.items.length === 0) return { added: 0 };
+    if (body.items.length > 200) throw badRequest('单次最多补传 200 条');
+    const normalized = body.items.map(normalizeContentFavorite);
+    const exists = db.prepare(
+      'SELECT 1 AS hit FROM content_favorites WHERE user_id = ? AND source = ? AND remote_id = ?',
+    );
+    const insert = db.prepare(
+      `INSERT INTO content_favorites (user_id, source, remote_id, content_type, meta, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    );
+    let added = 0;
+    transaction(() => {
+      for (const item of normalized) {
+        if (exists.get(user.id, item.source, item.remoteId)) continue;
+        insert.run(user.id, item.source, item.remoteId, item.contentType, item.metaText, now());
+        added += 1;
+      }
+    });
+    return { added };
+  });
+
   router.post('/api/posts/:id/like', async (ctx) => {
     const user = requireUser(ctx.user);
     enforce(`like:${user.id}`, 200, 10 * 60 * 1000, '点赞太频繁');

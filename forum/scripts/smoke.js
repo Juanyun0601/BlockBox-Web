@@ -187,6 +187,26 @@ async function main() {
   });
   check('上传头像', avatar2.status === 200, `status ${avatar2.status}`);
 
+  // 封面同样走原始二进制
+  const coverRes = await fetch(`${base}/api/me/cover`, {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'image/png' },
+    body: Buffer.from(PNG_BASE64, 'base64'),
+  });
+  const coverJson = await coverRes.json();
+  check(
+    '上传主页封面',
+    coverRes.status === 200 && String(coverJson.cover || '').startsWith('/uploads/cover-'),
+    JSON.stringify(coverJson),
+  );
+  const coverProfile = await request('GET', `/api/users/${adminId}`);
+  check('用户主页带封面地址', coverProfile.json?.user?.cover === coverJson.cover, coverProfile.text);
+
+  const coverRemove = await request('DELETE', '/api/me/cover');
+  check('删除主页封面', coverRemove.status === 200);
+  const coverCleared = await request('GET', `/api/me`);
+  check('删除后封面为空', !coverCleared.json?.user?.cover, coverCleared.text);
+
   const logout = await request('POST', '/api/auth/logout');
   check('退出登录', logout.status === 200);
 

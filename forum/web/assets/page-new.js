@@ -13,6 +13,18 @@ BB.boot(async () => {
     return;
   }
 
+  // 入站答题和账号绑定：没通过的账号先去答题，通过后自动解锁发帖
+  if (!BB.state.me.quiz_passed) {
+    host.innerHTML = `<div class="card composer">
+      <h3>先通过入站答题，再来发帖</h3>
+      <p class="muted small" style="margin-bottom: 14px">答题结果记在你的账号上：随机抽 50 题、80 分通过，答错会立刻给出答案和解析。</p>
+      <div class="composer-foot">
+        <a class="btn btn-primary" href="/quiz.html?next=%2Fnew.html">去答题</a>
+      </div>
+    </div>`;
+    return;
+  }
+
   const boardData = await BB.api('/api/boards');
   const boards = boardData.boards || [];
   const wanted = BB.param('board');
