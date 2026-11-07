@@ -37,6 +37,33 @@ function parseMods(raw) {
   }
 }
 
+function parsePackMeta(raw) {
+  try {
+    const meta = JSON.parse(raw || '{}');
+    return meta && typeof meta === 'object' && !Array.isArray(meta) ? meta : {};
+  } catch {
+    return {};
+  }
+}
+
+/** 封面只认站内图床路径，别的（外链、协议串）一律丢掉存空 */
+function normalizeCover(raw) {
+  const value = String(raw || '').trim();
+  return value.startsWith('/uploads/') && value.length <= 200 ? value : '';
+}
+
+/** 在线整合包的下载地址只收 http(s)，网盘链接同样只收 http(s) */
+function normalizePackUrl(raw) {
+  try {
+    const parsed = new URL(String(raw || '').trim());
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+      ? parsed.href.slice(0, 500)
+      : '';
+  } catch {
+    return '';
+  }
+}
+
 function roomJson(row, viewer) {
   if (!row) return null;
   return {
@@ -51,6 +78,12 @@ function roomJson(row, viewer) {
     loader: row.loader || '',
     mods: parseMods(row.mods),
     max_players: row.max_players,
+    cover: row.cover || '',
+    md: row.md || '',
+    modpack_mode: row.modpack_mode || '',
+    modpack_name: row.modpack_name || '',
+    modpack_url: row.modpack_url || '',
+    modpack_meta: parsePackMeta(row.modpack_meta),
     status: row.status,
     join_count: row.join_count || 0,
     host: {
@@ -96,7 +129,38 @@ function readPublishBody(body) {
   const maxPlayers = int(body.max_players, { field: '人数上限', min: 1, max: 64, fallback: 8 });
   const status = STATUS_KEYS.includes(String(body.status)) ? String(body.status) : 'waiting';
 
-  return { title, description, core, inviteCode, address, gameVersion, loader, mods, maxPlayers, status };
+  // 封面：只收站内图床路径（发布前先 POST /api/upload 拿 url 再带上）
+  const cover = normalizeCover(body.cover);
+
+  // Markdown 介绍：一刀 8000 字，转空白行边界交给展示端
+  const md = text(body.md, { field: '详细介绍', max: 8000, optional: true });
+
+  // 前置整合包：在线（从 CurseForge/Modrinth 挑的，带下载地址）或链接（名称 + 网盘地址）
+  // mode 缺省 = 没填；online 必须有可下载地址，link 只要求名字
+  let modpackMode = String(body.modpack_mode || '').trim();
+  if (modpackMode !== 'online' && modpackMode !== 'link') modpackMode = '';
+  let modpackName = text(body.modpack_name, { field: '整合包名称', max: 200, optional: true });
+  const modpackUrl = normalizePackUrl(body.modpack_url);
+  let modpackMeta = {};
+  if (body.modpack_meta && typeof body.modpack_meta === 'object' && !Array.isArray(body.modpack_meta)) {
+    for (const key of ['platform', 'author', 'version', 'file_name', 'file_size', 'page_url']) {
+      if (body.modpack_meta[key] !== undefined) modpackMeta[key] = body.modpack_meta[key];
+    }
+  }
+  const modpackMetaJson = JSON.stringify(modpackMeta).slice(0, 2000);
+
+  if (modpackMode === 'online') {
+    if (!modpackName) throw badRequest('请填写整合包名称', 'lobby_modpack_name_required');
+    if (!modpackUrl) throw badRequest('在线整合包需要一个可下载的 http(s) 地址', 'lobby_modpack_url_required');
+  } else if (modpackMode === 'link') {
+    if (!modpackName) throw badRequest('请填写整合包名称', 'lobby_modpack_name_required');
+    if (!modpackUrl) modpackMode = '';
+  }
+
+  return {
+    title, description, core, inviteCode, address, gameVersion, loader, mods, maxPlayers, status,
+    cover, md, modpackMode, modpackName, modpackUrl, modpackMetaJson,
+  };
 }
 
 export default function register(router) {
@@ -160,8 +224,9 @@ export default function register(router) {
       db.prepare(
         `UPDATE lobby_rooms
             SET title = ?, description = ?, core = ?, invite_code = ?, address = ?,
-                game_version = ?, loader = ?, mods = ?, max_players = ?, status = ?,
-                heartbeat_at = ?, updated_at = ?
+                game_version = ?, loader = ?, mods = ?, max_players = ?,
+                cover = ?, md = ?, modpack_mode = ?, modpack_name = ?, modpack_url = ?, modpack_meta = ?,
+                status = ?, heartbeat_at = ?, updated_at = ?
           WHERE id = ?`,
       ).run(
         room.title,
@@ -173,6 +238,12 @@ export default function register(router) {
         room.loader,
         JSON.stringify(room.mods),
         room.maxPlayers,
+        room.cover,
+        room.md,
+        room.modpackMode,
+        room.modpackName,
+        room.modpackUrl,
+        room.modpackMetaJson,
         room.status,
         timestamp,
         timestamp,
@@ -184,8 +255,9 @@ export default function register(router) {
         .prepare(
           `INSERT INTO lobby_rooms
              (owner_id, title, description, core, invite_code, address, game_version, loader,
-              mods, max_players, status, join_count, heartbeat_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+              mods, max_players, cover, md, modpack_mode, modpack_name, modpack_url, modpack_meta,
+              status, join_count, heartbeat_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
         )
         .run(
           user.id,
@@ -198,6 +270,12 @@ export default function register(router) {
           room.loader,
           JSON.stringify(room.mods),
           room.maxPlayers,
+          room.cover,
+          room.md,
+          room.modpackMode,
+          room.modpackName,
+          room.modpackUrl,
+          room.modpackMetaJson,
           room.status,
           timestamp,
           timestamp,

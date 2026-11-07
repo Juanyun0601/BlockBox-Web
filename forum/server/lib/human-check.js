@@ -494,6 +494,36 @@ export function verifyAnswer({ id, answer, duration }) {
 export function remainingSeconds(raw) {
   const value = String(raw || '');
   const dot = value.indexOf('.');
-  if (dot <= 0 || !tokenValid(value)) return 0;
+  if (!tokenValid(value)) return 0;
   return Math.max(0, Math.round(Number(value.slice(0, dot)) - Date.now() / 1000));
+}
+
+// -------------------------------------------------------------- 下载直链令牌
+//
+// 版本安装包的下载默认要走人机验证（防脚本刷量/盗链），但启动器的应用内更新
+// 没法弹滑块。给它发「绑定到具体文件的短时效签名」：检查更新时从
+// /api/app/releases 拿到带令牌的直链，下载时凭令牌放行，不需要任何人工操作。
+// 令牌格式与人机令牌同形：<过期秒级时间戳>.<签名前32位>，签名内容绑定版本+文件名。
+
+/** 签发一个绑定 <version>/<filename> 的下载令牌，默认 24 小时有效 */
+export function signDownloadToken(version, filename, ttlSeconds = 24 * 3600) {
+  const expires = Math.floor(Date.now() / 1000) + Math.max(60, Math.floor(ttlSeconds));
+  return { token: `${expires}.${sign(`dl1.${version}/${filename}.${expires}`)}`, expires };
+}
+
+/** 校验下载令牌：签名必须对得上版本+文件名，且未过期 */
+export function verifyDownloadToken(version, filename, raw) {
+  const value = String(raw || '');
+  const dot = value.indexOf('.');
+  if (dot <= 0) return false;
+  const expires = Number(value.slice(0, dot));
+  if (!Number.isFinite(expires) || expires * 1000 <= Date.now()) return false;
+  const expected = sign(`dl1.${version}/${filename}.${expires}`);
+  const given = value.slice(dot + 1);
+  if (given.length !== expected.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+  } catch {
+    return false;
+  }
 }

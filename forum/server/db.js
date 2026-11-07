@@ -61,6 +61,21 @@ export function migrate() {
   const addedDmReply = ensureColumn('direct_messages', 'reply_to', 'INTEGER NOT NULL DEFAULT 0');
   if (addedDmReply) console.log('[论坛] 数据库已升级：direct_messages 增加 reply_to（引用的消息）');
 
+  // 联机大厅：封面图 / Markdown 介绍 / 前置整合包（在线选择或名称+链接）
+  // 老库的 lobby_rooms 没有 modpack_mode 的 CHECK 约束，补列时不加约束，应用层校验
+  const addedLobbyCover = ensureColumn('lobby_rooms', 'cover', "TEXT NOT NULL DEFAULT ''");
+  if (addedLobbyCover) console.log('[论坛] 数据库已升级：lobby_rooms 增加 cover（房间封面）');
+  const addedLobbyMd = ensureColumn('lobby_rooms', 'md', "TEXT NOT NULL DEFAULT ''");
+  if (addedLobbyMd) console.log('[论坛] 数据库已升级：lobby_rooms 增加 md（Markdown 介绍）');
+  const addedLobbyPackMode = ensureColumn('lobby_rooms', 'modpack_mode', "TEXT NOT NULL DEFAULT ''");
+  if (addedLobbyPackMode) console.log('[论坛] 数据库已升级：lobby_rooms 增加 modpack_mode（前置整合包模式）');
+  const addedLobbyPackName = ensureColumn('lobby_rooms', 'modpack_name', "TEXT NOT NULL DEFAULT ''");
+  if (addedLobbyPackName) console.log('[论坛] 数据库已升级：lobby_rooms 增加 modpack_name（前置整合包名称）');
+  const addedLobbyPackUrl = ensureColumn('lobby_rooms', 'modpack_url', "TEXT NOT NULL DEFAULT ''");
+  if (addedLobbyPackUrl) console.log('[论坛] 数据库已升级：lobby_rooms 增加 modpack_url（前置整合包地址）');
+  const addedLobbyPackMeta = ensureColumn('lobby_rooms', 'modpack_meta', "TEXT NOT NULL DEFAULT '{}'");
+  if (addedLobbyPackMeta) console.log('[论坛] 数据库已升级：lobby_rooms 增加 modpack_meta（前置整合包信息快照）');
+
   // 用户角色新增「次级管理员」：老库的 CHECK 约束没这一档，需要重建 users 表
   const usersSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get()?.sql || '';
   if (usersSql && !usersSql.includes('moderator')) {
@@ -117,6 +132,17 @@ export function migrate() {
   // 邮箱验证：记录通过验证码验证的时间（0 = 未验证）；改绑新邮箱会清零
   const addedEmailVerified = ensureColumn('users', 'email_verified_at', 'INTEGER NOT NULL DEFAULT 0');
   if (addedEmailVerified) console.log('[论坛] 数据库已升级：users 增加 email_verified_at（邮箱验证时间）');
+
+  // 插件帖：uploads 增加 meta（插件包的清单快照与 sha256，图片类上传恒为 '{}'）
+  const addedUploadMeta = ensureColumn('uploads', 'meta', "TEXT NOT NULL DEFAULT '{}'");
+  if (addedUploadMeta) console.log('[论坛] 数据库已升级：uploads 增加 meta（插件包元数据）');
+
+  // 版本发布：网盘链接（123 盘 / 夸克）。安装包文件组只保留最新两正式 + 两测试，
+  // 旧版本文件自动清理，但版本号、更新日志与网盘链接永久留在版本表里
+  const addedLink123 = ensureColumn('release_versions', 'link_123pan', "TEXT NOT NULL DEFAULT ''");
+  if (addedLink123) console.log('[论坛] 数据库已升级：release_versions 增加 link_123pan（123 盘链接）');
+  const addedLinkQuark = ensureColumn('release_versions', 'link_quark', "TEXT NOT NULL DEFAULT ''");
+  if (addedLinkQuark) console.log('[论坛] 数据库已升级：release_versions 增加 link_quark（夸克网盘链接）');
 }
 
 migrate();

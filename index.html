@@ -56,14 +56,14 @@
         把繁琐留给盒子，把创造留给你。
       </p>
       <div class="hero-cta reveal">
-        <a class="btn btn-primary btn-lg" href="download.html">
+        <a class="btn btn-primary btn-lg" href="download.html" data-quick-download id="heroDlBtn">
           <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2ZM19 9h-4V3H9v6H5l7 7 7-7Z"/></svg>
-          下载
+          一键下载
         </a>
         <a class="btn btn-ghost btn-lg" href="#unique">看看有什么不一样</a>
       </div>
-      <p class="hero-platforms reveal">
-        <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.4v7.1H3V5.5Zm0 13 7.5 1.1v-7H3v5.9Zm8.5 1.2L21 21V11.5h-9.5v8.2Zm0-15.4v7.2H21V3l-9.5 1.3Z"/></svg>
+      <p class="hero-platforms reveal" id="heroDlNote">
+        <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.4v7.1H3V5.5Zm0 13 7.5 1.1v-7.1H3v7.1Zm8.5 1.2L21 21V11.5h-9.5v9.5Zm0-15.4v7.2H21V3l-9.5 1.3Z"/></svg>
         Windows <i>/</i> Linux <i>/</i> HarmonyOS <i>/</i> Android &nbsp;·&nbsp; 基于 C++ / Qt 原生构建
       </p>
     </div>
@@ -517,10 +517,11 @@
         <h2>现在，打开你的方块盒子</h2>
         <p class="dl-sub">方块盒子完全免费，欢迎下载体验并反馈问题，帮助我们把它打磨得更好。</p>
       </div>
-      <a class="btn btn-white btn-xl dl-btn" href="download.html">
+      <a class="btn btn-white btn-xl dl-btn" href="download.html" data-quick-download id="sectionDlBtn">
         <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2ZM19 9h-4V3H9v6H5l7 7 7-7Z"/></svg>
-        立即下载
+        一键下载
       </a>
+      <p class="dl-sub" id="sectionDlNote" hidden></p>
       <ul class="plat-row" aria-label="支持平台">
         <li class="plat">
           <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.4v7.1H3V5.5Zm0 13 7.5 1.1v-7H3v5.9Zm8.5 1.2L21 21V11.5h-9.5v8.2Zm0-15.4v7.2H21V3l-9.5 1.3Z"/></svg>
@@ -608,5 +609,6 @@
 </div>
 
 <script src="assets/main.js?v=20261024a"></script>
+<script src="assets/quick-download.js?v=20261107b"></script>
 </body>
 </html>

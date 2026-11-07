@@ -122,6 +122,7 @@ async function main() {
       PORT: String(port),
       DB_PATH: path.join(tempRoot, 'forum.db'),
       UPLOAD_DIR: path.join(tempRoot, 'uploads'),
+      ANNOUNCEMENT_FILE: path.join(tempRoot, 'announcement.json'),
       PUBLIC_ORIGIN: base,
       LOG_REQUESTS: '0',
       SESSION_DAYS: '1',
@@ -680,6 +681,139 @@ async function main() {
     !(lobbyAfterClose.json?.rooms || []).some((room) => room.id === lobbyRoomId),
     lobbyAfterClose.text,
   );
+
+  // ---------- 首页公告 ----------
+
+  const announceList = await request('GET', '/api/admin/announcements');
+  check(
+    '公告列表可读',
+    announceList.status === 200 && Array.isArray(announceList.json?.announcements),
+    announceList.text,
+  );
+  check('公告文件状态可写', announceList.json?.file?.writable === true, announceList.text);
+
+  const publishedAnnouncement = await request('POST', '/api/admin/announcements', {
+    text: '冒烟测试公告：管理后台一键发布',
+    link: '/download.html',
+  });
+  check(
+    '一键发布公告',
+    publishedAnnouncement.status === 200 && publishedAnnouncement.json?.announcement?.id > 0,
+    publishedAnnouncement.text,
+  );
+  const announcementId = publishedAnnouncement.json?.announcement?.id;
+
+  const announcementFile = path.join(tempRoot, 'announcement.json');
+  const readAnnouncementFile = () => JSON.parse(fs.readFileSync(announcementFile, 'utf8'));
+  const announcementJson = readAnnouncementFile();
+  check(
+    '公告写进官网文件并排在最前',
+    announcementJson.announcements?.[0]?.text === '冒烟测试公告：管理后台一键发布',
+    JSON.stringify(announcementJson),
+  );
+  check(
+    '公告跳转链接写进官网文件',
+    announcementJson.announcements?.[0]?.link === '/download.html',
+    JSON.stringify(announcementJson),
+  );
+
+  const emptyAnnouncement = await request('POST', '/api/admin/announcements', { text: '   ' });
+  check('空公告被拒绝', emptyAnnouncement.status === 400, emptyAnnouncement.text);
+  const badLinkAnnouncement = await request('POST', '/api/admin/announcements', {
+    text: '坏链接公告',
+    link: 'javascript:alert(1)',
+  });
+  check('危险链接被拒绝', badLinkAnnouncement.status === 400, badLinkAnnouncement.text);
+
+  const deletedAnnouncement = await request('DELETE', `/api/admin/announcements/${announcementId}`);
+  check('删除公告', deletedAnnouncement.status === 200, deletedAnnouncement.text);
+  const announcementAfterDelete = readAnnouncementFile();
+  check(
+    '删除后官网文件里不再有这条',
+    !(announcementAfterDelete.announcements || []).some((item) => item.text === '冒烟测试公告：管理后台一键发布'),
+    JSON.stringify(announcementAfterDelete),
+  );
+
+  // ---------- 启动重要公告 ----------
+
+  const publishedImportant = await request('POST', '/api/admin/important-announcements', {
+    title: '冒烟测试重要公告',
+    content: '## 维护通知\n- 22:00 停机\n- **请提前退出游戏**',
+    link: '/download.html',
+  });
+  check(
+    '发布启动重要公告',
+    publishedImportant.status === 200 && publishedImportant.json?.important?.id > 0,
+    publishedImportant.text,
+  );
+  const importantId = publishedImportant.json?.important?.id;
+
+  const importantFile = readAnnouncementFile();
+  check(
+    '重要公告正文按 Markdown 原样写入文件',
+    importantFile.important?.title === '冒烟测试重要公告'
+      && importantFile.important?.content === '## 维护通知\n- 22:00 停机\n- **请提前退出游戏**',
+    JSON.stringify(importantFile),
+  );
+  check(
+    '重要公告跳转链接写进文件',
+    importantFile.important?.link === '/download.html',
+    JSON.stringify(importantFile),
+  );
+
+  const publishedSecondImportant = await request('POST', '/api/admin/important-announcements', {
+    title: '第二条重要公告',
+    content: '新公告会顶替旧公告',
+  });
+  const secondImportantId = publishedSecondImportant.json?.important?.id;
+  const importantAfterSecond = readAnnouncementFile();
+  check(
+    '新重要公告顶替旧的',
+    importantAfterSecond.important?.title === '第二条重要公告',
+    JSON.stringify(importantAfterSecond),
+  );
+  const importantAfterSecondList = await request('GET', '/api/admin/announcements');
+  const firstInHistory = (importantAfterSecondList.json?.important || []).find((item) => item.id === importantId);
+  check('旧重要公告保留在历史里并已下线', firstInHistory?.enabled === 0, importantAfterSecondList.text);
+
+  const reenabledImportant = await request('PATCH', `/api/admin/important-announcements/${importantId}`, {
+    enabled: true,
+  });
+  check('重新上线旧重要公告', reenabledImportant.status === 200, reenabledImportant.text);
+  check(
+    '上线后文件里的重要公告跟着换',
+    readAnnouncementFile().important?.title === '冒烟测试重要公告',
+    JSON.stringify(readAnnouncementFile()),
+  );
+
+  const emptyImportant = await request('POST', '/api/admin/important-announcements', {
+    title: '空正文',
+    content: '   ',
+  });
+  check('空重要公告正文被拒绝', emptyImportant.status === 400, emptyImportant.text);
+  const badLinkImportant = await request('POST', '/api/admin/important-announcements', {
+    title: '坏链接',
+    content: '正文',
+    link: 'javascript:alert(1)',
+  });
+  check('重要公告危险链接被拒绝', badLinkImportant.status === 400, badLinkImportant.text);
+
+  await request('DELETE', `/api/admin/important-announcements/${importantId}`);
+  await request('DELETE', `/api/admin/important-announcements/${secondImportantId}`);
+  const importantAfterDelete = readAnnouncementFile();
+  check(
+    '删除重要公告后文件里不再有 important 字段',
+    !importantAfterDelete.important,
+    JSON.stringify(importantAfterDelete),
+  );
+
+  await request('POST', '/api/auth/logout');
+  const announceAnon = await request('POST', '/api/admin/announcements', { text: '未登录公告' });
+  check('未登录不能发布公告', announceAnon.status === 401, announceAnon.text);
+  await request('POST', '/api/auth/login', { username: '路人甲', password: 'test123456' });
+  const announceForbidden = await request('POST', '/api/admin/announcements', { text: '普通用户公告' });
+  check('普通用户不能发布公告', announceForbidden.status === 403, announceForbidden.text);
+  await request('POST', '/api/auth/login', { username: '测试管理员', password: 'test123456' });
 
   // ---------- 访问统计 ----------
 

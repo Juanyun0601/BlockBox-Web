@@ -88,18 +88,23 @@
     <div class="dlp-latest reveal">
       <div class="latest-main">
         <div class="latest-badge"><span class="dot"></span>最新版本</div>
-        <h2>beta7 <small>公测版</small></h2>
+        <h2><span id="dlVersionName">beta7</span> <small id="dlVersionTag">公测版</small></h2>
         <p>面向所有玩家的最新公测版本，Windows、Linux、HarmonyOS 与 Android 安装包均已上传，请按你的系统选择对应文件下载。</p>
         <p class="latest-hint" id="dlpLatestHint" hidden></p>
+        <p class="latest-hint" id="dlQuickNote" hidden></p>
         <div class="latest-links">
-          <a class="btn btn-white btn-lg" href="https://1846072559.share.123pan.cn/123pan/iZqqTd-sNE9H" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2ZM19 9h-4V3H9v6H5l7 7 7-7Z"/></svg>
-            123 盘下载（推荐）
+          <a class="btn btn-white btn-lg" id="dlQuickBtn" href="index.html#download" hidden>
+            <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+            一键下载（自动适配系统）
           </a>
-          <a class="btn btn-line btn-lg" href="https://pan.quark.cn/s/194612f0fc5c" target="_blank" rel="noopener">夸克网盘</a>
-          <a class="btn btn-line btn-lg" href="https://github.com/Juanyun0601/BlockBox/releases/tag/beta7" target="_blank" rel="noopener">
+          <a class="btn btn-line btn-lg" id="dlPan123Btn" href="https://1846072559.share.123pan.cn/123pan/iZqqTd-sNE9H" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2ZM19 9h-4V3H9v6H5l7 7 7-7Z"/></svg>
+            123 盘
+          </a>
+          <a class="btn btn-line btn-lg" id="dlQuarkBtn" href="https://pan.quark.cn/s/194612f0fc5c" target="_blank" rel="noopener">夸克网盘</a>
+          <a class="btn btn-line btn-lg" href="https://github.com/Juanyun0601/BlockBox/releases/tag/beta7" target="_blank" rel="noopener" title="国际网络推荐使用 GitHub 源">
             <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.47v-1.64c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02a9.56 9.56 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.71 1.03 1.62 1.03 2.71 0 3.84-2.35 4.68-4.58 4.93.36.31.68.92.68 1.85V21c0 .27.16.59.67.49C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg>
-            GitHub
+            GitHub（国际）
           </a>
         </div>
       </div>
@@ -264,6 +269,7 @@
 </footer>
 
 <script src="assets/main.js?v=20261011a"></script>
+<script src="assets/quick-download.js?v=20261107b"></script>
 <script>
 /* 当前系统识别：显示访问者的系统与架构，并高亮对应平台入口 */
 (function () {
@@ -322,18 +328,18 @@
 
   /* --- 各「系统 + 架构」应选的安装包（* 为架构未知时的兜底） --- */
   var PKG = {
-    'windows|x64': 'BlockBox-beta7-win64-setup.exe（安装版）或 win64-portable.zip（免安装）',
-    'windows|arm64': 'BlockBox-beta7-winarm64-setup.exe（安装版）或 winarm64-portable.zip（免安装）',
+    'windows|x64': 'win64 安装包（安装版 setup.exe 或免安装 portable.zip）',
+    'windows|arm64': 'winarm64 安装包（安装版 setup.exe 或免安装 portable.zip）',
     'windows|*': 'win64-*（x64 设备）或 winarm64-*（ARM64 设备）安装包',
-    'linux|x64': 'linux-x64.deb（Debian / Ubuntu）或 linux-x64.tar.gz（通用压缩包）',
+    'linux|x64': 'linux-x64 安装包（.deb 或 .tar.gz）',
     'linux|*': 'Linux 版目前只提供 x64 安装包，ARM 设备暂无法直接安装',
-    'harmony|x64': 'harmony-arm64-v8a.hap（直装）或 harmony-arm64-v8a.zip',
-    'harmony|arm64': 'harmony-arm64-v8a.hap（直装）或 harmony-arm64-v8a.zip',
-    'harmony|*': 'harmony-arm64-v8a.hap（直装）或 harmony-arm64-v8a.zip',
-    'android|arm64': 'android-arm64-v8a.apk',
-    'android|x64': 'android-x86_64.apk（模拟器或 x86 平板）',
-    'android|x86': 'android-x86_64.apk（模拟器或 x86 平板）',
-    'android|*': 'android-arm64-v8a.apk（多数手机）或 android-x86_64.apk（x86 设备）'
+    'harmony|x64': 'harmony-arm64-v8a 安装包（.hap 直装）',
+    'harmony|arm64': 'harmony-arm64-v8a 安装包（.hap 直装）',
+    'harmony|*': 'harmony-arm64-v8a 安装包（.hap 直装）',
+    'android|arm64': 'android-arm64-v8a 安装包（.apk）',
+    'android|x64': 'android-x86_64 安装包（模拟器或 x86 平板）',
+    'android|x86': 'android-x86_64 安装包（模拟器或 x86 平板）',
+    'android|*': 'android-arm64-v8a 安装包（多数手机）或 android-x86_64（x86 设备）'
   };
 
   detectArch().then(function (arch) {

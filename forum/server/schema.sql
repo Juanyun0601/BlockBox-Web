@@ -167,11 +167,34 @@ CREATE TABLE IF NOT EXISTS uploads (
   height     INTEGER NOT NULL DEFAULT 0,
   size       INTEGER NOT NULL DEFAULT 0,
   kind       TEXT    NOT NULL DEFAULT 'img',
+  meta       TEXT    NOT NULL DEFAULT '{}',
   deleted    INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id, created_at DESC);
+
+-- 帖子挂载的插件（插件帖）------------------------------------------------
+-- 每个主题最多挂一个插件包，绑定的是发帖人自己上传的 uploads 记录。
+-- 清单字段一律以服务端解开包后读到的为准，不信任客户端上报的值。
+CREATE TABLE IF NOT EXISTS thread_plugins (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  thread_id   INTEGER NOT NULL UNIQUE REFERENCES threads(id) ON DELETE CASCADE,
+  upload_id   INTEGER NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
+  plugin_id   TEXT    NOT NULL,
+  name        TEXT    NOT NULL,
+  version     TEXT    NOT NULL DEFAULT '',
+  author      TEXT    NOT NULL DEFAULT '',
+  description TEXT    NOT NULL DEFAULT '',
+  icon        TEXT    NOT NULL DEFAULT '',
+  file_size   INTEGER NOT NULL DEFAULT 0,
+  file_hash   TEXT    NOT NULL DEFAULT '',
+  downloads   INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_plugins_thread ON thread_plugins(thread_id);
+CREATE INDEX IF NOT EXISTS idx_thread_plugins_plugin ON thread_plugins(plugin_id);
 
 -- 搜索用索引表（主题标题 + 正文摘要，避免搜索时全表扫楼层）
 CREATE TABLE IF NOT EXISTS thread_search (
@@ -280,6 +303,12 @@ CREATE TABLE IF NOT EXISTS lobby_rooms (
   loader       TEXT    NOT NULL DEFAULT '',
   mods         TEXT    NOT NULL DEFAULT '[]',
   max_players  INTEGER NOT NULL DEFAULT 8,
+  cover        TEXT    NOT NULL DEFAULT '',
+  md           TEXT    NOT NULL DEFAULT '',
+  modpack_mode TEXT    NOT NULL DEFAULT '' CHECK (modpack_mode IN ('', 'online', 'link')),
+  modpack_name TEXT    NOT NULL DEFAULT '',
+  modpack_url  TEXT    NOT NULL DEFAULT '',
+  modpack_meta TEXT    NOT NULL DEFAULT '{}',
   status       TEXT    NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'playing', 'full')),
   join_count   INTEGER NOT NULL DEFAULT 0,
   heartbeat_at INTEGER NOT NULL,
@@ -289,6 +318,31 @@ CREATE TABLE IF NOT EXISTS lobby_rooms (
 
 CREATE INDEX IF NOT EXISTS idx_lobby_rooms_owner ON lobby_rooms(owner_id);
 CREATE INDEX IF NOT EXISTS idx_lobby_rooms_active ON lobby_rooms(heartbeat_at DESC);
+
+-- 启动器首页公告（管理后台「首页公告」维护，发布后写进官网 announcement.json）--
+CREATE TABLE IF NOT EXISTS announcements (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  text       TEXT    NOT NULL,
+  link       TEXT    NOT NULL DEFAULT '',
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT    NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_announcements_created ON announcements(created_at DESC);
+
+-- 启动重要公告（带标题的 Markdown 正文，启动器启动时弹窗；同一时间只生效一条）--
+CREATE TABLE IF NOT EXISTS important_announcements (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  title      TEXT    NOT NULL DEFAULT '',
+  content    TEXT    NOT NULL,
+  link       TEXT    NOT NULL DEFAULT '',
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT    NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_important_announcements_created ON important_announcements(created_at DESC);
 
 -- 访问记录（页面浏览明细，管理后台的访问量 / 日活 / 月活都从这里算）---
 -- 只记真实用户打开的 HTML 页面：接口请求、图片等静态资源和爬虫都不记。
@@ -326,3 +380,35 @@ INSERT OR IGNORE INTO boards (slug, name, description, icon, sort_order, created
   ('plugin',   '插件与开发', '插件使用、开发文档、编码方块相关',           '🛠️', 40, unixepoch()),
   ('feedback', '意见建议',   '功能建议、缺陷反馈、对官网和论坛的想法',     '💡', 50, unixepoch()),
   ('chat',     '闲聊灌水',   '和方块盒子有关的轻松话题',                   '☕', 60, unixepoch());
+
+-- 版本发布（管理后台「版本发布」维护）--------------------------------------
+-- 每行一个版本：版本号 + 更新日志 + 网盘链接 + 是否现行版本。
+-- 安装包文件不进库，落 config.releaseDir，库里只记文件清单与指纹；
+-- 文件组只保留最新两个正式版和两个测试版，旧版本文件自动清理，
+-- 版本号、更新日志与网盘链接则永久保留。
+CREATE TABLE IF NOT EXISTS release_versions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  version     TEXT    NOT NULL UNIQUE,
+  notes       TEXT    NOT NULL DEFAULT '',
+  link_123pan TEXT    NOT NULL DEFAULT '',
+  link_quark  TEXT    NOT NULL DEFAULT '',
+  enabled     INTEGER NOT NULL DEFAULT 1,
+  created_by  TEXT    NOT NULL DEFAULT '',
+  created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_release_versions_created ON release_versions(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS release_files (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  version_id   INTEGER NOT NULL REFERENCES release_versions(id) ON DELETE CASCADE,
+  platform     TEXT    NOT NULL,              -- win64 / winarm64 / linux-x64 / linux-arm64 / android / harmony / other
+  filename     TEXT    NOT NULL,
+  size         INTEGER NOT NULL DEFAULT 0,
+  sha256       TEXT    NOT NULL DEFAULT '',
+  downloads    INTEGER NOT NULL DEFAULT 0,    -- 官网/接口直链下载计数（网盘、GitHub 的不记这里）
+  created_at   INTEGER NOT NULL,
+  UNIQUE(version_id, filename)
+);
+
+CREATE INDEX IF NOT EXISTS idx_release_files_version ON release_files(version_id);

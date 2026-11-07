@@ -9,11 +9,16 @@ const THREAD_SELECT = `
          (SELECT group_concat(tt.tag, ',') FROM thread_tags tt WHERE tt.thread_id = t.id) AS tag_list,
          (SELECT p.content FROM posts p
            WHERE p.thread_id = t.id AND p.deleted = 0
-           ORDER BY p.floor LIMIT 1) AS first_post
+           ORDER BY p.floor LIMIT 1) AS first_post,
+         tp.id AS tp_id, tp.upload_id AS tp_upload_id, tp.plugin_id AS tp_plugin_id,
+         tp.name AS tp_name, tp.version AS tp_version, tp.author AS tp_author,
+         tp.description AS tp_description, tp.icon AS tp_icon,
+         tp.file_size AS tp_file_size, tp.downloads AS tp_downloads
     FROM threads t
     JOIN boards b ON b.id = t.board_id
     JOIN users u ON u.id = t.author_id
-    LEFT JOIN users lu ON lu.id = t.last_post_user_id`;
+    LEFT JOIN users lu ON lu.id = t.last_post_user_id
+    LEFT JOIN thread_plugins tp ON tp.thread_id = t.id`;
 
 const THREAD_ORDER = {
   latest: 't.pinned DESC, t.last_post_at DESC',

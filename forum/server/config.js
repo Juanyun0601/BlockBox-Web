@@ -49,6 +49,19 @@ const normalizeOrigin = (value) => {
   }
 };
 
+/**
+ * 启动器首页公告文件：
+ * - 显式配了 ANNOUNCEMENT_FILE 就用它；
+ * - 服务器上有官网目录 /var/www/blockbox 时，默认写官网根目录的 announcement.json；
+ * - 本地开发没有这个目录，就用仓库里的 方块盒子官网/announcement.json（论坛的上一级）。
+ */
+const SITE_DIR = '/var/www/blockbox';
+const defaultAnnouncementFile = fs.existsSync(SITE_DIR)
+  ? path.join(SITE_DIR, 'announcement.json')
+  : path.resolve(ROOT_DIR, '..', 'announcement.json');
+
+const cdnBaseValue = normalizeOrigin(env.CDN_BASE);
+
 export const config = {
   host: env.HOST || '127.0.0.1',
   port: num(env.PORT, 3210),
@@ -61,6 +74,10 @@ export const config = {
   dbPath: resolvePath(env.DB_PATH || 'data/forum.db'),
   uploadDir: resolvePath(env.UPLOAD_DIR || 'data/uploads'),
   webDir: resolvePath(env.WEB_DIR || 'web'),
+
+  // 启动器公告文件：管理后台的「首页公告 / 启动重要公告」发布后都写到这里，客户端会定时拉取。
+  // 默认 /var/www/blockbox/announcement.json（服务器）或仓库里的那份（本地）。
+  announcementFile: env.ANNOUNCEMENT_FILE ? resolvePath(env.ANNOUNCEMENT_FILE) : defaultAnnouncementFile,
 
   publicOrigin: (env.PUBLIC_ORIGIN || '').replace(/\/+$/, ''),
 
@@ -89,6 +106,23 @@ export const config = {
   maxAvatarBytes: num(env.MAX_AVATAR_BYTES, 512 * 1024),
   maxCoverBytes: num(env.MAX_COVER_BYTES, 3 * 1024 * 1024),
   maxImageBytes: num(env.MAX_IMAGE_BYTES, 4 * 1024 * 1024),
+  // 论坛插件帖的插件包（.BlockBox，实为 zip）上限
+  maxPluginBytes: num(env.MAX_PLUGIN_BYTES, 20 * 1024 * 1024),
+  // 版本发布的安装包上限（Windows 安装版接近 100MB，留裕量）
+  maxReleaseFileBytes: num(env.MAX_RELEASE_FILE_BYTES, 300 * 1024 * 1024),
+  // 版本安装包目录：管理后台上传，官网与启动器经 /releases/files/<版本>/<文件名> 下载
+  releaseDir: resolvePath(env.RELEASE_DIR || 'data/releases'),
+  // 官网安装包下载限速：每个下载请求最多多少 KB/s（0 表示不限速）。
+  // 官网直链和启动器应用内更新都算在内，用来压住服务器出口带宽与月流量。
+  downloadRateLimitKb: Math.max(0, num(env.DOWNLOAD_RATE_LIMIT_KB, 400)),
+  // 启动器直链前缀：拼进 /api/app/releases 的 browser_download_url，让安装包下载走 CDN。
+  // 优先显式配置；没配则沿用 CDN 域名，再退到论坛自身对外地址；都为空时给相对路径
+  publicDownloadsBase:
+    normalizeOrigin(env.PUBLIC_DOWNLOADS_BASE) || cdnBaseValue || (env.PUBLIC_ORIGIN || '').replace(/\/+$/, ''),
+  // 官网一键下载的验证跳转域（与论坛同域才能复用已过验证的 Cookie）。
+  // 优先显式配置；没配则用论坛对外地址，再退到 CDN 域名
+  publicGateBase:
+    normalizeOrigin(env.PUBLIC_GATE_BASE) || (env.PUBLIC_ORIGIN || '').replace(/\/+$/, '') || cdnBaseValue,
 
   // 图片处理：原图长边上限、缩略图长边上限、头像边长
   imageMaxDimension: num(env.MAX_IMAGE_DIMENSION, 2560),

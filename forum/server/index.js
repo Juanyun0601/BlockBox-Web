@@ -30,7 +30,10 @@ import registerFeedback from './routes/feedback.js';
 import registerQuiz from './routes/quiz.js';
 import registerLobby from './routes/lobby.js';
 import registerHuman from './routes/human.js';
+import registerReleases from './routes/releases.js';
 import { isVerified } from './lib/human-check.js';
+import { initAnnouncements } from './lib/announcements.js';
+import { handleReleaseFileRequest, initReleases } from './lib/releases.js';
 
 const VERSION = '0.1.0';
 
@@ -71,7 +74,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerFeedback, registerQuiz, registerLobby, registerHuman]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases]) {
   register(router);
 }
 
@@ -104,9 +107,9 @@ function logRequest(req, res, startedAt) {
   console.log(`${status} ${req.method} ${req.url} ${ms}ms`);
 }
 
-/** 人机验证门禁的例外：验证接口本身、健康检查 */
+/** 人机验证门禁的例外：验证接口本身、健康检查、版本发布下发（官网与启动器要用） */
 function humanGateExempt(pathname) {
-  return pathname.startsWith('/api/human/') || pathname === '/api/health';
+  return pathname.startsWith('/api/human/') || pathname === '/api/health' || pathname.startsWith('/api/app/');
 }
 
 /** 把 /a/b?x=1 收成只允许站内相对路径，防止验证页把人送去站外 */
@@ -205,6 +208,18 @@ async function handle(req, res) {
 
   if (req.method !== 'GET' && req.method !== 'HEAD') throw notFound('页面不存在');
 
+  // 版本安装包：/releases/files/<版本>/<文件名>，公开直链（官网一键下载、启动器应用内更新）。
+  // 带下载令牌或已过人机验证才放行；浏览器没验证会先被引去滑块页，过完回跳继续下载。
+  if (pathname.startsWith('/releases/files/')) {
+    const parts = pathname.slice('/releases/files/'.length).split('/').map((part) => decodeURIComponent(part));
+    if (parts.length === 2 && (await handleReleaseFileRequest(res, { version: parts[0], filename: parts[1], cookies, headers: req.headers, searchParams: url.searchParams }))) {
+      return;
+    }
+    res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+    res.end('文件不存在');
+    return;
+  }
+
   if (pathname.startsWith('/uploads/')) {
     const relative = pathname.slice('/uploads'.length);
     if (await serveFile(res, config.uploadDir, relative, { immutable: true, publicResource: true })) return;
@@ -283,6 +298,8 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve
 
 if (isMain) {
   bootstrapAdmin();
+  initAnnouncements();
+  initReleases();
   purgeExpiredSessions();
   purgeOldVisits();
   purgeExpiredEmailCodes();

@@ -3,6 +3,7 @@ import { badRequest, notFound, readRawBody } from '../lib/http.js';
 import { requireAdmin, requireUser } from '../lib/auth.js';
 import { enforce } from '../lib/rate-limit.js';
 import { saveImage, removeUpload } from '../lib/images.js';
+import { savePluginPackage } from '../lib/plugins.js';
 import { config } from '../config.js';
 import { markAllRead, markRead, unreadNotifications } from '../lib/notify.js';
 import { snippetOf } from '../lib/serialize.js';
@@ -18,6 +19,18 @@ export default function register(router) {
     const buffer = await readRawBody(ctx.req, config.maxImageBytes);
     const saved = await saveImage(buffer, { userId: user.id, kind: 'img' });
     return saved;
+  });
+
+  // ---------------- 插件帖：上传插件包 ----------------
+  // 只收真实发帖人上传的 .BlockBox（zip），清单以服务端解包为准。
+  // 绑定帖子在 POST /api/threads（带 plugin_upload_id）时完成，一帖一个。
+
+  router.post('/api/upload/plugin', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`upload-plugin:${user.id}`, 10, 60 * 60 * 1000, '插件上传太频繁');
+
+    const buffer = await readRawBody(ctx.req, config.maxPluginBytes);
+    return savePluginPackage(buffer, { userId: user.id });
   });
 
   // ---------------- 我的相册 ----------------

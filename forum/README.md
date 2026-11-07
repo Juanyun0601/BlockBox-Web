@@ -22,7 +22,7 @@
 | 举报 | 任意楼层可举报，进入管理后台「审核队列」，可删除该楼层并把举报标记为已处理，或直接忽略 |
 | 搜索 | 标题 + 正文 + 标签关键词，中文两个字也能搜，结果带命中片段 |
 | 联机大厅 | 启动器把开好的联机房间发布到论坛，网页端能按房间名 / 房主 / 联机方式 / 版本筛选并复制邀请码；房间靠心跳续期，房主关房自动下架 |
-| 管理后台 | 站点数据、板块增删改、主题置顶 / 锁定 / 删除、用户设为管理员 / 一键禁言（勾选禁止发帖、回复或私信，填理由和时长，到点自动恢复）/ 解除、举报队列、标签管理（推荐 / 合并 / 删除）、访问数据（今日 / 7 天 / 30 天的浏览量、访客数，日活与月活，趋势图、今日 24 小时和热门页面） |
+| 管理后台 | 站点数据、板块增删改、主题置顶 / 锁定 / 删除、用户设为管理员 / 一键禁言（勾选禁止发帖、回复或私信，填理由和时长，到点自动恢复）/ 解除、举报队列、标签管理（推荐 / 合并 / 删除）、访问数据（今日 / 7 天 / 30 天的浏览量、访客数，日活与月活，趋势图、今日 24 小时和热门页面）、首页公告（填写文字和可选链接后一键发布到启动器首页，发错可直接删除）、启动重要公告（写标题和 Markdown 正文后一键发布，启动器启动时弹窗；可下线 / 重新上线 / 删除，用户可勾选不再弹出） |
 | 其他 | 输入 @ 自动补全用户名、全站深色模式、手机端布局、草稿自动保存、限流（登录 / 注册 / 发帖 / 搜索 / 上传 / 点赞都有）、统一错误提示、404 页面 |
 | 资源分发 | 页面脚本样式（`/assets/`）和站内图片（`/uploads/`）可以整个交给 CDN：填 `CDN_BASE` 即可，接口和页面仍走论坛自己的域名 |
 | 人机验证 | 进站先过一道滑块拼图验证（服务端现场画图、不接第三方），通过后默认 8 小时内不再询问；网页版和启动器共用同一套 |
@@ -63,6 +63,7 @@ node server/index.js
 │   │   ├── human-check.js # 人机验证：滑块拼图的画图、判定与令牌
 │   │   ├── rate-limit.js # 进程内限流
 │   │   ├── visits.js     # 页面浏览记录、浏览 / 访客 / 日活 / 月活统计
+│   │   ├── announcements.js # 首页公告：后台发布、写官网 announcement.json
 │   │   └── validate.js   # 入参校验
 │   └── routes/
 │       ├── auth.js           # 注册、登录、个人资料、改密码、头像
@@ -92,7 +93,7 @@ node server/index.js
 │   ├── seed.js           # 造测试数据
 │   ├── set-admin.js      # 建 / 提升管理员
 │   ├── backup.js         # 备份数据库与上传文件
-│   └── smoke.js          # 端到端冒烟测试（npm run smoke，105 项）
+│   └── smoke.js          # 端到端冒烟测试（npm run smoke，116 项）
 ├── deploy/               # 部署物料：systemd、Caddy、Nginx 配置
 ├── Dockerfile            # 生产镜像（Node 22 alpine）
 ├── docker-compose.yml
@@ -120,6 +121,12 @@ node server/index.js
 | `TRUST_PROXY` | `0` | 在 Nginx / Caddy 后面时设为 `1`，按 `X-Forwarded-For` 取真实 IP |
 | `SECURE_COOKIE` | `0` | 全站 HTTPS 后设为 `1` |
 | `LOG_REQUESTS` | `1` | 是否打印访问日志 |
+| `ANNOUNCEMENT_FILE` | 服务器 `/var/www/blockbox/announcement.json`，本地 `../announcement.json` | 启动器首页公告文件：管理后台发布后写到这里 |
+| `RELEASE_DIR` | `data/releases` | 版本发布安装包目录：管理后台「版本发布」上传到这里，经 `/releases/files/<版本>/<文件名>` 提供下载 |
+| `MAX_RELEASE_FILE_BYTES` | `314572800` | 单个安装包上传上限（300 MB），要和反代的 `client_max_body_size` 对齐 |
+| `PUBLIC_DOWNLOADS_BASE` | 依次取 CDN 域名 → `PUBLIC_ORIGIN` | 拼进启动器下载直链（`browser_download_url`），配了 CDN 就会让安装包下载走 CDN |
+| `DOWNLOAD_RATE_LIMIT_KB` | `400` | 官网安装包每个下载请求的限速（KB/s），`0` 表示不限速；官网一键下载和启动器应用内更新都算在内 |
+| `PUBLIC_GATE_BASE` | 依次取 `PUBLIC_ORIGIN` → CDN 域名 | 官网「一键下载」的验证跳转域（需与论坛同域才能复用已过验证的 Cookie） |
 | `MAX_AVATAR_BYTES` | `524288` | 头像大小上限（512 KB） |
 | `MAX_COVER_BYTES` | `3145728` | 个人主页封面大小上限（3 MB） |
 | `MAX_IMAGE_BYTES` | `4194304` | 帖子内图片大小上限（4 MB），要和反代的 `client_max_body_size` 对齐 |
@@ -132,12 +139,18 @@ node server/index.js
 | `HUMAN_CHECK_TTL_HOURS` | `8` | 通过验证后多少小时内免验 |
 | `HUMAN_CHECK_SECRET` | 空 | 验证令牌的签名密钥。不配则每次重启换一把，用户要重新验证 |
 
+> 管理后台的「首页公告」发布后写进 `ANNOUNCEMENT_FILE`，启动器首页公告栏读的就是这个文件。
+
+> 管理后台的「版本发布」同样写官网根目录的 `latest.json`（官网一键下载按钮读它），安装包经 `/releases/files/<版本>/<文件名>` 下载：带签名令牌（启动器）或过一次人机验证（浏览器）才放行，配了 `CDN_BASE` 时验证通过会 302 到 CDN 直链。启动器检查更新优先打 `https://<论坛域名>/api/app/releases`，拿不到再回退 GitHub。
+> 服务器上要给它写权限（systemd 的 `ProtectSystem` 会挡住），步骤见
+> [docs/部署.md](docs/部署.md) 的「让管理后台能发布首页公告」。
+
 ## 常用命令
 
 ```bash
 node server/index.js              # 启动（生产）
 npm run dev                       # 改代码自动重启（--watch）
-npm run smoke                     # 端到端测试：人机验证→注册→发帖→回复→通知→图床→举报→权限，105 项
+npm run smoke                     # 端到端测试：人机验证→注册→发帖→回复→通知→图床→举报→权限，116 项
 npm run backup                    # 备份数据库 + 上传文件到 data/backups
 npm run seed -- --demo            # 造演示数据
 node scripts/set-admin.js 张三 密码   # 建管理员 / 重置管理员密码

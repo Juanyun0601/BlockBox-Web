@@ -184,6 +184,107 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ---
 
+## 插件帖
+
+发帖时带 `plugin_upload_id`，主题就成了插件帖：列表和详情都带 `plugin` 字段，
+详情页渲染插件卡，读者可以下载整个 `.BlockBox` 包。
+
+### POST /api/upload/plugin · 上传插件包
+
+请求体是 **`.BlockBox` 插件包的原始字节**（实为 zip，`Content-Type` 给
+`application/octet-stream`）。上限 20 MB（`MAX_PLUGIN_BYTES`），限流每账号 10 个/小时。
+
+服务端校验链（任一不过都 400）：扩展名 `.BlockBox` → 文件头 `PK\x03\x04` →
+包内能解出 `plugin.json` 且 `id` / `name` 齐全。**清单信息一律以服务端解包结果为准**，
+包内 PNG/JPG 图标会顺手提取成站内图片。
+
+```json
+{
+  "upload_id": 12,
+  "url": "/uploads/plg-2-1794018714826-121eba.BlockBox",
+  "plugin_id": "memory_optimizer",
+  "name": "内存优化",
+  "version": "1.1.0",
+  "author": "BlockBox Team",
+  "description": "…",
+  "icon": "/uploads/plg-2-1794018714826-121eba_icon.png",
+  "file_size": 5410,
+  "file_hash": "59b3672b…（sha256）"
+}
+```
+
+### POST /api/threads 的插件字段
+
+发帖请求体多一个可选字段：
+
+```json
+{ "board": "plugin", "title": "…", "content": "…", "tags": [],
+  "plugin_upload_id": 12 }
+```
+
+- 上传必须是自己刚传的、类别为插件、且**还没绑给别的主题**（一帖一个包）
+- 绑定后主题输出多一个对象（列表 / 搜索 / 详情都有）：
+
+```json
+"plugin": {
+  "id": 5, "upload_id": 12, "plugin_id": "memory_optimizer",
+  "name": "内存优化", "version": "1.1.0", "author": "…",
+  "description": "…", "icon": "/uploads/…_icon.png",
+  "file_size": 5410, "downloads": 3
+}
+```
+
+- 插件帖删除主题时，对应 `uploads` 记录一起软删，下载接口即 404
+
+### GET /api/threads/:id/plugin/download · 拿下载地址
+
+匿名可访问（仍受人机验证门禁），返回**绝对下载地址**——配了 CDN 时就是 CDN 域名，
+否则论坛自供（`/uploads/...` 补全后的完整 URL）：
+
+```json
+{
+  "url": "https://cdn.blockbox.cc.cd/uploads/plg-2-….BlockBox",
+  "size": 5410,
+  "content_type": "application/octet-stream",
+  "filename": "plg-2-….BlockBox",
+  "downloads": 4
+}
+```
+
+`downloads` 按「同一 IP 对同一插件 10 分钟只记一次」去抖累加。
+下载字节建议与发帖时返回的 `file_hash`（sha256）比对后再交给安装流程。
+
+### GET /api/forum-plugins · 插件列表（软件端专用）
+
+把所有插件帖（主题未删）聚成一份插件列表，给启动器资源页「插件」子页用。
+**只对 `User-Agent: BlockBoxLauncher` 开放**，其他 UA 一律 403——
+网页端不提供这个列表，普通浏览仍走帖子；下载接口仍匿名可走。
+
+| 参数 | 说明 |
+|---|---|
+| `page` / `per_page` | 分页（默认 24 条/页，最大 60） |
+| `sort` | `latest`（默认，按最后活动）/ `hot`（回复+浏览）/ `downloads`（下载次数） |
+
+```json
+{
+  "plugins": [
+    {
+      "id": 5, "upload_id": 12, "plugin_id": "memory_optimizer",
+      "thread_id": 88, "name": "内存优化", "version": "1.1.0",
+      "author": "…", "description": "…", "icon": "/uploads/…_icon.png",
+      "file_size": 5410, "downloads": 3,
+      "views": 210, "reply_count": 8, "created_at": 1794018729,
+      "posted_by": { "id": 2, "username": "…", "display_name": "…", "avatar": "" }
+    }
+  ],
+  "pagination": { "page": 1, "per_page": 24, "total": 1, "pages": 1 }
+}
+```
+
+`thread_id` 用于跳回原帖；`plugin_id` 可与本地已装插件对账。
+
+---
+
 ## 通知
 
 ### GET /api/notifications?page=1&per_page=20

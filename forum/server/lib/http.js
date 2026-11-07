@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { Transform } from 'node:stream';
 import { config } from '../config.js';
 
 /** 业务错误：抛出后由调度器统一转成 JSON 响应 */
@@ -125,12 +126,45 @@ const MIME_TYPES = {
 };
 
 /**
+ * 把数据流按 bytesPerSecond 的速率慢慢放出去（下载限速用）。
+ * 每块数据按「已发送字节数 ÷ 目标速率」算出应该到达的时刻，没到就等一会儿再推，
+ * 所以从一开始就不会先甩一大块出去，整体速度不会超过设定值。
+ */
+class ThrottleStream extends Transform {
+  constructor(bytesPerSecond) {
+    super();
+    this.bytesPerSecond = Math.max(1, bytesPerSecond);
+    this.startedAt = Date.now();
+    this.delivered = 0;
+  }
+
+  _transform(chunk, _encoding, callback) {
+    this.delivered += chunk.length;
+    const dueAt = this.startedAt + (this.delivered / this.bytesPerSecond) * 1000;
+    const waitMs = dueAt - Date.now();
+    const push = () => {
+      this.push(chunk);
+      callback();
+    };
+    if (waitMs > 5) setTimeout(push, waitMs);
+    else push();
+  }
+}
+
+/**
  * 托管静态文件：root 为绝对目录，urlPath 为以 / 开头的路径。
  * 目录请求回退到 index.html，找不到返回 false 交给上层处理。
  * rewrite：对 HTML 做一次内存改写（走 CDN 时用）；
- * publicResource：公开资源，放开跨域并允许 CDN / 浏览器长期缓存。
+ * publicResource：公开资源，放开跨域并允许 CDN / 浏览器长期缓存；
+ * attachment：响应带 content-disposition，浏览器点击就是下载而不是打开。
+ * maxBytesPerSecond：下载限速（字节/秒），0 表示不限速。
  */
-export async function serveFile(res, root, urlPath, { immutable = false, rewrite = null, publicResource = false } = {}) {
+export async function serveFile(
+  res,
+  root,
+  urlPath,
+  { immutable = false, rewrite = null, publicResource = false, attachment = false, maxBytesPerSecond = 0 } = {},
+) {
   const clean = decodeURIComponent(urlPath.split('?')[0]);
   let relative = clean.replace(/^\/+/, '');
   if (relative === '' || relative.endsWith('/')) relative += 'index.html';
@@ -160,6 +194,7 @@ export async function serveFile(res, root, urlPath, { immutable = false, rewrite
     'content-type': type,
     'cache-control': immutable ? 'public, max-age=2592000, immutable' : 'no-cache',
   };
+  if (attachment) headers['content-disposition'] = `attachment; filename="${path.basename(target).replace(/"/g, '')}"`;
   // 图片 / 脚本可能被 CDN 回源、也可能被别的页面直接引用，放开跨域读取
   if (publicResource) headers['access-control-allow-origin'] = '*';
 
@@ -176,7 +211,18 @@ export async function serveFile(res, root, urlPath, { immutable = false, rewrite
     'content-length': stat.size,
     'last-modified': stat.mtime.toUTCString(),
   });
-  fs.createReadStream(target).pipe(res);
+
+  const fileStream = fs.createReadStream(target);
+  const bodyStream = maxBytesPerSecond > 0 ? fileStream.pipe(new ThrottleStream(maxBytesPerSecond)) : fileStream;
+  // 浏览器取消下载 / 断网时把文件流也停掉，别让限速后的慢速读取一直占着句柄
+  res.on('close', () => {
+    fileStream.destroy();
+    if (bodyStream !== fileStream) bodyStream.destroy();
+  });
+  bodyStream.on('error', () => {
+    if (!res.writableEnded) res.destroy();
+  });
+  bodyStream.pipe(res);
   return true;
 }
 

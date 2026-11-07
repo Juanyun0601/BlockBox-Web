@@ -56,8 +56,26 @@ export function threadOut(row, { withSnippet = true } = {}) {
     last_poster: row.last_username
       ? { username: row.last_username, display_name: row.last_display_name || row.last_username }
       : null,
+    // 插件帖：thread 上挂了插件才有（plugin_id 是 thread_plugins 行 id）
+    ...(row.tp_id ? { plugin: pluginOut(row) } : {}),
     ...(withSnippet ? { snippet: snippetOf(row.first_post) } : {}),
     ...(row.bookmarked === undefined ? {} : { bookmarked: !!row.bookmarked }),
+  };
+}
+
+/** thread_plugins 行 → 卡片展示用的插件 JSON */
+export function pluginOut(row) {
+  return {
+    id: row.tp_id,
+    upload_id: row.tp_upload_id,
+    plugin_id: row.tp_plugin_id,
+    name: row.tp_name,
+    version: row.tp_version || '',
+    author: row.tp_author || '',
+    description: row.tp_description || '',
+    icon: row.tp_icon || '',
+    file_size: row.tp_file_size || 0,
+    downloads: row.tp_downloads || 0,
   };
 }
 

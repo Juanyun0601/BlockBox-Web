@@ -26,21 +26,28 @@ BB.boot(async () => {
   let feedbackStatus = 'open';
   let visitData = null;
   let visitDays = 30;
+  let announcementData = null;
+  let releaseData = null;
 
   async function loadOverview() {
-    const [data, reportData, tagResult, feedbackResult, visitResult] = await Promise.all([
+    const [data, announceResult, reportData, tagResult, feedbackResult, visitResult, releaseResult] = await Promise.all([
       BB.api('/api/admin/overview'),
+      BB.api('/api/admin/announcements'),
       BB.api('/api/admin/reports?status=open'),
       BB.api('/api/admin/tags'),
       BB.api(`/api/admin/feedbacks?status=${feedbackStatus}&per_page=50`),
       // 访问数据单独容错：接口出问题时只是这块空着，不影响其余后台功能
       BB.api(`/api/admin/visits?days=${visitDays}`).catch(() => null),
+      // 版本发布同理单独容错
+      BB.api('/api/admin/releases').catch(() => null),
     ]);
     overview = data;
     reports = reportData;
     tagData = tagResult;
     feedbackData = feedbackResult;
     visitData = visitResult;
+    announcementData = announceResult;
+    releaseData = releaseResult;
     render();
   }
 
@@ -59,6 +66,85 @@ BB.boot(async () => {
         ${statCard(stats.posts, '回复')}
         ${statCard(stats.online, '15 分钟在线')}
       </div>
+
+      <section class="card admin-section">
+        <div class="visit-head">
+          <h2>首页公告</h2>
+          <span class="small muted" id="announceFileState" style="margin-left: auto"></span>
+        </div>
+        <div class="admin-form announce-form">
+          <input class="input" id="announceText" maxlength="200" placeholder="公告内容（一行显示，建议 60 字以内）">
+          <input class="input" id="announceLink" maxlength="500" placeholder="跳转链接（可选，https://… 或 /download.html）">
+          <button class="btn btn-primary btn-sm" id="publishAnnounceBtn">一键发布</button>
+        </div>
+        <p class="small muted" style="margin: 8px 0 12px">
+          发布后会写进官网 announcement.json，启动器首页公告栏最长约 10 分钟后显示；新的公告排在最前面。
+        </p>
+        <div id="announceError"></div>
+        <div id="announceFileHint"></div>
+        <table class="table">
+          <thead><tr><th>公告</th><th>链接</th><th>发布时间</th><th>操作</th></tr></thead>
+          <tbody id="announceRows"></tbody>
+        </table>
+      </section>
+
+      <section class="card admin-section">
+        <div class="visit-head">
+          <h2>启动重要公告</h2>
+          <span class="small muted" id="importantState" style="margin-left: auto"></span>
+        </div>
+        <p class="small muted" style="margin-bottom: 12px">
+          发布后写进官网 announcement.json，启动器下次启动会弹窗显示；正文支持 Markdown（标题、列表、加粗、链接、引用等）。
+          同一时间只弹一条，新发布的会自动顶替旧的；用户勾选「不再弹出这条公告」后，同一条不会再打扰。
+        </p>
+        <div class="important-form">
+          <input class="input" id="importantTitle" maxlength="60" placeholder="标题（如：服务器维护通知）">
+          <input class="input" id="importantLink" maxlength="500" placeholder="跳转链接（可选，https://… 或 /download.html）">
+        </div>
+        <div class="important-body">
+          <textarea class="input textarea-lg" id="importantContent" maxlength="5000" placeholder="正文，支持 Markdown：&#10;## 小标题&#10;- 列表项&#10;**加粗**、&#96;代码&#96;、[链接](https://…)"></textarea>
+        </div>
+        <div class="important-actions">
+          <button class="btn btn-primary btn-sm" id="publishImportantBtn">发布重要公告</button>
+          <span class="small muted">发布后启动器下次启动就会弹窗，正文里的 Markdown 会排版显示。</span>
+        </div>
+        <div id="importantError"></div>
+        <h3 class="important-history-title">历史记录</h3>
+        <table class="table">
+          <thead><tr><th>标题 / 正文</th><th>状态</th><th>发布时间</th><th>操作</th></tr></thead>
+          <tbody id="importantRows"></tbody>
+        </table>
+      </section>
+
+      <section class="card admin-section">
+        <div class="visit-head">
+          <h2>版本发布</h2>
+          <span class="small muted" id="releaseFileState" style="margin-left: auto"></span>
+        </div>
+        <p class="small muted" style="margin-bottom: 12px">
+          发布后官网「一键下载」和启动器应用内更新马上用上新版本；安装包走官网 CDN 直链分发，浏览器下载前需过一次人机验证。
+          先填版本号、更新日志和网盘链接点「发布」，再给这个版本上传各平台的安装包；同名文件重复上传会直接替换。
+          官方源只保留<strong>最新两个正式版和两个测试版</strong>的安装包，更旧版本的文件会自动清理，
+          版本号、更新日志和网盘链接则一直保留（老版本用户走网盘或 GitHub 下载）。
+        </p>
+        <div class="important-form">
+          <input class="input" id="releaseVersion" maxlength="32" placeholder="版本号（如 beta8，与启动器内显示的保持一致）">
+        </div>
+        <div class="important-form" style="grid-template-columns: 1fr 1fr">
+          <input class="input" id="releaseLink123" maxlength="500" placeholder="123 盘链接（可选，https://…，老版本文件清理后用户从这里下载）">
+          <input class="input" id="releaseLinkQuark" maxlength="500" placeholder="夸克网盘链接（可选，https://…）">
+        </div>
+        <div class="important-body">
+          <textarea class="input textarea-lg" id="releaseNotes" maxlength="8000" placeholder="更新日志，支持 Markdown：&#10;## 修复&#10;- 修了某某问题"></textarea>
+        </div>
+        <div class="important-actions">
+          <button class="btn btn-primary btn-sm" id="publishReleaseBtn">发布 / 更新版本</button>
+          <span class="small muted">同版本号再次发布只更新日志，不会重复建条目。</span>
+        </div>
+        <div id="releaseError"></div>
+        <h3 class="important-history-title">已发布的版本</h3>
+        <div id="releaseRows"></div>
+      </section>
 
       <section class="card admin-section">
         <div class="visit-head">
@@ -153,9 +239,21 @@ BB.boot(async () => {
     renderFeedback();
     renderTags();
     renderVisits();
+    renderAnnouncements();
+    renderImportant();
+    renderReleases();
 
     document.getElementById('addBoardBtn').addEventListener('click', addBoard);
+    document.getElementById('publishAnnounceBtn').addEventListener('click', publishAnnouncement);
+    document.getElementById('publishImportantBtn').addEventListener('click', publishImportant);
+    document.getElementById('publishReleaseBtn').addEventListener('click', publishRelease);
     document.getElementById('mergeBtn').addEventListener('click', mergeTags);
+
+    // 重要公告正文用与发帖相同的 Markdown 编辑器：工具栏 + 编辑/预览，发布前先看效果
+    const importantEditor = document.getElementById('importantContent');
+    if (importantEditor) BB.attachMarkdownEditor(importantEditor);
+    const releaseEditor = document.getElementById('releaseNotes');
+    if (releaseEditor) BB.attachMarkdownEditor(releaseEditor);
     document.getElementById('userSearchBtn').addEventListener('click', () => {
       userQuery = document.getElementById('userSearch').value.trim();
       renderUsers();
@@ -166,6 +264,529 @@ BB.boot(async () => {
         renderUsers();
       }
     });
+
+    for (const id of ['announceText', 'announceLink']) {
+      document.getElementById(id).addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          publishAnnouncement();
+        }
+      });
+    }
+    for (const id of ['importantTitle', 'importantLink']) {
+      const input = document.getElementById(id);
+      if (!input) continue;
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          publishImportant();
+        }
+      });
+    }
+  }
+
+  // ---------------- 首页公告 ----------------
+
+  function renderAnnouncements() {
+    const stateHost = document.getElementById('announceFileState');
+    const hintHost = document.getElementById('announceFileHint');
+    const body = document.getElementById('announceRows');
+    if (!stateHost || !hintHost || !body) return;
+
+    const file = (announcementData && announcementData.file) || {};
+    const list = (announcementData && announcementData.announcements) || [];
+    const writable = !!file.writable;
+
+    stateHost.innerHTML = writable
+      ? `<span class="chip chip-grey">公告文件可写</span> <span class="mono small" style="overflow-wrap:anywhere">${BB.esc(file.path || '')}</span>`
+      : `<span class="chip chip-danger">公告文件不可写</span> <span class="mono small" style="overflow-wrap:anywhere">${BB.esc(file.path || '')}</span>`;
+
+    const fileHint = file.exists
+      ? `论坛服务没有写 ${BB.esc(file.path || '公告文件')} 的权限：把它交给论坛服务用户，并允许服务写这个目录后再发布。`
+      : `公告文件 ${BB.esc(file.path || 'announcement.json')} 不存在：检查论坛 .env 里的 ANNOUNCEMENT_FILE 是否指向官网根目录。`;
+    hintHost.innerHTML = writable ? '' : `<div class="form-error" style="margin: 8px 0 12px; overflow-wrap:anywhere">${fileHint}</div>`;
+
+    if (!list.length) {
+      body.innerHTML = '<tr><td colspan="4" class="muted">还没有公告。发布一条，启动器首页就会出现。</td></tr>';
+      return;
+    }
+
+    body.innerHTML = list
+      .map((item) => {
+        // 站内相对路径在论坛域名下点不开，只作为文字展示；完整 http(s) 地址可以点
+        const linkHtml = !item.link
+          ? '<span class="muted">—</span>'
+          : /^https?:/i.test(item.link)
+            ? `<a href="${BB.esc(item.link)}" target="_blank" rel="noopener">${BB.esc(item.link)}</a>`
+            : `<span class="mono small">${BB.esc(item.link)}</span> <span class="chip chip-grey">站内</span>`;
+        return `
+      <tr>
+        <td>${BB.esc(item.text)}${item.enabled ? '' : ' <span class="chip chip-grey">已下线</span>'}</td>
+        <td class="small">${linkHtml}</td>
+        <td class="small nowrap">${BB.time(item.created_at)}</td>
+        <td class="row-actions">
+          <button class="btn btn-danger btn-sm" data-announce="${item.id}">删除</button>
+        </td>
+      </tr>`;
+      })
+      .join('');
+
+    body.querySelectorAll('[data-announce]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        if (!confirm('删除这条公告？启动器首页会跟着消失。')) return;
+        button.disabled = true;
+        try {
+          await BB.api(`/api/admin/announcements/${button.dataset.announce}`, { method: 'DELETE' });
+          announcementData = await BB.api('/api/admin/announcements');
+          renderAnnouncements();
+          BB.toast('公告已删除', 'ok');
+        } catch (error) {
+          button.disabled = false;
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+  }
+
+  async function publishAnnouncement() {
+    const textInput = document.getElementById('announceText');
+    const linkInput = document.getElementById('announceLink');
+    const errorHost = document.getElementById('announceError');
+    const button = document.getElementById('publishAnnounceBtn');
+    const text = textInput.value.trim();
+    if (!text) {
+      BB.showError(errorHost, '先写公告内容');
+      textInput.focus();
+      return;
+    }
+
+    button.disabled = true;
+    BB.showError(errorHost, '');
+    try {
+      await BB.api('/api/admin/announcements', {
+        method: 'POST',
+        body: { text, link: linkInput.value.trim() },
+      });
+      textInput.value = '';
+      linkInput.value = '';
+      announcementData = await BB.api('/api/admin/announcements');
+      renderAnnouncements();
+      BB.toast('公告已发布，启动器首页最长约 10 分钟后显示', 'ok');
+    } catch (error) {
+      BB.showError(errorHost, error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  // ---------------- 启动重要公告 ----------------
+
+  function renderImportant() {
+    const stateHost = document.getElementById('importantState');
+    const body = document.getElementById('importantRows');
+    if (!stateHost || !body) return;
+
+    const file = (announcementData && announcementData.file) || {};
+    const list = (announcementData && announcementData.important) || [];
+    const limit = (announcementData && announcementData.important_limit) || 20;
+    const active = list.find((item) => item.enabled);
+
+    stateHost.innerHTML = active
+      ? `<span class="chip">正在弹窗：${BB.esc(active.title || '重要公告')}</span>`
+      : '<span class="chip chip-grey">当前没有生效的重要公告</span>';
+
+    if (!file.writable) {
+      body.innerHTML =
+        '<tr><td colspan="4" class="muted">公告文件不可写，发布前先按上面的提示修好文件权限。</td></tr>';
+      return;
+    }
+    if (!list.length) {
+      body.innerHTML = '<tr><td colspan="4" class="muted">还没有重要公告。发布一条，启动器下次启动时会弹窗显示。</td></tr>';
+      return;
+    }
+
+    body.innerHTML = list
+      .map((item) => {
+        const linkHtml = item.link
+          ? `<div class="small muted" style="margin-top: 4px; overflow-wrap:anywhere">链接：${BB.esc(item.link)}</div>`
+          : '';
+        return `
+      <tr>
+        <td>
+          <div class="important-title">${BB.esc(item.title || '重要公告')}
+            ${item.enabled ? '' : '<span class="chip chip-grey">已下线</span>'}
+          </div>
+          <details class="important-more">
+            <summary>查看正文</summary>
+            <div class="post-content">${BB.md(item.content || '')}</div>
+          </details>
+          ${linkHtml}
+        </td>
+        <td class="small nowrap">${item.enabled ? '弹窗中' : '—'}</td>
+        <td class="small nowrap">${BB.time(item.created_at)}</td>
+        <td class="row-actions">
+          <button class="btn ${item.enabled ? 'btn-ghost' : 'btn-primary'} btn-sm"
+                  data-important-toggle="${item.id}" data-enabled="${item.enabled ? '0' : '1'}">
+            ${item.enabled ? '下线' : '重新上线'}
+          </button>
+          <button class="btn btn-danger btn-sm" data-important-remove="${item.id}">删除</button>
+        </td>
+      </tr>`;
+      })
+      .join('');
+
+    body.querySelectorAll('[data-important-toggle]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const enabled = button.dataset.enabled === '1';
+        button.disabled = true;
+        try {
+          await BB.api(`/api/admin/important-announcements/${button.dataset.importantToggle}`, {
+            method: 'PATCH',
+            body: { enabled },
+          });
+          announcementData = await BB.api('/api/admin/announcements');
+          renderAnnouncements();
+          renderImportant();
+          BB.toast(enabled ? '重要公告已上线，启动器下次启动会弹窗' : '已下线，启动器不再弹这条', 'ok');
+        } catch (error) {
+          button.disabled = false;
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+
+    body.querySelectorAll('[data-important-remove]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        if (!confirm('删除这条重要公告？如果它正在弹窗，启动器下次启动就不会再显示了。')) return;
+        button.disabled = true;
+        try {
+          await BB.api(`/api/admin/important-announcements/${button.dataset.importantRemove}`, {
+            method: 'DELETE',
+          });
+          announcementData = await BB.api('/api/admin/announcements');
+          renderAnnouncements();
+          renderImportant();
+          BB.toast('重要公告已删除', 'ok');
+        } catch (error) {
+          button.disabled = false;
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+  }
+
+  async function publishImportant() {
+    const titleInput = document.getElementById('importantTitle');
+    const contentInput = document.getElementById('importantContent');
+    const linkInput = document.getElementById('importantLink');
+    const errorHost = document.getElementById('importantError');
+    const button = document.getElementById('publishImportantBtn');
+    if (!titleInput || !contentInput || !linkInput) return;
+
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+    const link = linkInput.value.trim();
+    if (!title) {
+      BB.showError(errorHost, '先给公告起个标题');
+      titleInput.focus();
+      return;
+    }
+    if (!content) {
+      BB.showError(errorHost, '先写公告正文，支持 Markdown');
+      contentInput.focus();
+      return;
+    }
+
+    button.disabled = true;
+    BB.showError(errorHost, '');
+    try {
+      await BB.api('/api/admin/important-announcements', {
+        method: 'POST',
+        body: { title, content, link },
+      });
+      titleInput.value = '';
+      contentInput.value = '';
+      linkInput.value = '';
+      announcementData = await BB.api('/api/admin/announcements');
+      renderAnnouncements();
+      renderImportant();
+      BB.toast('重要公告已发布，启动器下次启动会弹窗显示', 'ok');
+    } catch (error) {
+      BB.showError(errorHost, error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  // ---------------- 版本发布 ----------------
+
+  const PLATFORM_LABELS = {
+    win64: 'Windows x64',
+    winarm64: 'Windows ARM64',
+    'linux-x64': 'Linux x64',
+    'linux-arm64': 'Linux ARM64',
+    'android-arm64-v8a': '安卓 arm64',
+    'android-x86_64': '安卓 x86_64',
+    'harmony-arm64-v8a': '鸿蒙',
+    other: '其他',
+  };
+
+  /** 从安装包文件名猜平台标记（与一键打包.bat 的命名约定一致），猜不出交给管理员手选 */
+  function guessReleasePlatform(filename) {
+    const name = String(filename || '').toLowerCase();
+    if (name.includes('winarm64')) return 'winarm64';
+    if (name.includes('win64')) return 'win64';
+    if (name.includes('linux-arm64')) return 'linux-arm64';
+    if (name.includes('linux-x64')) return 'linux-x64';
+    if (name.includes('arm64-v8a')) return 'android-arm64-v8a';
+    if (name.includes('x86_64')) return 'android-x86_64';
+    if (name.includes('harmony')) return 'harmony-arm64-v8a';
+    if (name.includes('android')) return 'android-arm64-v8a';
+    if (name.includes('linux')) return 'linux-x64';
+    return '';
+  }
+
+  function fileSizeText(bytes) {
+    const value = Number(bytes || 0);
+    if (value >= 1024 * 1024 * 1024) return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
+    if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
+    if (value >= 1024) return `${Math.round(value / 1024)} KB`;
+    return `${value} B`;
+  }
+
+  async function reloadReleases() {
+    releaseData = await BB.api('/api/admin/releases');
+    renderReleases();
+  }
+
+  function renderReleases() {
+    const stateHost = document.getElementById('releaseFileState');
+    const rows = document.getElementById('releaseRows');
+    if (!stateHost || !rows) return;
+
+    if (!releaseData) {
+      rows.innerHTML = '<p class="muted small">版本数据加载失败，刷新页面再试一次。</p>';
+      return;
+    }
+
+    const file = releaseData.file || {};
+    stateHost.innerHTML = file.writable
+      ? `<span class="chip chip-grey">版本文件可写</span> <span class="mono small" style="overflow-wrap:anywhere">${BB.esc(file.path || '')}</span>`
+      : `<span class="chip chip-danger">版本文件不可写</span> <span class="mono small" style="overflow-wrap:anywhere">${BB.esc(file.path || '')}</span>`;
+    if (!file.writable) {
+      rows.innerHTML = `<div class="form-error" style="margin: 8px 0; overflow-wrap:anywhere">论坛服务写不了版本文件 ${BB.esc(file.path || 'latest.json')}：把它交给论坛服务用户后再发布。</div>`;
+      return;
+    }
+
+    const list = releaseData.versions || [];
+    if (!list.length) {
+      rows.innerHTML = '<p class="muted small">还没有发布任何版本。填好版本号和更新日志，点上面的「发布 / 更新版本」。</p>';
+      return;
+    }
+
+    const maxBytes = (releaseData.upload && releaseData.upload.max_bytes) || 300 * 1024 * 1024;
+    rows.innerHTML = list
+      .map((item) => {
+        const files = item.files || [];
+        const fileRows = files.length
+          ? files
+              .map(
+                (f) => `
+            <div class="release-file" data-file="${f.id}">
+              <span class="mono small">${BB.esc(f.filename)}</span>
+              <span class="chip chip-grey">${BB.esc(PLATFORM_LABELS[f.platform] || f.platform)}</span>
+              <span class="small muted">${fileSizeText(f.size)} · 下载 ${BB.num(f.downloads)} 次</span>
+              <button class="btn btn-ghost btn-sm" data-act="delfile">删除</button>
+            </div>`,
+              )
+              .join('')
+          : item.within_retention
+            ? '<p class="small muted" style="margin: 6px 0">还没有安装包，用下面的按钮上传（可一次多选）。</p>'
+            : '<p class="small muted" style="margin: 6px 0">安装包已按保留策略自动清理（只留最新两个正式版和两个测试版）；用户从下面的网盘链接或 GitHub 下载这个版本。</p>';
+        const links = [
+          ['123 盘', item.link_123pan],
+          ['夸克网盘', item.link_quark],
+        ]
+          .filter(([, link]) => link)
+          .map(
+            ([label, link]) =>
+              `<a class="btn btn-ghost btn-sm" href="${BB.esc(link)}" target="_blank" rel="noopener" title="${BB.esc(link)}">${label}</a>`,
+          )
+          .join('');
+        const uploadDisabled = !item.within_retention;
+        const platformOptions = Object.entries(PLATFORM_LABELS)
+          .map(([key, label]) => `<option value="${key}">${label}</option>`)
+          .join('');
+        return `
+      <div class="card release-card${item.within_retention ? '' : ' release-card-pruned'}" data-version="${item.id}" data-enabled="${item.enabled ? 1 : 0}">
+        <div class="release-head">
+          <b>${BB.esc(item.version)}</b>
+          ${item.enabled ? '<span class="chip">现行版本</span>' : '<span class="chip chip-grey">已下架</span>'}
+          ${item.within_retention ? '' : '<span class="chip chip-warn" title="官方源只保留最新两个正式版和两个测试版的安装包">文件已清理</span>'}
+          <span class="small muted">${BB.time(item.created_at)} · ${BB.esc(item.created_by || '—')}</span>
+          <span class="row-actions" style="margin-left:auto">
+            <button class="btn btn-ghost btn-sm" data-act="toggle">${item.enabled ? '下架' : '上线'}</button>
+            <button class="btn btn-danger btn-sm" data-act="del">删除</button>
+          </span>
+        </div>
+        ${item.notes ? `<pre class="release-notes">${BB.esc(item.notes.length > 200 ? `${item.notes.slice(0, 200)}…` : item.notes)}</pre>` : ''}
+        ${links ? `<div class="release-links">${links}</div>` : ''}
+        <div class="release-files">${fileRows}</div>
+        <div class="admin-form" style="grid-template-columns: 2fr auto auto">
+          <input class="input" type="file" multiple data-act="pick"${uploadDisabled ? ' disabled' : ''}>
+          <select class="input" data-act="platform"${uploadDisabled ? ' disabled' : ''}>
+            <option value="">平台（按文件名识别）</option>
+            ${platformOptions}
+          </select>
+          <button class="btn btn-primary btn-sm" data-act="upload"${uploadDisabled ? ' disabled title="这个版本的文件组已按保留策略清理，不能再上传；把安装包传网盘后把链接填进发布表单"' : ''}>上传安装包</button>
+        </div>
+        <div class="small muted" data-act="progress" style="margin-top: 6px; min-height: 1em"></div>
+        <p class="small muted" style="margin: 4px 0 0">单个文件上限 ${fileSizeText(maxBytes)}；再大的包请传网盘或 GitHub，把链接填进上面的发布表单。</p>
+      </div>`;
+      })
+      .join('');
+
+    rows.querySelectorAll('.release-card').forEach((card) => {
+      const versionId = card.dataset.version;
+      const enabled = card.dataset.enabled === '1';
+
+      card.querySelector('[data-act="toggle"]').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          await BB.api(`/api/admin/releases/${versionId}`, { method: 'PATCH', body: { enabled: !enabled } });
+          await reloadReleases();
+          BB.toast(enabled ? '版本已下架：官网一键下载与启动器更新不再下发它' : '版本已上线：官网与启动器更新马上生效', 'ok');
+        } catch (error) {
+          button.disabled = false;
+          BB.toast(error.message, 'error');
+        }
+      });
+
+      card.querySelector('[data-act="del"]').addEventListener('click', async (event) => {
+        if (!confirm('删除这个版本？安装包文件会一起从服务器删掉。')) return;
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          await BB.api(`/api/admin/releases/${versionId}`, { method: 'DELETE' });
+          await reloadReleases();
+          BB.toast('版本已删除', 'ok');
+        } catch (error) {
+          button.disabled = false;
+          BB.toast(error.message, 'error');
+        }
+      });
+
+      card.querySelector('[data-act="upload"]').addEventListener('click', async () => {
+        const picker = card.querySelector('[data-act="pick"]');
+        const select = card.querySelector('[data-act="platform"]');
+        const progress = card.querySelector('[data-act="progress"]');
+        const files = Array.from((picker && picker.files) || []);
+        if (!files.length) {
+          progress.textContent = '先在左边选择要上传的安装包文件';
+          return;
+        }
+        for (const file of files) {
+          const platform = select.value || guessReleasePlatform(file.name) || 'other';
+          try {
+            await uploadReleaseFile(versionId, file, platform, progress);
+          } catch (error) {
+            progress.textContent = '';
+            BB.toast(`${file.name}：${error.message}`, 'error');
+            return;
+          }
+        }
+        if (picker) picker.value = '';
+        await reloadReleases();
+        BB.toast('安装包上传完成，官网直链已更新', 'ok');
+      });
+
+      card.querySelectorAll('.release-file [data-act="delfile"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const fileId = button.closest('[data-file]').dataset.file;
+          if (!confirm('删除这个安装包文件？')) return;
+          button.disabled = true;
+          try {
+            await BB.api(`/api/admin/releases/${versionId}/files/${fileId}`, { method: 'DELETE' });
+            await reloadReleases();
+            BB.toast('文件已删除', 'ok');
+          } catch (error) {
+            button.disabled = false;
+            BB.toast(error.message, 'error');
+          }
+        });
+      });
+    });
+  }
+
+  /** 用 XHR 上传（fetch 拿不到上传进度）：原始字节直传，文件名与平台走查询串 */
+  function uploadReleaseFile(versionId, file, platform, progressHost) {
+    return new Promise((resolve, reject) => {
+      const params = new URLSearchParams({ platform, filename: file.name });
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `/api/admin/releases/${versionId}/files?${params}`);
+      xhr.setRequestHeader('accept', 'application/json');
+      xhr.upload.onprogress = (event) => {
+        if (progressHost && event.lengthComputable) {
+          progressHost.textContent = `正在上传 ${file.name}：${Math.round((event.loaded / event.total) * 100)}%`;
+        }
+      };
+      xhr.onload = () => {
+        let data = null;
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          /* 非 JSON 响应按错误处理 */
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (progressHost) progressHost.textContent = `${file.name} 上传完成`;
+          resolve(data);
+        } else {
+          reject(new Error((data && data.error) || `上传失败（${xhr.status}）`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('网络错误，上传失败'));
+      xhr.send(file);
+    });
+  }
+
+  async function publishRelease() {
+    const versionInput = document.getElementById('releaseVersion');
+    const link123Input = document.getElementById('releaseLink123');
+    const linkQuarkInput = document.getElementById('releaseLinkQuark');
+    const notesInput = document.getElementById('releaseNotes');
+    const errorHost = document.getElementById('releaseError');
+    const button = document.getElementById('publishReleaseBtn');
+    const version = versionInput.value.trim();
+    if (!version) {
+      BB.showError(errorHost, '先填版本号，比如 beta8');
+      versionInput.focus();
+      return;
+    }
+
+    button.disabled = true;
+    BB.showError(errorHost, '');
+    try {
+      const result = await BB.api('/api/admin/releases', {
+        method: 'POST',
+        body: {
+          version,
+          notes: notesInput.value,
+          link_123pan: link123Input.value.trim(),
+          link_quark: linkQuarkInput.value.trim(),
+        },
+      });
+      versionInput.value = '';
+      link123Input.value = '';
+      linkQuarkInput.value = '';
+      notesInput.value = '';
+      await reloadReleases();
+      BB.toast(`版本 ${result.release.tag_name} 已发布，官网一键下载与启动器更新通道已生效`, 'ok');
+    } catch (error) {
+      BB.showError(errorHost, error.message);
+    } finally {
+      button.disabled = false;
+    }
   }
 
   // ---------------- 访问数据 ----------------
@@ -802,6 +1423,80 @@ BB.boot(async () => {
     if (first) first.focus();
   }
 
+  /** 管理员在后台能做的事：设人之前先摊开讲清楚，免得手滑把权限给错人 */
+  const ADMIN_POWERS = [
+    ['内容', '删除主题和回复、置顶或锁定主题、处理举报'],
+    ['成员', '禁言（可分开发帖 / 回复 / 私信）、解除禁言、封禁账号'],
+    ['权限', '给别的成员授予或取消管理员（不能改自己）'],
+    ['板块标签', '新增、改名、排序、删除板块；推荐、合并、删除标签'],
+    ['公告反馈', '发布或删除启动器首页公告；处理并回复用户反馈'],
+    ['版本发布', '发布新版本、上传安装包、写更新日志、上线或下架版本'],
+    ['访问数据', '浏览趋势、访客数、热门页面和全站统计'],
+  ];
+
+  /** 设为管理员前的确认弹窗：列清楚这个身份能做什么，确认后才真正生效 */
+  function openGrantAdminDialog(user) {
+    const name = user.display_name || user.username;
+    const mask = document.createElement('div');
+    mask.className = 'modal-mask';
+    mask.innerHTML = `
+      <div class="modal-card modal-wide" role="dialog" aria-modal="true" aria-label="设为管理员">
+        <h3>把 ${BB.esc(name)} 设为管理员？</h3>
+        <p class="muted small">设为管理员后，TA 马上就能在管理后台做这些事：</p>
+        <ul class="power-list">
+          ${ADMIN_POWERS.map(
+            ([label, text]) => `<li><b>${label}</b><span>${text}</span></li>`,
+          ).join('')}
+        </ul>
+        <p class="power-note">管理员权限覆盖整个论坛，几乎什么都能改；只授予完全信任的人，设错了也可以随时在这里取消。</p>
+        <div class="modal-error"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost btn-sm" data-act="cancel">取消</button>
+          <button class="btn btn-primary btn-sm" data-act="ok">确认设为管理员</button>
+        </div>
+      </div>`;
+    document.body.appendChild(mask);
+    document.body.classList.add('modal-open');
+
+    const errorHost = mask.querySelector('.modal-error');
+    const close = () => {
+      mask.remove();
+      document.body.classList.remove('modal-open');
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') close();
+    };
+
+    mask.addEventListener('click', async (event) => {
+      if (event.target === mask) {
+        close();
+        return;
+      }
+      const button = event.target.closest('[data-act]');
+      if (!button) return;
+      if (button.dataset.act === 'cancel') {
+        close();
+        return;
+      }
+      if (button.dataset.act !== 'ok') return;
+      button.disabled = true;
+      errorHost.textContent = '';
+      try {
+        await BB.api(`/api/admin/users/${user.id}`, { method: 'PATCH', body: { role: 'admin' } });
+        close();
+        BB.toast(`已把 ${name} 设为管理员`, 'ok');
+        renderUsers();
+      } catch (error) {
+        button.disabled = false;
+        errorHost.textContent = error.message || '操作失败，稍后再试';
+      }
+    });
+
+    document.addEventListener('keydown', onKey);
+    mask.querySelector('[data-act="ok"]').focus();
+  }
+
   async function renderUsers() {
     const body = document.getElementById('userRows');
     const data = await BB.api(`/api/admin/users?q=${encodeURIComponent(userQuery)}&per_page=50`);
@@ -826,13 +1521,15 @@ BB.boot(async () => {
             : user.role === 'moderator'
               ? '<span class="chip">次级管理员</span>'
               : '<span class="chip chip-grey">成员</span>';
-        // 次级管理员不能设置别人的管理权限，所以这两颗按钮只给真管理员看
-        const roleButtons = BB.isHeadAdmin()
-          ? `<button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="role-mod">${user.role === 'moderator' ? '降为成员' : '设为次级管理员'}</button>
-            <button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="role">${user.role === 'admin' ? '降为成员' : '设为管理员'}</button>`
-          : '';
         // 不能改自己的管理权限，自己的行就不给这些按钮
         const selfRow = BB.state.me && BB.state.me.id === user.id;
+        // 旧版本设过的次级管理员按管理员处理：只保留「取消」这条路，不再新增
+        const isManager = user.role === 'admin' || user.role === 'moderator';
+        const roleButtons = BB.isHeadAdmin() && !selfRow
+          ? `<button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="role">${
+              isManager ? '取消管理员' : '设为管理员'
+            }</button>`
+          : '';
         const muteButton = selfRow
           ? ''
           : `<button class="btn ${user.status === 'muted' ? 'btn-primary' : 'btn-ghost'} btn-sm" data-user="${user.id}" data-act="mute">禁言</button>`;
@@ -848,10 +1545,9 @@ BB.boot(async () => {
           <td>${statusLabel}</td>
           <td class="small">${BB.num(user.thread_count)} / ${BB.num(user.post_count)}</td>
           <td class="small">${BB.datetime(user.created_at).slice(0, 10)}</td>
-          <td class="row-actions">
-            ${roleButtons}
-            ${muteButton}
-          </td>
+          <td class="row-actions">${
+            roleButtons || muteButton ? `${roleButtons}${muteButton}` : '<span class="muted small">—</span>'
+          }</td>
         </tr>`;
       })
       .join('');
@@ -859,19 +1555,21 @@ BB.boot(async () => {
     body.querySelectorAll('[data-user]').forEach((button) => {
       button.addEventListener('click', async () => {
         const userId = Number(button.dataset.user);
-        const action = button.dataset.act;
         const target = adminUsers.find((u) => u.id === userId);
-        if (action === 'mute') {
+        if (button.dataset.act === 'mute') {
           openMuteDialog(target || { id: userId, username: '', status: 'active' });
           return;
         }
-        const payload =
-          action === 'role'
-            ? { role: target?.role === 'admin' ? 'user' : 'admin' }
-            : { role: target?.role === 'moderator' ? 'user' : 'moderator' };
+        if (!target) return;
+        // 升管理员：先弹窗把权限一条条摊开，确认后才动手
+        if (target.role !== 'admin' && target.role !== 'moderator') {
+          openGrantAdminDialog(target);
+          return;
+        }
+        if (!confirm(`取消 ${target.display_name || target.username} 的管理员权限？取消后 TA 将无法再进入管理后台。`)) return;
         try {
-          await BB.api(`/api/admin/users/${userId}`, { method: 'PATCH', body: payload });
-          BB.toast('已更新用户角色', 'ok');
+          await BB.api(`/api/admin/users/${userId}`, { method: 'PATCH', body: { role: 'user' } });
+          BB.toast('已取消管理员权限', 'ok');
           renderUsers();
         } catch (error) {
           BB.toast(error.message, 'error');

@@ -61,6 +61,30 @@ BB.boot(async () => {
     return room.invite_code || room.address || '';
   }
 
+  /** 房间详细介绍（Markdown）模态：点卡片的「详细介绍」按钮弹出，点遮罩或关闭按钮退场 */
+  function showMdModal(content) {
+    const overlay = document.createElement('div');
+    overlay.className = 'lobby-md-overlay';
+    overlay.innerHTML = `
+      <div class="lobby-md-modal card" role="dialog" aria-modal="true">
+        <div class="lobby-md-head">
+          <h3>详细介绍</h3>
+          <button type="button" class="btn btn-ghost btn-sm" data-close>关闭</button>
+        </div>
+        <div class="lobby-md-body post-content">${BB.md(content)}</div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay || event.target.closest('[data-close]')) close();
+    });
+    document.addEventListener('keydown', function esc(event) {
+      if (event.key !== 'Escape') return;
+      document.removeEventListener('keydown', esc);
+      close();
+    });
+  }
+
   function cardOf(room) {
     const joinText = codeOf(room);
     const isAddress = !room.invite_code && !!room.address;
@@ -74,11 +98,26 @@ BB.boot(async () => {
       room.game_version ? `<span class="lobby-tag">${BB.esc(room.game_version)}</span>` : '',
       room.loader ? `<span class="lobby-tag">${BB.esc(room.loader)}</span>` : '',
       mods.length ? `<span class="lobby-tag">${mods.length} 个模组</span>` : '',
+      room.modpack_mode && room.modpack_name
+        ? `<span class="lobby-tag lobby-tag-pack">📦 ${BB.esc(room.modpack_name)}</span>`
+        : '',
     ]
       .filter(Boolean)
       .join('');
 
+    const cover = room.cover && room.cover.startsWith('/uploads/')
+      ? `<a class="lobby-room-cover" href="${BB.esc(room.cover)}" target="_blank">
+           <img src="${BB.esc(room.cover)}" alt="${BB.esc(room.title)}" loading="lazy">
+         </a>`
+      : '';
+
+    // Markdown 介绍：有正文时给一枚「介绍」按钮，点开模态看渲染后的全文
+    const mdBtn = room.md && room.md.trim()
+      ? `<button type="button" class="btn btn-ghost btn-sm lobby-md-btn" data-md="${encodeURIComponent(room.md)}">📝 详细介绍</button>`
+      : '';
+
     return `<article class="card lobby-room">
+      ${cover}
       <div class="lobby-room-head">
         <div class="lobby-room-title">
           <h3>${BB.esc(room.title)}</h3>
@@ -93,6 +132,7 @@ BB.boot(async () => {
 
       ${room.description ? `<p class="lobby-room-desc">${BB.esc(room.description)}</p>` : ''}
       ${modNames ? `<p class="lobby-room-mods">模组：${BB.esc(modNames)}</p>` : ''}
+      ${mdBtn}
 
       <div class="lobby-room-join">
         <span class="lobby-join-label">${isAddress ? '连接地址' : '邀请码'}</span>
@@ -142,6 +182,12 @@ BB.boot(async () => {
   }
 
   grid.addEventListener('click', async (event) => {
+    // Markdown 介绍模态
+    const mdButton = event.target.closest('.lobby-md-btn');
+    if (mdButton) {
+      showMdModal(decodeURIComponent(mdButton.dataset.md || ''));
+      return;
+    }
     const button = event.target.closest('[data-copy]');
     if (!button) return;
     const text = button.dataset.copy || '';

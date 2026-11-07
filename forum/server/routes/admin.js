@@ -3,6 +3,18 @@ import { badRequest, forbidden, notFound } from '../lib/http.js';
 import { muteScopeList, normalizeMuteScope, publicUser, requireAdmin, requireHeadAdmin } from '../lib/auth.js';
 import { siteStats } from '../lib/queries.js';
 import { visitStats } from '../lib/visits.js';
+import {
+  MAX_ENTRIES,
+  MAX_IMPORTANT_ENTRIES,
+  announcementStatus,
+  listAnnouncements,
+  listImportantAnnouncements,
+  publishAnnouncement,
+  publishImportantAnnouncement,
+  removeAnnouncement,
+  removeImportantAnnouncement,
+  setImportantAnnouncementEnabled,
+} from '../lib/announcements.js';
 
 export default function register(router) {
   /** 到期的禁言自动恢复正常（永久禁言 muted_until 为 0，不动） */
@@ -64,6 +76,72 @@ export default function register(router) {
   router.get('/api/admin/visits', async (ctx) => {
     requireAdmin(ctx.user);
     return visitStats({ days: Number(ctx.url.searchParams.get('days') || 30) });
+  });
+
+  // ---------------- 首页公告 ----------------
+
+  /** 后台的公告列表 + 官网公告文件当前能不能写 */
+  router.get('/api/admin/announcements', async (ctx) => {
+    requireAdmin(ctx.user);
+    return {
+      announcements: listAnnouncements(),
+      important: listImportantAnnouncements(),
+      file: announcementStatus(),
+      limit: MAX_ENTRIES,
+      important_limit: MAX_IMPORTANT_ENTRIES,
+    };
+  });
+
+  /** 一键发布：写进官网公告文件，启动器首页公告栏下次刷新就能看到 */
+  router.post('/api/admin/announcements', async (ctx) => {
+    const admin = requireAdmin(ctx.user);
+    const body = await ctx.json();
+    return {
+      announcement: publishAnnouncement({ text: body.text, link: body.link, admin }),
+      file: announcementStatus(),
+      limit: MAX_ENTRIES,
+    };
+  });
+
+  router.delete('/api/admin/announcements/:id', async (ctx) => {
+    requireAdmin(ctx.user);
+    removeAnnouncement(ctx.params.id);
+    return { ok: true, file: announcementStatus(), limit: MAX_ENTRIES };
+  });
+
+  // ---------------- 启动重要公告 ----------------
+
+  /** 发布一条启动弹窗公告（Markdown 正文），自动顶替上一条生效的公告 */
+  router.post('/api/admin/important-announcements', async (ctx) => {
+    const admin = requireAdmin(ctx.user);
+    const body = await ctx.json();
+    return {
+      important: publishImportantAnnouncement({
+        title: body.title,
+        content: body.content,
+        link: body.link,
+        admin,
+      }),
+      file: announcementStatus(),
+      limit: MAX_IMPORTANT_ENTRIES,
+    };
+  });
+
+  /** 上线 / 下线：上线会顶替当前生效的那条，下线后启动器不再弹 */
+  router.patch('/api/admin/important-announcements/:id', async (ctx) => {
+    requireAdmin(ctx.user);
+    const body = await ctx.json();
+    return {
+      important: setImportantAnnouncementEnabled(ctx.params.id, body.enabled !== false),
+      file: announcementStatus(),
+      limit: MAX_IMPORTANT_ENTRIES,
+    };
+  });
+
+  router.delete('/api/admin/important-announcements/:id', async (ctx) => {
+    requireAdmin(ctx.user);
+    removeImportantAnnouncement(ctx.params.id);
+    return { ok: true, file: announcementStatus(), limit: MAX_IMPORTANT_ENTRIES };
   });
 
   router.get('/api/admin/users', async (ctx) => {

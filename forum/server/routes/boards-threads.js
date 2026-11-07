@@ -1,10 +1,14 @@
 import { db, paginate, now, transaction, refreshBoardCounts } from '../db.js';
-import { badRequest, notFound } from '../lib/http.js';
+import { badRequest, forbidden, notFound } from '../lib/http.js';
 import { assertCanPost, isAdminRole, requireAdmin, requireUser } from '../lib/auth.js';
 import { enforce } from '../lib/rate-limit.js';
 import { bool, text } from '../lib/validate.js';
 import { boardOut, postOut, threadOut, snippetOf } from '../lib/serialize.js';
 import { notifyThreadActivity } from '../lib/notify.js';
+import { cdnBase } from '../lib/cdn.js';
+import { config } from '../config.js';
+
+const pluginDownloadSeen = new Map();
 import {
   siteStats,
   getThread,
@@ -469,6 +473,40 @@ export default function register(router) {
     const tags = parseTags(body.tags);
     const timestamp = now();
 
+    // 插件帖：带 plugin_upload_id 就把该上传绑定到这条主题（一帖一个，仅发帖时）。
+    // 上传必须是本人、是插件类别、且还没绑给别的主题（防复用同一个包刷多个帖子）。
+    let pluginUpload = null;
+    const rawUploadId = body.plugin_upload_id;
+    if (rawUploadId !== undefined && rawUploadId !== null && rawUploadId !== '') {
+      const uploadId = Number(rawUploadId);
+      if (!Number.isInteger(uploadId) || uploadId <= 0) throw badRequest('插件上传记录不正确');
+      const upload = db.prepare('SELECT * FROM uploads WHERE id = ? AND user_id = ?').get(uploadId, user.id);
+      if (!upload || upload.deleted) throw notFound('插件上传不存在，请重新上传');
+      if (upload.kind !== 'plugin') throw badRequest('该上传不是插件包', 'not_plugin_upload');
+      const taken = db.prepare('SELECT thread_id FROM thread_plugins WHERE upload_id = ?').get(uploadId);
+      if (taken) throw badRequest('这个插件包已经绑定在一条主题上了', 'plugin_upload_taken');
+      let meta = {};
+      try {
+        meta = JSON.parse(upload.meta || '{}');
+      } catch {
+        meta = {};
+      }
+      pluginUpload = {
+        id: upload.id,
+        size: upload.size,
+        plugin_id: meta.plugin_id,
+        plugin_name: meta.plugin_name,
+        plugin_version: meta.plugin_version,
+        plugin_author: meta.plugin_author,
+        plugin_description: meta.plugin_description,
+        plugin_icon: meta.plugin_icon,
+        file_hash: meta.file_hash,
+      };
+      if (!pluginUpload.plugin_id || !pluginUpload.plugin_name) {
+        throw badRequest('插件上传缺少清单信息，请重新上传', 'plugin_meta_missing');
+      }
+    }
+
     const created = transaction(() => {
       const inserted = db
         .prepare(
@@ -483,6 +521,25 @@ export default function register(router) {
            VALUES (?, ?, 1, ?, ?, ?)`,
         )
         .run(id, user.id, content, timestamp, timestamp);
+      if (pluginUpload) {
+        db.prepare(
+          `INSERT INTO thread_plugins
+             (thread_id, upload_id, plugin_id, name, version, author, description, icon, file_size, file_hash, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          id,
+          pluginUpload.id,
+          pluginUpload.plugin_id || '',
+          pluginUpload.plugin_name || '',
+          pluginUpload.plugin_version || '',
+          pluginUpload.plugin_author || '',
+          pluginUpload.plugin_description || '',
+          pluginUpload.plugin_icon || '',
+          pluginUpload.size || 0,
+          pluginUpload.file_hash || '',
+          timestamp,
+        );
+      }
       saveTags(id, tags);
       db.prepare('UPDATE users SET thread_count = thread_count + 1, post_count = post_count + 1 WHERE id = ?').run(
         user.id,
@@ -498,6 +555,115 @@ export default function register(router) {
       actor: user,
     });
     return { thread: threadOut(getThread(created.threadId)), id: created.threadId };
+  });
+
+  // ---------------- 插件帖：软件端插件列表 ----------------
+  // 把所有插件帖按时间倒序聚成一份「插件列表」，给启动器资源页的插件子页用。
+  // 只对启动器 UA 开放（网页端不提供这个列表，浏览插件仍走普通帖子）。
+
+  router.get('/api/forum-plugins', async (ctx) => {
+    if (!/BlockBoxLauncher/i.test(ctx.userAgent || '')) {
+      throw forbidden('插件列表只在方块盒子软件端提供');
+    }
+
+    const { page, perPage, offset } = paginate(ctx.url.searchParams, 24, 60);
+    const sort = ['latest', 'hot', 'downloads'].includes(ctx.url.searchParams.get('sort') || '')
+      ? ctx.url.searchParams.get('sort')
+      : 'latest';
+
+    const orderBy = {
+      latest: 't.last_post_at DESC',
+      hot: '(t.reply_count * 4 + t.views) DESC',
+      downloads: 'tp.downloads DESC',
+    }[sort];
+
+    const total = db
+      .prepare(
+        `SELECT COUNT(*) AS n
+           FROM thread_plugins tp
+           JOIN threads t ON t.id = tp.thread_id
+          WHERE t.deleted = 0`,
+      )
+      .get().n;
+
+    const rows = db
+      .prepare(
+        `SELECT tp.id, tp.upload_id, tp.plugin_id, tp.name, tp.version, tp.author,
+                tp.description, tp.icon, tp.file_size, tp.downloads,
+                t.id AS thread_id, t.views, t.reply_count, t.created_at, t.last_post_at,
+                u.id AS author_id, u.username AS author_username,
+                u.display_name AS author_display_name, u.avatar AS author_avatar
+           FROM thread_plugins tp
+           JOIN threads t ON t.id = tp.thread_id
+           LEFT JOIN users u ON u.id = t.author_id
+          WHERE t.deleted = 0
+          ORDER BY ${orderBy}
+          LIMIT ? OFFSET ?`,
+      )
+      .all(perPage, offset);
+
+    return {
+      plugins: rows.map((row) => ({
+        id: row.id,
+        upload_id: row.upload_id,
+        plugin_id: row.plugin_id,
+        thread_id: row.thread_id,
+        name: row.name,
+        version: row.version || '',
+        author: row.author || '',
+        description: row.description || '',
+        icon: row.icon || '',
+        file_size: row.file_size || 0,
+        downloads: row.downloads || 0,
+        views: row.views || 0,
+        reply_count: row.reply_count || 0,
+        created_at: row.created_at,
+        posted_by: row.author_id
+          ? { id: row.author_id, username: row.author_username, display_name: row.author_display_name || row.author_username, avatar: row.author_avatar || '' }
+          : null,
+      })),
+      pagination: { page, per_page: perPage, total, pages: Math.max(1, Math.ceil(total / perPage)) },
+    };
+  });
+
+  // ---------------- 插件帖：下载地址 ----------------
+  // 返回插件包的下载 URL（配置了 CDN 时是 CDN 域名，否则论坛自己发）。
+  // 匿名也能拿（人机门禁已在上层把住），拿到地址后客户端直接去下载字节。
+
+  router.get('/api/threads/:id/plugin/download', async (ctx) => {
+    const threadId = Number(ctx.params.id);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+    const thread = db.prepare('SELECT id, deleted FROM threads WHERE id = ?').get(threadId);
+    if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
+
+    const plugin = db
+      .prepare(
+        `SELECT tp.id, tp.downloads, u.url, u.size
+           FROM thread_plugins tp
+           JOIN uploads u ON u.id = tp.upload_id AND u.deleted = 0
+          WHERE tp.thread_id = ?`,
+      )
+      .get(threadId);
+    if (!plugin) throw notFound('这条主题没有挂插件');
+
+    // 计数用内存桶去抖：同一 IP 同一插件 10 分钟内只记一次，防刷新
+    const key = `${ctx.ip}:${plugin.id}`;
+    const lastSeen = pluginDownloadSeen.get(key) || 0;
+    if (Date.now() - lastSeen > 10 * 60 * 1000) {
+      pluginDownloadSeen.set(key, Date.now());
+      db.prepare('UPDATE thread_plugins SET downloads = downloads + 1 WHERE id = ?').run(plugin.id);
+      if (pluginDownloadSeen.size > 5000) pluginDownloadSeen.clear();
+    }
+
+    const [, pathname] = plugin.url.match(/^\/uploads\/(.+)$/) || [];
+    const url = pathname ? `${cdnBase || config.publicOrigin || ''}/uploads/${pathname}` : plugin.url;
+    return {
+      url,
+      size: plugin.size || 0,
+      content_type: 'application/octet-stream',
+      filename: pathname || 'plugin.BlockBox',
+      downloads: plugin.downloads,
+    };
   });
 
   // ---------------- 修改主题 ----------------
@@ -522,6 +688,12 @@ export default function register(router) {
     if (!thread || thread.deleted) throw notFound('主题不存在');
     if (thread.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能删除自己的主题');
     db.prepare('UPDATE threads SET deleted = 1 WHERE id = ?').run(thread.id);
+    // 插件帖删了,包也别再让人下(同步软删 uploads 记录,下载接口会查它)
+    db.prepare(
+      `UPDATE uploads SET deleted = 1
+        WHERE deleted = 0 AND kind = 'plugin'
+          AND id IN (SELECT upload_id FROM thread_plugins WHERE thread_id = ?)`,
+    ).run(thread.id);
     db.prepare('DELETE FROM thread_search WHERE thread_id = ?').run(thread.id);
     db.prepare('DELETE FROM notifications WHERE thread_id = ?').run(thread.id);
     db.prepare("UPDATE reports SET status = 'ignored' WHERE thread_id = ? AND status = 'open'").run(thread.id);

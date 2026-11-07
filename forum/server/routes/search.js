@@ -48,12 +48,17 @@ export default function register(router) {
                 u.id AS author_id, u.username AS author_username,
                 u.display_name AS author_display_name, u.avatar AS author_avatar,
                 lu.username AS last_username, lu.display_name AS last_display_name,
-                s.body AS search_body
+                s.body AS search_body,
+                tp.id AS tp_id, tp.upload_id AS tp_upload_id, tp.plugin_id AS tp_plugin_id,
+                tp.name AS tp_name, tp.version AS tp_version, tp.author AS tp_author,
+                tp.description AS tp_description, tp.icon AS tp_icon,
+                tp.file_size AS tp_file_size, tp.downloads AS tp_downloads
            FROM thread_search s
            JOIN threads t ON t.id = s.thread_id
            JOIN boards b ON b.id = t.board_id
            JOIN users u ON u.id = t.author_id
            LEFT JOIN users lu ON lu.id = t.last_post_user_id
+           LEFT JOIN thread_plugins tp ON tp.thread_id = t.id
           WHERE ${where.join(' AND ')}
           ORDER BY t.last_post_at DESC
           LIMIT ? OFFSET ?`,
