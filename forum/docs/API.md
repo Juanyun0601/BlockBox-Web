@@ -357,10 +357,11 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ### POST /api/reports · 举报楼层
 
 ```json
-{ "post_id": 9, "reason": "广告 / 人身攻击 / 刷屏…" }
+{ "post_id": 9, "category": "spam", "reason": "补充说明…" }
 ```
 
-- 不能举报自己，同一人对同一楼层重复举报只更新理由，不会重复入队
+- 不能举报自己，同一人对同一楼层重复举报只更新分类和理由，不会重复入队
+- `category` 可选，举报分类 slug，白名单：`spam`（垃圾广告/导流）、`insult`（人身攻击/辱骂）、`porn`（色情低俗）、`illegal`（违法违规）、`infringe`（侵权/盗搬）、`privacy`（泄露隐私）、`flooding`（引战/刷屏）、`other`（其他），非法值按空处理
 - `reason` 最多 200 字
 - 限流：每账号每小时 10 次
 
@@ -448,6 +449,8 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ```
 
 `status` 为 `resolved` / `ignored` / `open`（重开），`reply` 最多 500 字、可选；处理人与处理时间自动记录。返回 `{ "ok": true, "status": "resolved" }`。
+
+标记为 `resolved` / `ignored` 时，会自动给反馈人发一条系统通知（「您的反馈有了新回复」，正文用 `reply`，为空则用固定文案）；重新打开不通知。反馈人已注销时不发。
 
 ---
 
@@ -580,13 +583,18 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 好友关系是双向的：A 申请 → B 通过后才能互发私信。申请发给别人时如果对方恰好也申请过我，会直接成为好友。
 
+每位玩家都默认带一位好友「方块盒子官方客服」（`official: true`）：不用申请、删不掉，遇到问题直接在这个会话里提问即可。管理员在管理后台的「客服消息」里以客服账号的身份回复，回复会直接出现在玩家的聊天窗口。
+
 ### GET /api/friends · 好友页数据（一次拉全）
 
 ```json
 {
   "friends": [
+    { "id": 1, "username": "blockbox_support", "display_name": "方块盒子官方客服", "avatar": "",
+      "last_seen_at": 1793426400, "online": false, "official": true, "unread": 0,
+      "last_message": null },
     { "id": 2, "username": "红石工程师", "display_name": "红石工程师", "avatar": "",
-      "last_seen_at": 1793426400, "online": true, "unread": 1,
+      "last_seen_at": 1793426400, "online": true, "official": false, "unread": 1,
       "last_message": { "body": "晚上一起开黑？", "created_at": 1793426400, "mine": false } }
   ],
   "incoming": [ { "id": 7, "created_at": 1793426400, "user": { "id": 3, "username": "小白玩家", "…": "…" } } ],
@@ -595,7 +603,7 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 }
 ```
 
-`online` 为最近 10 分钟内活跃。`last_message` 为空表示还没聊过。最多返回 200 个好友，按最近联系排序。
+`online` 为最近 10 分钟内活跃。`last_message` 为空表示还没聊过。官方客服始终排在最前面，其余好友按最近联系排序；最多返回 200 个好友。
 
 ### POST /api/friends/requests · 发好友申请
 
@@ -611,6 +619,8 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ### DELETE /api/friends/requests/:id · 撤回我发出的申请
 
 ### DELETE /api/friends/:userId · 删除好友
+
+官方客服是默认好友，删除会被拒绝（400「官方客服是默认好友，不能删除」）；即使关系被手动清掉，下次打开好友页也会自动补回。
 
 ### GET /api/messages/:userId · 与某好友的私信历史
 
@@ -888,6 +898,50 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 角色取值：`user`（成员）/ `moderator`（次级管理员）/ `admin`（管理员）。
 
+### POST /api/admin/users/:id/notify · 给用户发系统通知（管理员）
+
+```json
+{ "title": "来自管理团队的消息", "body": "你反馈的问题已在 beta8 修复。" }
+```
+
+`title` 最多 60 字、可选（默认「来自管理团队的消息」）；`body` 必填，最多 500 字。内容以 `system` 类型系统通知进入对方的通知中心（启动器账号页通知页签 / 网页通知页），每条独立展示。限流：每管理员每小时 60 次。
+
+### 官方客服
+
+官方客服账号在论坛第一次启动时自动创建（用户名默认 `blockbox_support`，可用 `SUPPORT_USERNAME` 改），并自动成为所有玩家的好友。玩家在聊天页给它发私信，管理员通过下面三个接口在后台查看和回复。
+
+### GET /api/admin/support/overview · 客服会话列表
+
+```json
+{
+  "support": { "id": 1, "username": "blockbox_support", "display_name": "方块盒子官方客服", "official": true },
+  "conversations": [
+    {
+      "user": { "id": 7, "username": "小白玩家", "display_name": "小白玩家", "avatar": "", "online": false, "official": false, "status": "active" },
+      "unread": 2,
+      "last_message": { "id": 14, "body": "启动报错了", "kind": "text", "created_at": 1793426500, "mine": false }
+    }
+  ],
+  "unread_total": 2
+}
+```
+
+只列出和客服有过消息往来的玩家，按最后一条消息倒序；`last_message.mine` 表示最后一条是不是客服自己发的。
+
+### GET /api/admin/support/conversations/:userId · 打开一位玩家的会话
+
+可选 `before_id`（取更早的消息）与 `limit`（默认 60，最大 100）。返回 `user`、`messages`（按时间升序）、`has_more`。
+
+**调用即把这位玩家发给客服的未读消息标记已读。**
+
+### POST /api/admin/support/conversations/:userId · 以客服身份回复
+
+```json
+{ "body": "请把启动日志发给我们看看。" }
+```
+
+内容 1–1000 字。回复直接写进私信表，发送者就是官方客服账号；玩家聊天页最长约 4 秒后轮询到。返回 `{ "message": { "id": 15, "body": "…", "mine": true, "created_at": … } }`（`mine` 是客服视角）。
+
 ### GET /api/admin/reports?status=open
 
 审核队列。`status` 取 `open`（默认）/ `resolved` / `ignored`。
@@ -898,7 +952,7 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
   "reports": [
     {
       "id": 3, "post_id": 9, "thread_id": 4, "floor": 2,
-      "reason": "广告", "status": "open", "created_at": 1793428700,
+      "category": "spam", "reason": "广告", "status": "open", "created_at": 1793428700,
       "thread_title": "…", "post_deleted": false, "thread_deleted": false,
       "excerpt": "被举报楼层的正文摘要",
       "author": { "id": 2, "username": "红石工程师" },
@@ -918,6 +972,8 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ```
 
 `delete_post` 会软删除该楼层、减掉主题回复数、重算板块计数，并清掉指向它的通知。
+
+标记为 `resolved` / `ignored` 时自动给举报人发一条系统通知回告处理结果（删帖 / 已处理 / 已忽略对应不同文案）；重新打开不通知。举报人已注销时不发。
 
 ### PATCH /api/admin/threads/:id
 
@@ -980,6 +1036,33 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ```
 
 从所有帖子上移除该标签，并取消推荐，返回 `{ "ok": true, "tag": "优化", "removed": 3 }`。
+
+---
+
+## 站内公告（公开）
+
+### GET /api/app/important-announcement
+
+管理后台「启动重要公告」里当前生效的那一条。官网与论坛每个页面打开时都会来取它弹窗显示，
+启动器也可以用同一个接口拿到同样的内容。
+
+```json
+{
+  "important": {
+    "id": "n7",
+    "title": "维护通知：今晚 22:00 停机升级",
+    "content": "## 维护时间\n- 今晚 **22:00 – 23:30** 停机升级",
+    "date": "2026-11-08",
+    "link": "https://mcblockbox.top/download.html"
+  }
+}
+```
+
+没发布过（或已下线 / 已删除）时返回 `{ "important": null }`。
+
+- 匿名可读，不需要登录，也不走人机验证（和 `/api/app/releases` 一样）。
+- `content` 是后台填写的 Markdown 原文，换行原样保留；`link` 只在后台填了地址时出现，只可能是 `http(s)://` 完整地址或 `/` 开头的站内路径。
+- 同一时间最多一条生效：后台发布新公告会自动把旧的下线，重新上线旧公告则会顶替当前那条。
 
 ---
 

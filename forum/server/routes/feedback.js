@@ -1,6 +1,7 @@
 import { db, now, paginate } from '../db.js';
 import { badRequest, notFound } from '../lib/http.js';
 import { requireAdmin, requireUser } from '../lib/auth.js';
+import { notifyAdminMessage } from '../lib/notify.js';
 import { enforce } from '../lib/rate-limit.js';
 import { text } from '../lib/validate.js';
 
@@ -250,6 +251,15 @@ export default function register(router) {
       status === 'open' ? 0 : now(),
       feedback.id,
     );
+
+    // 处理完把回复以系统通知推给反馈人（重新打开不发）；user_id 可能因注销为空
+    if (feedback.user_id && status !== 'open') {
+      notifyAdminMessage(
+        feedback.user_id,
+        '您的反馈有了新回复',
+        reply || '您提交的反馈已处理，感谢您的支持。',
+      );
+    }
     return { ok: true, status };
   });
 }

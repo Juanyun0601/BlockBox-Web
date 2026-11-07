@@ -5,9 +5,21 @@ import { enforce } from '../lib/rate-limit.js';
 import { saveImage, removeUpload } from '../lib/images.js';
 import { savePluginPackage } from '../lib/plugins.js';
 import { config } from '../config.js';
-import { markAllRead, markRead, unreadNotifications } from '../lib/notify.js';
+import { markAllRead, markRead, notifyAdminMessage, unreadNotifications } from '../lib/notify.js';
 import { snippetOf } from '../lib/serialize.js';
 import { text } from '../lib/validate.js';
+
+/** 举报分类白名单：与客户端举报页的 8 个分类保持一致，新增时两边同步 */
+const REPORT_CATEGORIES = [
+  'spam',
+  'insult',
+  'porn',
+  'illegal',
+  'infringe',
+  'privacy',
+  'flooding',
+  'other',
+];
 
 export default function register(router) {
   // ---------------- 站内图床 ----------------
@@ -80,14 +92,18 @@ export default function register(router) {
     if (!post || post.deleted) throw notFound('楼层不存在');
     if (post.author_id === user.id) throw badRequest('不用举报自己');
 
+    const category = REPORT_CATEGORIES.includes(String(body.category || ''))
+      ? String(body.category)
+      : '';
     const reason = text(body.reason, { field: '举报理由', max: 200, optional: true });
     const existing = db
       .prepare('SELECT id, status FROM reports WHERE post_id = ? AND reporter_id = ?')
       .get(postId, user.id);
     if (existing) {
       if (existing.status === 'open') return { ok: true, duplicated: true };
-      db.prepare('UPDATE reports SET status = ?, reason = ?, created_at = ? WHERE id = ?').run(
+      db.prepare('UPDATE reports SET status = ?, category = ?, reason = ?, created_at = ? WHERE id = ?').run(
         'open',
+        category,
         reason,
         now(),
         existing.id,
@@ -96,9 +112,9 @@ export default function register(router) {
     }
 
     db.prepare(
-      `INSERT INTO reports (post_id, thread_id, reporter_id, reason, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-    ).run(postId, post.thread_id, user.id, reason, now());
+      `INSERT INTO reports (post_id, thread_id, reporter_id, category, reason, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(postId, post.thread_id, user.id, category, reason, now());
     return { ok: true };
   });
 
@@ -128,7 +144,11 @@ export default function register(router) {
 
     const groups = new Map();
     for (const row of rows) {
-      const key = `${row.type}|${row.target_kind}|${row.thread_id}`;
+      // 系统通知（管理员回复等）每条独立一行，不参与折叠
+      const key =
+        row.type === 'system'
+          ? `${row.type}|${row.target_kind}|${row.id}`
+          : `${row.type}|${row.target_kind}|${row.thread_id}`;
       let group = groups.get(key);
       if (!group) {
         group = {
@@ -216,7 +236,7 @@ export default function register(router) {
 
     const rows = db
       .prepare(
-        `SELECT r.id, r.post_id, r.thread_id, r.reason, r.status, r.created_at, r.handled_at,
+        `SELECT r.id, r.post_id, r.thread_id, r.category, r.reason, r.status, r.created_at, r.handled_at,
                 p.floor, p.content, p.deleted,
                 t.title AS thread_title, t.deleted AS thread_deleted,
                 a.id AS author_id, a.username AS author_username, a.display_name AS author_display_name,
@@ -239,6 +259,7 @@ export default function register(router) {
         post_id: row.post_id,
         thread_id: row.thread_id,
         floor: row.floor,
+        category: row.category,
         reason: row.reason,
         status: row.status,
         created_at: row.created_at,
@@ -288,6 +309,17 @@ export default function register(router) {
       now(),
       report.id,
     );
+
+    // 处理完自动回告举报人（重新打开不发）；reporter_id 可能因注销为空
+    if (report.reporter_id && status !== 'open') {
+      const notice =
+        status === 'resolved'
+          ? body.delete_post
+            ? ['您举报的楼层已删除', '您举报的楼层已被管理员删除，感谢您对社区环境的维护。']
+            : ['您举报的内容已处理', '您举报的内容已处理，感谢您的反馈。']
+          : ['您的举报已收到', '感谢您的举报，管理员核查后暂未对相关内容采取措施。'];
+      notifyAdminMessage(report.reporter_id, notice[0], notice[1]);
+    }
     return { ok: true, status };
   });
 }

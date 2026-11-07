@@ -26,14 +26,17 @@ import registerSearch from './routes/search.js';
 import registerAdmin from './routes/admin.js';
 import registerCommunity from './routes/community.js';
 import registerFriends from './routes/friends.js';
+import registerSupport from './routes/support.js';
 import registerFeedback from './routes/feedback.js';
 import registerQuiz from './routes/quiz.js';
 import registerLobby from './routes/lobby.js';
 import registerHuman from './routes/human.js';
 import registerReleases from './routes/releases.js';
+import registerNotice from './routes/notice.js';
 import { isVerified } from './lib/human-check.js';
 import { initAnnouncements } from './lib/announcements.js';
 import { handleReleaseFileRequest, initReleases } from './lib/releases.js';
+import { ensureAllSupportFriends, supportUserId } from './lib/support.js';
 
 const VERSION = '0.1.0';
 
@@ -74,7 +77,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice]) {
   register(router);
 }
 
@@ -86,7 +89,8 @@ function bootstrapAdmin() {
   if (admins > 0) return;
   const { adminBootstrapUser: name, adminBootstrapPass: pass } = config;
   if (!name || !pass) {
-    const total = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+    // 官方客服不算真实用户，不参与「第一个注册的人当管理员」的判断
+    const total = db.prepare('SELECT COUNT(*) AS n FROM users WHERE id != ?').get(supportUserId()).n;
     if (total === 0) {
       console.log('[论坛] 还没有任何用户：第一个注册的账号会自动成为管理员。');
     }
@@ -298,6 +302,8 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve
 
 if (isMain) {
   bootstrapAdmin();
+  // 官方客服账号 + 给所有老玩家补上「默认好友」关系
+  ensureAllSupportFriends();
   initAnnouncements();
   initReleases();
   purgeExpiredSessions();

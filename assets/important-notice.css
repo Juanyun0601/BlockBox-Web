@@ -1,0 +1,144 @@
+/* ============================================================
+   方块盒子官网 — 重要公告弹窗
+   ------------------------------------------------------------
+   后台（论坛管理后台）发布「启动重要公告」后写进 announcement.json，
+   首页 / 下载 / 更新日志 / 文档四个页面打开时都弹一次这条公告。
+   独立成文件，避免和两套页面样式互相牵连。
+   颜色沿用页面上的 CSS 变量，深色模式自动跟着变；变量缺失时用后备值。
+   ============================================================ */
+
+body.bb-imp-open { overflow: hidden; }
+
+.bb-imp {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.bb-imp-mask {
+  position: absolute; inset: 0;
+  background: rgba(10, 20, 12, .55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: bbImpFade .18s ease;
+}
+
+.bb-imp-card {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: 520px; max-width: 100%; max-height: calc(100vh - 40px);
+  padding: 22px 22px 18px;
+  background: var(--card, #fff);
+  color: var(--ink, #17251a);
+  border: 1px solid var(--line, #e3ece2);
+  border-radius: 20px;
+  box-shadow: var(--shadow-pop, 0 24px 60px rgba(23, 37, 26, .18));
+  animation: bbImpIn .2s cubic-bezier(.22, 1, .36, 1);
+  overflow: hidden;
+}
+
+.bb-imp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+
+.bb-imp-badge {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 700; letter-spacing: .01em;
+  color: var(--green-ink, #2e7d32);
+  background: var(--tint, #e8f5e9);
+  border: 1px solid var(--tint-2, #c8e6c9);
+}
+
+.bb-imp-date { font-size: 12.5px; color: var(--ink-3, #87998b); font-weight: 500; }
+
+.bb-imp-title {
+  margin: 0 0 10px;
+  font-size: 20px; font-weight: 800; line-height: 1.35; letter-spacing: -.01em;
+}
+
+/* 正文较长时在弹窗内部滚动，标题和按钮始终留在原位 */
+.bb-imp-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px;
+  font-size: 14.5px; line-height: 1.8; color: var(--ink-2, #55685a);
+  overflow-wrap: anywhere;
+}
+
+.bb-imp-body > :first-child { margin-top: 0; }
+.bb-imp-body > :last-child { margin-bottom: 0; }
+.bb-imp-body p { margin: 0 0 9px; }
+.bb-imp-body h2, .bb-imp-body h3, .bb-imp-body h4, .bb-imp-body h5 {
+  margin: 15px 0 7px; font-size: 15.5px; font-weight: 800; line-height: 1.45;
+  color: var(--ink, #17251a);
+}
+.bb-imp-body ul, .bb-imp-body ol { margin: 6px 0 10px; padding-left: 22px; }
+.bb-imp-body li { margin: 3px 0; }
+.bb-imp-body blockquote {
+  margin: 9px 0; padding: 8px 13px;
+  border-left: 3px solid var(--tint-2, #c8e6c9);
+  border-radius: 0 10px 10px 0;
+  background: var(--bg-tint, #f2f8f1);
+  color: var(--ink-2, #55685a);
+}
+.bb-imp-body code {
+  padding: 1px 5px; border-radius: 6px;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .92em;
+  background: var(--bg-tint, #f2f8f1);
+  border: 1px solid var(--line, #e3ece2);
+}
+.bb-imp-body pre {
+  margin: 10px 0; padding: 12px 14px; overflow-x: auto;
+  border-radius: 12px;
+  background: var(--bg-tint, #f2f8f1);
+  border: 1px solid var(--line, #e3ece2);
+}
+.bb-imp-body pre code { padding: 0; border: 0; background: none; font-size: 13px; line-height: 1.65; }
+.bb-imp-body a { color: var(--green-ink, #2e7d32); text-decoration: underline; text-underline-offset: 2px; }
+.bb-imp-body img { max-width: 100%; height: auto; border-radius: 10px; }
+.bb-imp-body hr { margin: 14px 0; border: 0; border-top: 1px solid var(--line, #e3ece2); }
+
+.bb-imp-actions {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--line, #e3ece2);
+  flex: none;
+}
+
+.bb-imp-ok, .bb-imp-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 92px; height: 40px; padding: 0 20px;
+  border-radius: 999px; border: 1px solid transparent;
+  font-size: 14.5px; font-weight: 700; line-height: 1; cursor: pointer;
+  text-decoration: none !important;
+  transition: transform .2s, box-shadow .2s, background .2s, border-color .2s;
+}
+
+.bb-imp-ok {
+  color: #fff; background: var(--green-ink, #2e7d32);
+  box-shadow: var(--shadow-green, 0 8px 24px rgba(46, 125, 50, .28));
+}
+.bb-imp-ok:hover { transform: translateY(-1px); }
+
+.bb-imp-link {
+  color: var(--green-ink, #2e7d32);
+  background: transparent;
+  border-color: var(--tint-2, #c8e6c9);
+}
+.bb-imp-link:hover { background: var(--tint, #e8f5e9); }
+
+.bb-imp-ok:focus-visible, .bb-imp-link:focus-visible {
+  outline: 2px solid var(--green-ink, #2e7d32);
+  outline-offset: 2px;
+}
+
+@keyframes bbImpFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bbImpIn {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 560px) {
+  .bb-imp { padding: 12px; align-items: flex-end; }
+  .bb-imp-card { width: 100%; max-height: calc(100vh - 24px); padding: 18px 16px 16px; border-radius: 18px; }
+  .bb-imp-title { font-size: 18px; }
+  .bb-imp-actions { gap: 8px; }
+  .bb-imp-ok, .bb-imp-link { flex: 1 1 0; min-width: 0; }
+}

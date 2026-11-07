@@ -467,6 +467,95 @@
     }
   }
 
+  // ------------------------------------------------------------ 重要公告
+
+  /** 关掉过的重要公告 id：同一条不再打扰，后台换了新公告（新 id）会重新弹 */
+  const IMPORTANT_SEEN_KEY = 'bbf-important-dismissed';
+
+  function seenImportantIds() {
+    try {
+      const list = JSON.parse(localStorage.getItem(IMPORTANT_SEEN_KEY) || '[]');
+      return Array.isArray(list) ? list.map(String) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function rememberImportant(id) {
+    try {
+      const list = seenImportantIds().filter((item) => item !== id);
+      list.push(id);
+      // 只记最近 50 条，免得 localStorage 里越攒越多
+      localStorage.setItem(IMPORTANT_SEEN_KEY, JSON.stringify(list.slice(-50)));
+    } catch {
+      /* 隐私模式存不了就算了，下次打开再弹一次 */
+    }
+  }
+
+  /**
+   * 管理后台「启动重要公告」发的那条：启动器启动时会弹，
+   * 官网和论坛打开时也要让访客看到，所以论坛的每个页面都检查一次。
+   * 关闭（点「我知道了」、遮罩或 Esc）后按公告 id 记住，同一条不再反复弹。
+   */
+  BB.mountImportantNotice = async function () {
+    // 管理后台自己就是发公告的地方，别再挡一层；验证页不加载这里的脚本，防一手
+    const page = document.body.dataset.page || '';
+    if (page === 'admin' || page === 'verify') return;
+    if (document.querySelector('.important-notice-mask')) return;
+
+    let item = null;
+    try {
+      const data = await BB.api('/api/app/important-announcement');
+      item = data && data.important;
+    } catch {
+      return;
+    }
+    if (!item || !item.title || !item.content) return;
+
+    const id = String(item.id || '');
+    if (id && seenImportantIds().includes(id)) return;
+
+    const link = item.link
+      ? `<a class="btn btn-ghost" href="${BB.esc(item.link)}" target="_blank" rel="noopener noreferrer">查看详情</a>`
+      : '';
+
+    const mask = document.createElement('div');
+    mask.className = 'modal-mask important-notice-mask';
+    mask.innerHTML = `
+      <div class="modal-card important-notice" role="dialog" aria-modal="true" aria-labelledby="importantNoticeTitle">
+        <div class="important-notice-head">
+          <span class="chip chip-warn">重要公告</span>
+          ${item.date ? `<span class="muted small">${BB.esc(item.date)}</span>` : ''}
+        </div>
+        <h3 id="importantNoticeTitle">${BB.esc(item.title)}</h3>
+        <div class="post-content important-notice-body">${BB.md(item.content)}</div>
+        <div class="modal-actions important-notice-actions">
+          ${link}
+          <button class="btn btn-primary" type="button" data-close>我知道了</button>
+        </div>
+      </div>`;
+    document.body.appendChild(mask);
+    document.body.classList.add('modal-open');
+
+    function onKey(event) {
+      if (event.key === 'Escape') close();
+    }
+    function close() {
+      if (id) rememberImportant(id);
+      mask.remove();
+      document.body.classList.remove('modal-open');
+      document.removeEventListener('keydown', onKey);
+    }
+    // 点遮罩空白处也能关，和后台其它弹窗的习惯一致
+    mask.addEventListener('click', (event) => {
+      if (event.target === mask) close();
+    });
+    mask.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', close));
+    document.addEventListener('keydown', onKey);
+    const okButton = mask.querySelector('[data-close]');
+    if (okButton) okButton.focus();
+  };
+
   // ------------------------------------------------------------ 启动
 
   BB.boot = async function (init) {
@@ -484,6 +573,9 @@
     renderNav(page);
     BB.syncFriendNav();
     BB.initLightbox();
+
+    // 后台发布的重要公告：官网和论坛打开时也显示，拉不到就当没有，不影响页面
+    BB.mountImportantNotice().catch(() => {});
 
     // 登录后每 30 秒刷新一次好友角标；好友页自己有更快的轮询，两边写同一个状态不冲突
     if (BB.state.me) {
@@ -891,9 +983,91 @@
     return true;
   }
 
+  /** 正文预设模板：按用途分组，挂编辑器时用 options.presets 选一组（不传就不显示预设按钮） */
+  const MD_PRESETS = {
+    // 论坛发帖
+    thread: [
+      {
+        label: '求助',
+        text: '## 现象\n简单说清发生了什么，什么时候开始的\n\n## 复现步骤\n1. \n2. \n\n## 环境\n- 启动器版本：\n- 游戏版本 / 加载器：\n- 报错截图或日志：\n',
+      },
+      {
+        label: '教程',
+        text: '## 准备\n动手前需要准备的东西\n\n## 步骤\n1. \n2. \n\n## 常见问题\n- \n',
+      },
+      {
+        label: '作品分享',
+        text: '## 简介\n一句话介绍你的作品\n\n## 特色\n- \n\n## 截图\n![](图片链接)\n\n## 下载\n- \n',
+      },
+      {
+        label: '意见建议',
+        text: '## 想反馈的问题\n简单描述一下你遇到的情况\n\n## 期望的做法\n- \n\n## 补充说明\n- \n',
+      },
+    ],
+    // 后台「版本发布」的更新日志
+    release: [
+      {
+        label: '正式版更新',
+        text: '## 更新内容\n- \n\n## 修复\n- \n\n## 注意事项\n- 老版本可在网盘或 GitHub 下载\n',
+      },
+      {
+        label: '测试版更新',
+        text: '## 本次测试内容\n- \n\n## 已知问题\n- \n\n## 反馈方式\n- 在论坛「意见建议」板块发帖\n',
+      },
+      {
+        label: '小修复',
+        text: '## 修复\n- \n',
+      },
+    ],
+    // 后台「重要公告」
+    announcement: [
+      {
+        label: '维护通知',
+        text: '## 维护时间\n- \n\n## 影响范围\n- \n\n## 需要你做什么\n- 维护期间不用操作，结束后重新打开启动器即可\n',
+      },
+      {
+        label: '功能上线',
+        text: '## 上线内容\n- \n\n## 怎么用\n- \n\n## 注意事项\n- \n',
+      },
+      {
+        label: '紧急提醒',
+        text: '## 发生了什么\n- \n\n## 建议怎么做\n- \n',
+      },
+    ],
+  };
+
+  /** 把预设模板插进 textarea：空正文直接铺满，已有内容时另起一段，插完选中标题下的提示行 */
+  function insertPreset(textarea, text) {
+    const empty = textarea.value.trim() === '';
+    let start = 0;
+    let prefix = '';
+    if (empty) {
+      textarea.setSelectionRange(0, textarea.value.length);
+    } else {
+      start = textarea.selectionStart ?? textarea.value.length;
+      if (start > 0) prefix = '\n\n';
+    }
+    const inserted = prefix + text;
+    replaceSelection(textarea, inserted);
+    const blockStart = start + prefix.length;
+    const value = textarea.value;
+    let lineStart = value.indexOf('\n', blockStart);
+    if (lineStart !== -1) {
+      lineStart += 1;
+      let lineEnd = value.indexOf('\n', lineStart);
+      if (lineEnd === -1) lineEnd = value.length;
+      if (lineEnd > lineStart) textarea.setSelectionRange(lineStart, lineEnd);
+      else textarea.setSelectionRange(blockStart + inserted.length, blockStart + inserted.length);
+    } else {
+      textarea.setSelectionRange(blockStart + inserted.length, blockStart + inserted.length);
+    }
+    textarea.focus();
+  }
+
   /**
    * 给 textarea 挂上 Markdown 工具栏、编辑/预览切换和快捷键。
    * options.imageFiles 传 BB.attachImagePaste 的返回值，图片按钮就能复用粘贴上传通道。
+   * options.presets 传 MD_PRESETS 里的分组名（thread / release / announcement），工具栏多一个「预设」下拉。
    */
   BB.attachMarkdownEditor = (textarea, options = {}) => {
     if (textarea.dataset.mdEditor) return null;
@@ -901,6 +1075,14 @@
 
     const editor = document.createElement('div');
     editor.className = 'md-editor';
+
+    // 预设模板分组（没传 options.presets 就为空，工具栏不出现预设下拉）
+    const presets = MD_PRESETS[options.presets] || [];
+    const presetHtml = presets.length
+      ? `<select class="md-preset" aria-label="正文预设模板"><option value="">预设…</option>${presets
+          .map((preset, index) => `<option value="${index}">${BB.esc(preset.label)}</option>`)
+          .join('')}</select>`
+      : '';
 
     const buttons = [
       ['bold', 'B', '加粗（Ctrl+B）', 'md-strong'],
@@ -925,6 +1107,7 @@
               )}</button>`,
           )
           .join('')}
+        ${presetHtml}
         <span class="md-mode" role="tablist" aria-label="编辑或预览">
           <button type="button" data-mode="edit" class="active" aria-pressed="true">编辑</button>
           <button type="button" data-mode="preview" aria-pressed="false">预览</button>
@@ -1016,6 +1199,19 @@
       }
     };
     modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
+
+    // ---------- 预设模板 ----------
+    const presetSelect = editor.querySelector('.md-preset');
+    if (presetSelect) {
+      presetSelect.addEventListener('change', () => {
+        const raw = presetSelect.value;
+        presetSelect.value = '';
+        const index = Number(raw);
+        if (raw === '' || !presets[index]) return;
+        setMode('edit');
+        insertPreset(textarea, presets[index].text);
+      });
+    }
 
     // ---------- 快捷键 / 智能输入 ----------
     textarea.addEventListener('keydown', (event) => {

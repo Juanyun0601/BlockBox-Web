@@ -150,7 +150,8 @@ BB.boot(async () => {
       <div class="fr-main">
         <div class="fr-top">
           <span class="fr-name">${esc(f.display_name)}</span>
-          <span class="fr-online${f.online ? ' on' : ''}" title="${f.online ? '在线' : `最近活跃 ${BB.time(f.last_seen_at)}`}"></span>
+          ${f.official ? '<span class="fr-official">官方</span>' : ''}
+          ${f.official ? '' : `<span class="fr-online${f.online ? ' on' : ''}" title="${f.online ? '在线' : `最近活跃 ${BB.time(f.last_seen_at)}`}"></span>`}
           ${unread}${time}
         </div>
         <div class="fr-preview">${preview}</div>
@@ -299,16 +300,21 @@ BB.boot(async () => {
   }
 
   function renderChatHead() {
-    const status = peer.online ? '在线' : `最近活跃 ${BB.time(peer.last_seen_at || 0)}`;
+    // 官方客服是默认好友：不显示「删除」，状态也换成固定的客服说明
+    const status = peer.official
+      ? '官方客服 · 随时提问'
+      : peer.online
+        ? '在线'
+        : `最近活跃 ${BB.time(peer.last_seen_at || 0)}`;
     chatHead.innerHTML = `
       ${BB.avatar(peer, 'avatar-sm')}
       <div>
-        <div class="chat-head-name">${esc(peer.display_name)}</div>
+        <div class="chat-head-name">${esc(peer.display_name)}${peer.official ? ' <span class="fr-official">官方</span>' : ''}</div>
         <div class="chat-head-status">${esc(status)}</div>
       </div>
       <div class="chat-head-actions">
         <a class="btn btn-ghost btn-sm" href="/user.html?id=${peer.id}">主页</a>
-        <button class="btn btn-danger btn-sm" data-remove-friend>删除好友</button>
+        ${peer.official ? '' : '<button class="btn btn-danger btn-sm" data-remove-friend>删除好友</button>'}
       </div>`;
   }
 

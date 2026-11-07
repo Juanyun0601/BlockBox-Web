@@ -29,18 +29,28 @@ BB.boot(async () => {
   let announcementData = null;
   let releaseData = null;
 
+  // 客服工作台：会话列表 / 当前打开的玩家 / 已加载的消息
+  let supportData = null;
+  let supportPeer = null;
+  let supportMessages = [];
+  let supportHasMore = false;
+  let supportSending = false;
+
   async function loadOverview() {
-    const [data, announceResult, reportData, tagResult, feedbackResult, visitResult, releaseResult] = await Promise.all([
-      BB.api('/api/admin/overview'),
-      BB.api('/api/admin/announcements'),
-      BB.api('/api/admin/reports?status=open'),
-      BB.api('/api/admin/tags'),
-      BB.api(`/api/admin/feedbacks?status=${feedbackStatus}&per_page=50`),
-      // 访问数据单独容错：接口出问题时只是这块空着，不影响其余后台功能
-      BB.api(`/api/admin/visits?days=${visitDays}`).catch(() => null),
-      // 版本发布同理单独容错
-      BB.api('/api/admin/releases').catch(() => null),
-    ]);
+    const [data, announceResult, reportData, tagResult, feedbackResult, visitResult, releaseResult, supportResult] =
+      await Promise.all([
+        BB.api('/api/admin/overview'),
+        BB.api('/api/admin/announcements'),
+        BB.api('/api/admin/reports?status=open'),
+        BB.api('/api/admin/tags'),
+        BB.api(`/api/admin/feedbacks?status=${feedbackStatus}&per_page=50`),
+        // 访问数据单独容错：接口出问题时只是这块空着，不影响其余后台功能
+        BB.api(`/api/admin/visits?days=${visitDays}`).catch(() => null),
+        // 版本发布同理单独容错
+        BB.api('/api/admin/releases').catch(() => null),
+        // 客服消息也单独容错：老服务端没有这个接口时后台其余部分照常可用
+        BB.api('/api/admin/support/overview').catch(() => null),
+      ]);
     overview = data;
     reports = reportData;
     tagData = tagResult;
@@ -48,6 +58,7 @@ BB.boot(async () => {
     visitData = visitResult;
     announcementData = announceResult;
     releaseData = releaseResult;
+    supportData = supportResult;
     render();
   }
 
@@ -214,6 +225,29 @@ BB.boot(async () => {
       </section>
 
       <section class="card admin-section">
+        <div class="visit-head">
+          <h2>客服消息 <span id="supportUnreadChip"></span></h2>
+          <span class="small muted" style="margin-left: auto">以「方块盒子官方客服」身份回复</span>
+        </div>
+        <p class="small muted" style="margin-bottom: 12px">
+          玩家在聊天页给官方客服发来的问题都会出现在这里，点开一位玩家就能直接回复；
+          回复会立刻送进 TA 的聊天窗口，不用去动别的账号。有新提问时，这里每几秒自动刷新一次。
+        </p>
+        <div class="support-shell">
+          <div class="support-list" id="supportList"></div>
+          <div class="support-chat">
+            <div class="support-chat-head" id="supportChatHead"></div>
+            <div class="support-chat-body" id="supportChatBody"></div>
+            <form class="support-composer" id="supportForm">
+              <textarea class="textarea" id="supportInput" maxlength="1000" rows="2"
+                        placeholder="写回复…（Enter 发送，Shift+Enter 换行）"></textarea>
+              <button class="btn btn-primary btn-sm" id="supportSendBtn" type="submit">发送</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="card admin-section">
         <h2>最近主题</h2>
         <table class="table">
           <thead><tr><th>标题</th><th>板块</th><th>作者</th><th>时间</th><th>操作</th></tr></thead>
@@ -243,6 +277,7 @@ BB.boot(async () => {
     renderAnnouncements();
     renderImportant();
     renderReleases();
+    renderSupport();
 
     document.getElementById('addBoardBtn').addEventListener('click', addBoard);
     document.getElementById('publishAnnounceBtn').addEventListener('click', publishAnnouncement);
@@ -250,11 +285,27 @@ BB.boot(async () => {
     document.getElementById('publishReleaseBtn').addEventListener('click', publishRelease);
     document.getElementById('mergeBtn').addEventListener('click', mergeTags);
 
+    // 客服工作台：列表点击 / 发送框只在 render 时绑定一次，轮询只更新内容
+    document.getElementById('supportList').addEventListener('click', (event) => {
+      const row = event.target.closest('[data-support-user]');
+      if (row) openSupportChat(Number(row.dataset.supportUser));
+    });
+    document.getElementById('supportForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      sendSupportReply();
+    });
+    document.getElementById('supportInput').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendSupportReply();
+      }
+    });
+
     // 重要公告正文用与发帖相同的 Markdown 编辑器：工具栏 + 编辑/预览，发布前先看效果
     const importantEditor = document.getElementById('importantContent');
-    if (importantEditor) BB.attachMarkdownEditor(importantEditor);
+    if (importantEditor) BB.attachMarkdownEditor(importantEditor, { presets: 'announcement' });
     const releaseEditor = document.getElementById('releaseNotes');
-    if (releaseEditor) BB.attachMarkdownEditor(releaseEditor);
+    if (releaseEditor) BB.attachMarkdownEditor(releaseEditor, { presets: 'release' });
     document.getElementById('userSearchBtn').addEventListener('click', () => {
       userQuery = document.getElementById('userSearch').value.trim();
       renderUsers();
@@ -1101,6 +1152,18 @@ BB.boot(async () => {
     }
   }
 
+  // 举报分类 slug → 中文（与客户端举报页、服务端白名单一致）
+  const REPORT_CATEGORY_LABELS = {
+    spam: '垃圾广告',
+    insult: '人身攻击',
+    porn: '色情低俗',
+    illegal: '违法违规',
+    infringe: '侵权盗搬',
+    privacy: '泄露隐私',
+    flooding: '引战/刷屏',
+    other: '其他',
+  };
+
   function renderReports() {    const body = document.getElementById('reportRows');
     if (!reports || reports.reports.length === 0) {
       body.innerHTML = '<tr><td colspan="7" class="muted">暂时没有新的举报。</td></tr>';
@@ -1124,16 +1187,36 @@ BB.boot(async () => {
         }</td>
         <td class="small">${report.author ? BB.esc(report.author.display_name || report.author.username) : '—'}</td>
         <td class="small">${report.reporter ? BB.esc(report.reporter.username) : '—'}</td>
-        <td class="small">${BB.esc(report.reason || '未填写')}</td>
+        <td class="small">${
+          REPORT_CATEGORY_LABELS[report.category]
+            ? `<span class="chip chip-grey">${REPORT_CATEGORY_LABELS[report.category]}</span> `
+            : ''
+        }${BB.esc(report.reason || '未填写')}</td>
         <td class="small nowrap">${BB.time(report.created_at)}</td>
         <td class="row-actions">
           <a class="btn btn-ghost btn-sm" href="/thread.html?id=${report.thread_id}#post-${report.post_id}">查看</a>
           <button class="btn btn-danger btn-sm" data-report="${report.id}" data-act="delete">删帖并处理</button>
           <button class="btn btn-ghost btn-sm" data-report="${report.id}" data-act="ignore">忽略</button>
+          ${
+            report.reporter
+              ? `<button class="btn btn-ghost btn-sm" data-reporter="${report.reporter.id}" data-username="${BB.esc(
+                  report.reporter.username,
+                )}">回复举报人</button>`
+              : ''
+          }
         </td>
       </tr>`,
       )
       .join('');
+
+    body.querySelectorAll('[data-reporter]').forEach((button) => {
+      button.addEventListener('click', () => {
+        openNotifyDialog(
+          { id: Number(button.dataset.reporter), username: button.dataset.username || '' },
+          { title: '关于您举报的处理说明', context: '就这条举报向举报人说明处理情况。' },
+        );
+      });
+    });
 
     body.querySelectorAll('[data-report]').forEach((button) => {
       button.addEventListener('click', async () => {
@@ -1236,7 +1319,7 @@ BB.boot(async () => {
           ${item.reply ? `<div class="feedback-reply"><b>已回复</b>：${BB.esc(item.reply)}</div>` : ''}
         </div>
         <div class="feedback-admin-actions">
-          <input class="input" placeholder="回复（可选）" data-reply="${item.id}">
+          <input class="input" placeholder="回复（将以系统通知发给用户，可选）" data-reply="${item.id}">
           <div class="btn-row">
             ${
               item.status === 'open'
@@ -1294,6 +1377,70 @@ BB.boot(async () => {
       if (Math.abs(hours - left) < Math.abs(best - left)) best = hours;
     });
     return best;
+  }
+
+  /** 回复用户弹窗：内容以系统通知送达对方的账号通知列表（启动器账号页 / 网页通知页） */
+  function openNotifyDialog(user, { title = '来自管理团队的消息', context = '' } = {}) {
+    const mask = document.createElement('div');
+    mask.className = 'modal-mask';
+    mask.innerHTML = `
+      <div class="modal-card" role="dialog" aria-modal="true" aria-label="回复 ${BB.esc(user.username)}">
+        <h3>回复 @${BB.esc(user.display_name || user.username)}</h3>
+        <p class="muted small">${context ? `${BB.esc(context)}<br>` : ''}内容将以系统通知发送到对方的账号通知列表。</p>
+        <div class="field">
+          <label>内容</label>
+          <textarea class="textarea" id="notifyBody" maxlength="500"
+                    placeholder="写清楚处理结果或想说明的内容（最多 500 字）"></textarea>
+        </div>
+        <div class="modal-error" id="notifyError"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost btn-sm" data-act="cancel">取消</button>
+          <button class="btn btn-primary btn-sm" data-act="ok">发送</button>
+        </div>
+      </div>`;
+    document.body.appendChild(mask);
+    document.body.classList.add('modal-open');
+
+    const errorHost = mask.querySelector('#notifyError');
+    const close = () => {
+      mask.remove();
+      document.body.classList.remove('modal-open');
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') close();
+    };
+
+    const submit = async (button) => {
+      const body = mask.querySelector('#notifyBody').value.trim();
+      if (!body) {
+        errorHost.textContent = '先写点内容再发送';
+        return;
+      }
+      button.disabled = true;
+      errorHost.textContent = '';
+      try {
+        await BB.api(`/api/admin/users/${user.id}/notify`, { method: 'POST', body: { title, body } });
+        close();
+        BB.toast('已发送，对方会在通知里看到', 'ok');
+      } catch (error) {
+        button.disabled = false;
+        errorHost.textContent = error.message || '发送失败，稍后再试';
+      }
+    };
+
+    mask.addEventListener('click', (event) => {
+      if (event.target === mask) {
+        close();
+        return;
+      }
+      const button = event.target.closest('[data-act]');
+      if (!button) return;
+      if (button.dataset.act === 'cancel') close();
+      if (button.dataset.act === 'ok') submit(button);
+    });
+    document.addEventListener('keydown', onKey);
+    mask.querySelector('#notifyBody').focus();
   }
 
   /** 禁言弹窗：禁止内容 + 理由 + 时间都在这里设，行里只留一颗「禁言」按钮 */
@@ -1538,6 +1685,9 @@ BB.boot(async () => {
         const muteButton = selfRow
           ? ''
           : `<button class="btn ${user.status === 'muted' ? 'btn-primary' : 'btn-ghost'} btn-sm" data-user="${user.id}" data-act="mute">禁言</button>`;
+        const notifyButton = selfRow
+          ? ''
+          : `<button class="btn btn-ghost btn-sm" data-user="${user.id}" data-act="notify">发消息</button>`;
         return `
         <tr>
           <td>
@@ -1551,7 +1701,9 @@ BB.boot(async () => {
           <td class="small">${BB.num(user.thread_count)} / ${BB.num(user.post_count)}</td>
           <td class="small">${BB.datetime(user.created_at).slice(0, 10)}</td>
           <td class="row-actions">${
-            roleButtons || muteButton ? `${roleButtons}${muteButton}` : '<span class="muted small">—</span>'
+            roleButtons || muteButton || notifyButton
+              ? `${roleButtons}${muteButton}${notifyButton}`
+              : '<span class="muted small">—</span>'
           }</td>
         </tr>`;
       })
@@ -1563,6 +1715,10 @@ BB.boot(async () => {
         const target = adminUsers.find((u) => u.id === userId);
         if (button.dataset.act === 'mute') {
           openMuteDialog(target || { id: userId, username: '', status: 'active' });
+          return;
+        }
+        if (button.dataset.act === 'notify') {
+          openNotifyDialog(target || { id: userId, username: '' });
           return;
         }
         if (!target) return;
@@ -1583,5 +1739,197 @@ BB.boot(async () => {
     });
   }
 
+  // ---------------- 客服工作台 ----------------
+
+  function supportConversationPreview(item) {
+    const last = item.last_message;
+    if (!last) return '还没有聊过';
+    const text = last.kind === 'withdrawn' ? '撤回了一条消息' : last.kind === 'image' ? '[图片]' : last.body || '';
+    return `${last.mine ? '客服：' : ''}${text}`;
+  }
+
+  function supportMessageHtml(msg) {
+    if (msg.kind === 'withdrawn') {
+      return `<div class="msg-withdrawn">${msg.mine ? '客服撤回了一条消息' : '玩家撤回了一条消息'}</div>`;
+    }
+    let inner;
+    if (msg.kind === 'image' && msg.image) {
+      const url = BB.esc(BB.media(msg.image));
+      inner =
+        `<a class="img-link" href="${url}" data-full="${url}" target="_blank" rel="noopener">` +
+        `<img class="msg-image" src="${url}" alt="图片" loading="lazy"></a>` +
+        (msg.body ? `<div class="msg-text">${BB.esc(msg.body)}</div>` : '');
+    } else {
+      inner = `<div class="msg-text">${BB.esc(msg.body || '')}</div>`;
+    }
+    const time = `<span class="msg-time">${BB.datetime(msg.created_at)}</span>`;
+    return `<div class="msg-row ${msg.mine ? 'mine' : 'theirs'}">
+      ${msg.mine ? '' : BB.avatar(supportPeer, 'avatar-xs')}
+      <div class="msg-body"><div class="msg-bubble">${inner}</div>${time}</div>
+    </div>`;
+  }
+
+  /** 只重画会话列表 / 聊天区；输入框与事件监听不重建 */
+  function renderSupport() {
+    const list = document.getElementById('supportList');
+    const head = document.getElementById('supportChatHead');
+    const body = document.getElementById('supportChatBody');
+    const chip = document.getElementById('supportUnreadChip');
+    if (!list || !head || !body || !chip) return;
+
+    if (!supportData) {
+      chip.innerHTML = '<span class="chip chip-danger">客服接口未响应</span>';
+      list.innerHTML = '<div class="empty">客服接口没有响应，刷新页面再试试。</div>';
+      head.innerHTML = '<div class="support-head-empty">选择左侧的玩家，查看提问并回复</div>';
+      body.innerHTML = '<div class="empty">玩家的消息会出现在这里</div>';
+      return;
+    }
+
+    chip.innerHTML =
+      supportData.unread_total > 0
+        ? `<span class="chip chip-danger">待回复 ${supportData.unread_total}</span>`
+        : '<span class="chip chip-grey">没有待回复的消息</span>';
+
+    const conversations = supportData.conversations || [];
+    list.innerHTML = conversations.length
+      ? conversations
+          .map((item) => {
+            const name = item.user.display_name || item.user.username;
+            return `<div class="support-row${supportPeer && supportPeer.id === item.user.id ? ' active' : ''}"
+                         data-support-user="${item.user.id}">
+              ${BB.avatar(item.user, 'avatar-sm')}
+              <div class="support-row-main">
+                <div class="support-row-top">
+                  <span class="fr-name">${BB.esc(name)}</span>
+                  ${item.unread ? `<span class="fr-badge">${item.unread > 99 ? '99+' : item.unread}</span>` : ''}
+                  <span class="fr-time">${item.last_message ? BB.time(item.last_message.created_at) : ''}</span>
+                </div>
+                <div class="fr-preview">${BB.esc(supportConversationPreview(item))}</div>
+              </div>
+            </div>`;
+          })
+          .join('')
+      : '<div class="empty">还没有玩家提问。玩家在聊天页给官方客服发消息后会显示在这里。</div>';
+
+    if (!supportPeer) {
+      head.innerHTML = '<div class="support-head-empty">选择左侧的玩家，查看提问并回复</div>';
+      body.innerHTML = '<div class="empty">玩家的消息会出现在这里</div>';
+      return;
+    }
+
+    const name = supportPeer.display_name || supportPeer.username || `玩家 #${supportPeer.id}`;
+    const status = supportPeer.online
+      ? '在线'
+      : supportPeer.last_seen_at
+        ? `最近活跃 ${BB.time(supportPeer.last_seen_at)}`
+        : '离线';
+    head.innerHTML = `
+      ${BB.avatar(supportPeer, 'avatar-sm')}
+      <div class="support-head-text">
+        <div class="chat-head-name">${BB.esc(name)}</div>
+        <div class="chat-head-status">${status} · <a href="/user.html?id=${supportPeer.id}" target="_blank" rel="noopener">查看主页</a></div>
+      </div>`;
+    body.innerHTML = supportMessages.length
+      ? `${supportHasMore ? '<div class="small muted" style="text-align:center">只显示最近 60 条消息</div>' : ''}${supportMessages
+          .map(supportMessageHtml)
+          .join('')}`
+      : '<div class="empty">这位玩家还没有发过消息</div>';
+  }
+
+  function scrollSupportBottom() {
+    const body = document.getElementById('supportChatBody');
+    if (body) body.scrollTop = body.scrollHeight;
+  }
+
+  async function openSupportChat(userId) {
+    if (!userId) return;
+    const item = (supportData?.conversations || []).find((entry) => entry.user.id === userId);
+    supportPeer = item
+      ? { ...item.user }
+      : supportPeer && supportPeer.id === userId
+        ? supportPeer
+        : { id: userId, username: '', display_name: `玩家 #${userId}`, avatar: '', last_seen_at: 0 };
+    supportMessages = [];
+    supportHasMore = false;
+    renderSupport();
+    const body = document.getElementById('supportChatBody');
+    if (body) body.innerHTML = '<div class="empty">正在加载消息…</div>';
+
+    try {
+      const data = await BB.api(`/api/admin/support/conversations/${userId}`);
+      supportPeer = { ...supportPeer, ...data.user };
+      supportMessages = data.messages || [];
+      supportHasMore = !!data.has_more;
+      // 本地把这位玩家的未读清掉，不用等下一轮轮询
+      if (item) {
+        supportData.unread_total = Math.max(0, Number(supportData.unread_total || 0) - Number(item.unread || 0));
+        item.unread = 0;
+      }
+      renderSupport();
+      scrollSupportBottom();
+      document.getElementById('supportInput')?.focus();
+    } catch (error) {
+      const host = document.getElementById('supportChatBody');
+      if (host) host.innerHTML = `<div class="empty">${BB.esc(error.message || '加载失败')}</div>`;
+    }
+  }
+
+  async function sendSupportReply() {
+    const input = document.getElementById('supportInput');
+    const button = document.getElementById('supportSendBtn');
+    if (!input || !button || !supportPeer || supportSending) return;
+    const content = input.value.trim();
+    if (!content) return;
+
+    supportSending = true;
+    button.disabled = true;
+    try {
+      const data = await BB.api(`/api/admin/support/conversations/${supportPeer.id}`, {
+        method: 'POST',
+        body: { body: content },
+      });
+      input.value = '';
+      supportMessages.push(data.message);
+      renderSupport();
+      scrollSupportBottom();
+      input.focus();
+      // 会话列表里的「最后一条」和排序跟着更新；刷新失败也不影响已发出的回复
+      try {
+        supportData = await BB.api('/api/admin/support/overview');
+        renderSupport();
+        scrollSupportBottom();
+      } catch {
+        /* ignore */
+      }
+    } catch (error) {
+      BB.toast(error.message || '发送失败，稍后再试', 'error');
+    } finally {
+      supportSending = false;
+      button.disabled = false;
+    }
+  }
+
+  /** 后台开着时每 6 秒同步一次新提问和当前会话；正打开着就算已读 */
+  async function pollSupport() {
+    if (document.hidden || !document.getElementById('supportList')) return;
+    try {
+      supportData = await BB.api('/api/admin/support/overview');
+      if (supportPeer) {
+        const data = await BB.api(`/api/admin/support/conversations/${supportPeer.id}?limit=60`);
+        supportPeer = { ...supportPeer, ...data.user };
+        supportMessages = data.messages || [];
+        supportHasMore = !!data.has_more;
+        const item = (supportData.conversations || []).find((entry) => entry.user.id === supportPeer.id);
+        if (item) item.unread = 0;
+      }
+      renderSupport();
+      const body = document.getElementById('supportChatBody');
+      if (body && body.scrollHeight - body.scrollTop - body.clientHeight < 80) scrollSupportBottom();
+    } catch {
+      /* 网络抖动忽略，等下一轮 */
+    }
+  }
+
+  setInterval(pollSupport, 6000);
   await loadOverview();
 });

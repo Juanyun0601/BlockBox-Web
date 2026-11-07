@@ -1,7 +1,10 @@
 import { db, now, paginate, refreshBoardCounts, transaction } from '../db.js';
 import { badRequest, forbidden, notFound } from '../lib/http.js';
 import { muteScopeList, normalizeMuteScope, publicUser, requireAdmin, requireHeadAdmin } from '../lib/auth.js';
+import { notifyAdminMessage } from '../lib/notify.js';
+import { enforce } from '../lib/rate-limit.js';
 import { siteStats } from '../lib/queries.js';
+import { text } from '../lib/validate.js';
 import { visitStats } from '../lib/visits.js';
 import {
   MAX_ENTRIES,
@@ -230,6 +233,23 @@ export default function register(router) {
     if (status === 'banned') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(target.id);
 
     return { user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id), { self: true }) };
+  });
+
+  // 管理员给用户发系统通知（通知中心可见），后台「回复用户」用它
+  router.post('/api/admin/users/:id/notify', async (ctx) => {
+    const admin = requireAdmin(ctx.user);
+    enforce(`admin-notify:${admin.id}`, 60, 60 * 60 * 1000, '发送太频繁，请稍后再试');
+
+    const target = db.prepare('SELECT * FROM users WHERE id = ?').get(Number(ctx.params.id));
+    if (!target) throw notFound('用户不存在');
+
+    const body = await ctx.json();
+    const title =
+      text(body.title, { field: '通知标题', max: 60, optional: true }) || '来自管理团队的消息';
+    const content = text(body.body, { field: '通知内容', min: 1, max: 500 });
+
+    notifyAdminMessage(target.id, title, content);
+    return { ok: true };
   });
 
   router.post('/api/admin/rescan', async (ctx) => {    requireAdmin(ctx.user);

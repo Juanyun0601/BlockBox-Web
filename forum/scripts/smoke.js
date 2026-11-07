@@ -761,6 +761,16 @@ async function main() {
     JSON.stringify(importantFile),
   );
 
+  // 官网 / 论坛打开时弹的就是这个公开接口，不需要登录、也不走人机验证
+  const publicImportant = await request('GET', '/api/app/important-announcement');
+  check(
+    '官网与论坛能读到生效中的重要公告',
+    publicImportant.status === 200
+      && publicImportant.json?.important?.title === '冒烟测试重要公告'
+      && String(publicImportant.json?.important?.content || '').includes('维护通知'),
+    publicImportant.text,
+  );
+
   const publishedSecondImportant = await request('POST', '/api/admin/important-announcements', {
     title: '第二条重要公告',
     content: '新公告会顶替旧公告',
@@ -771,6 +781,12 @@ async function main() {
     '新重要公告顶替旧的',
     importantAfterSecond.important?.title === '第二条重要公告',
     JSON.stringify(importantAfterSecond),
+  );
+  const publicImportantAfterSecond = await request('GET', '/api/app/important-announcement');
+  check(
+    '公开接口跟着换成最新一条',
+    publicImportantAfterSecond.json?.important?.title === '第二条重要公告',
+    publicImportantAfterSecond.text,
   );
   const importantAfterSecondList = await request('GET', '/api/admin/announcements');
   const firstInHistory = (importantAfterSecondList.json?.important || []).find((item) => item.id === importantId);
@@ -805,6 +821,12 @@ async function main() {
     '删除重要公告后文件里不再有 important 字段',
     !importantAfterDelete.important,
     JSON.stringify(importantAfterDelete),
+  );
+  const publicImportantEmpty = await request('GET', '/api/app/important-announcement');
+  check(
+    '没有生效的重要公告时公开接口返回 null',
+    publicImportantEmpty.status === 200 && publicImportantEmpty.json?.important === null,
+    publicImportantEmpty.text,
   );
 
   await request('POST', '/api/auth/logout');

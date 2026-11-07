@@ -3,7 +3,9 @@ import { badRequest, forbidden, notFound } from '../lib/http.js';
 import { muteError, requireUser } from '../lib/auth.js';
 import { enforce } from '../lib/rate-limit.js';
 import {
+  DM_SELECT,
   acceptedBetween,
+  dmOut,
   friendshipBetween,
   incomingRequestCount,
   listFriends,
@@ -11,6 +13,7 @@ import {
   peerOut,
   unreadTotal,
 } from '../lib/social.js';
+import { ensureSupportFriend, isSupportUser } from '../lib/support.js';
 import { int, text, username } from '../lib/validate.js';
 
 export default function register(router) {
@@ -19,6 +22,8 @@ export default function register(router) {
   /** 好友页一次拉全：好友（带未读/最后一条）、收到的申请、发出的申请 */
   router.get('/api/friends', async (ctx) => {
     const user = requireUser(ctx.user);
+    // 官方客服是默认好友：老账号补一次关系，玩家删过也会自动恢复
+    ensureSupportFriend(user.id);
     return {
       friends: listFriends(user.id),
       incoming: listRequests(user.id, 'incoming'),
@@ -97,10 +102,11 @@ export default function register(router) {
     return { ok: true };
   });
 
-  /** 删除好友 */
+  /** 删除好友（官方客服是默认好友，不能删除） */
   router.delete('/api/friends/:userId', async (ctx) => {
     const user = requireUser(ctx.user);
     const peerId = int(ctx.params.userId, { field: '用户' });
+    if (isSupportUser(peerId)) throw badRequest('官方客服是默认好友，不能删除');
     const rel = friendshipBetween(user.id, peerId);
     if (!rel || rel.status !== 'accepted') throw notFound('你们还不是好友');
     db.prepare('DELETE FROM friendships WHERE id = ?').run(rel.id);
@@ -110,36 +116,6 @@ export default function register(router) {
   // ---------------- 私信 ----------------
   // 注意：/api/messages/poll 必须注册在 /api/messages/:userId 之前，
   // 否则 "poll" 会被当成用户 id。
-
-  /** 消息统一序列化：kind = text / image / withdrawn（撤回占位），带引用摘要 */
-  function messageOut(row, user) {
-    let replyBody = '';
-    if (row.reply_to) {
-      const replyKind = row.reply_kind || 'text';
-      if (replyKind === 'withdrawn') replyBody = '[已撤回]';
-      else if (replyKind === 'image') replyBody = '[图片]';
-      else replyBody = String(row.reply_body || '').slice(0, 60);
-    }
-    return {
-      id: row.id,
-      kind: row.kind || 'text',
-      body: row.body,
-      image: row.image || '',
-      reply_to: row.reply_to || 0,
-      reply_body: replyBody,
-      reply_mine: row.reply_sender === user.id ? 1 : 0,
-      mine: row.sender_id === user.id,
-      created_at: row.created_at,
-      read_at: row.read_at || 0,
-    };
-  }
-
-  /** 带引用消息的 SELECT 片段 */
-  const DM_SELECT = `
-    SELECT m.id, m.sender_id, m.body, m.kind, m.image, m.reply_to, m.read_at, m.created_at,
-           q.body AS reply_body, q.kind AS reply_kind, q.sender_id AS reply_sender
-      FROM direct_messages m
-      LEFT JOIN direct_messages q ON q.id = m.reply_to`;
 
   /**
    * 轻量轮询：角标（未读私信 + 待处理申请）、会话列表增量、当前聊天的新消息。
@@ -161,7 +137,7 @@ export default function register(router) {
             LIMIT 50`,
         )
         .all(user.id, peerId, peerId, user.id, afterId);
-      messages = rows.map((row) => messageOut(row, user));
+      messages = rows.map((row) => dmOut(row, user.id));
     }
 
     return {
@@ -209,7 +185,7 @@ export default function register(router) {
       .all(...params, limit + 1);
 
     const hasMore = rows.length > limit;
-    const messages = rows.slice(0, limit).reverse().map((row) => messageOut(row, user));
+    const messages = rows.slice(0, limit).reverse().map((row) => dmOut(row, user.id));
     return { user: peerOut(peer), messages, has_more: hasMore };
   });
 
@@ -259,7 +235,7 @@ export default function register(router) {
       )
       .run(user.id, peerId, content, kind, image, replyTo, timestamp);
     const row = db.prepare(`${DM_SELECT} WHERE m.id = ?`).get(Number(result.lastInsertRowid));
-    return { message: messageOut(row, user) };
+    return { message: dmOut(row, user.id) };
   });
 
   /** 撤回自己 10 分钟内发出的消息：内容清空，双方都显示「撤回了一条消息」 */

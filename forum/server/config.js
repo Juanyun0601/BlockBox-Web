@@ -133,6 +133,18 @@ export const config = {
   adminBootstrapUser: (env.ADMIN_BOOTSTRAP_USER || '').trim(),
   adminBootstrapPass: env.ADMIN_BOOTSTRAP_PASS || '',
 
+  // 官方客服账号：第一次启动时自动创建，之后每位玩家默认和它成为好友，
+  // 用户在聊天页直接提问，管理员在管理后台「客服消息」里以它的身份回复。
+  // 用户名只在创建时用一次，改昵称/头像请在管理后台的用户管理里改。
+  support: {
+    username: (env.SUPPORT_USERNAME || 'blockbox_support').trim(),
+    displayName: (env.SUPPORT_DISPLAY_NAME || '方块盒子官方客服').trim(),
+    bio: (
+      env.SUPPORT_BIO ||
+      '使用方块盒子遇到问题？直接在聊天里留言，客服会尽快回复。'
+    ).trim(),
+  },
+
   // 人机验证（滑块拼图）：进站先过一道验证，通过后一段时间内不再打扰。
   // 网页端和启动器共用同一套接口，启动器用 X-Human-Token 请求头带令牌。
   // 自测 / 接口脚本可以把 HUMAN_CHECK 设成 0 关掉，省得每次都要过验证。

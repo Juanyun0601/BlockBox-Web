@@ -145,6 +145,10 @@ export function migrate() {
   if (addedLinkQuark) console.log('[论坛] 数据库已升级：release_versions 增加 link_quark（夸克网盘链接）');
   const addedLinkGithub = ensureColumn('release_versions', 'link_github', "TEXT NOT NULL DEFAULT ''");
   if (addedLinkGithub) console.log('[论坛] 数据库已升级：release_versions 增加 link_github（GitHub Release 链接）');
+
+  // 举报分类（客户端举报页选的分类 slug；网页版旧数据为空）
+  const addedReportCategory = ensureColumn('reports', 'category', "TEXT NOT NULL DEFAULT ''");
+  if (addedReportCategory) console.log('[论坛] 数据库已升级：reports 增加 category（举报分类）');
 }
 
 migrate();

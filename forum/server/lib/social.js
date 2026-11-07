@@ -1,4 +1,5 @@
 import { db, now } from '../db.js';
+import { supportUserId } from './support.js';
 
 /** 最近活跃多久以内算「在线」（userFromToken 每 5 分钟会刷一次 last_seen_at） */
 export const ONLINE_WINDOW = 10 * 60;
@@ -6,7 +7,7 @@ export const ONLINE_WINDOW = 10 * 60;
 /** 好友列表一次最多返回多少人（按最近联系排序） */
 export const MAX_FRIENDS = 200;
 
-/** 用户卡片：只暴露好友 / 私信需要的字段 */
+/** 用户卡片：只暴露好友 / 私信需要的字段；official 标记官方客服账号 */
 export function peerOut(row) {
   return {
     id: row.id,
@@ -15,8 +16,42 @@ export function peerOut(row) {
     avatar: row.avatar || '',
     last_seen_at: row.last_seen_at || 0,
     online: now() - (row.last_seen_at || 0) <= ONLINE_WINDOW,
+    official: row.id === supportUserId(),
   };
 }
+
+/**
+ * 私信统一序列化：kind = text / image / withdrawn（撤回占位），带引用摘要。
+ * viewerId 决定 mine / reply_mine，用户页与后台客服工作台共用。
+ */
+export function dmOut(row, viewerId) {
+  let replyBody = '';
+  if (row.reply_to) {
+    const replyKind = row.reply_kind || 'text';
+    if (replyKind === 'withdrawn') replyBody = '[已撤回]';
+    else if (replyKind === 'image') replyBody = '[图片]';
+    else replyBody = String(row.reply_body || '').slice(0, 60);
+  }
+  return {
+    id: row.id,
+    kind: row.kind || 'text',
+    body: row.body,
+    image: row.image || '',
+    reply_to: row.reply_to || 0,
+    reply_body: replyBody,
+    reply_mine: row.reply_sender === viewerId ? 1 : 0,
+    mine: row.sender_id === viewerId,
+    created_at: row.created_at,
+    read_at: row.read_at || 0,
+  };
+}
+
+/** 带引用消息的 SELECT 片段（配合 dmOut 使用） */
+export const DM_SELECT = `
+  SELECT m.id, m.sender_id, m.body, m.kind, m.image, m.reply_to, m.read_at, m.created_at,
+         q.body AS reply_body, q.kind AS reply_kind, q.sender_id AS reply_sender
+    FROM direct_messages m
+    LEFT JOIN direct_messages q ON q.id = m.reply_to`;
 
 /** 两人之间的关系行（任意状态），没有则返回 undefined */
 export function friendshipBetween(a, b) {
@@ -49,10 +84,10 @@ export function listFriends(meId) {
         WHERE f.status = 'accepted'
           AND (f.requester_id = ? OR f.addressee_id = ?)
           AND u.status != 'banned'
-        ORDER BY f.updated_at DESC
+        ORDER BY (u.id = ?) DESC, f.updated_at DESC
         LIMIT ?`,
     )
-    .all(meId, meId, meId, MAX_FRIENDS);
+    .all(meId, meId, meId, supportUserId(), MAX_FRIENDS);
   if (rows.length === 0) return [];
 
   /** 每个好友的最后一条私信（会话两侧都算） */
@@ -91,7 +126,11 @@ export function listFriends(meId) {
     unread: unreadMap.get(row.id) || 0,
     last_message: lastMap.get(row.id) || null,
   }));
-  friends.sort((a, b) => (b.last_message?.created_at || 0) - (a.last_message?.created_at || 0));
+  // 官方客服始终排在最前面，其余按最近联系排序
+  friends.sort((a, b) => {
+    if (a.official !== b.official) return a.official ? -1 : 1;
+    return (b.last_message?.created_at || 0) - (a.last_message?.created_at || 0);
+  });
   return friends;
 }
 

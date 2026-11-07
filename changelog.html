@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>更新日志 — 方块盒子 BlockBox</title>
+<meta name="description" content="方块盒子的每一次更新都记录在这里：按时间倒序排列，看看每个版本新增、修复与调整了什么。内容与下载页、启动器保持同步。">
+<link rel="icon" href="assets/img/icon.ico">
+<link rel="stylesheet" href="assets/style.css?v=20261107a">
+<link rel="stylesheet" href="assets/important-notice.css?v=20261114a">
+<script src="assets/theme.js?v=20261030"></script>
+<script src="assets/i18n.js?v=20261107"></script>
+</head>
+<body>
+
+<!-- ======================= 导航 ======================= -->
+<header class="nav" id="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html" aria-label="方块盒子首页">
+      <img class="brand-logo brand-logo-light" src="assets/img/logo.png?v=20261030" alt="方块盒子 BlockBox" width="319" height="111">
+      <img class="brand-logo brand-logo-dark" src="assets/img/logo-dark.png?v=20261030" alt="" width="319" height="111" aria-hidden="true">
+    </a>
+    <nav class="nav-links" id="navLinks" aria-label="主导航">
+      <a href="index.html">方块盒子</a>
+      <a href="index.html#navCoding">编码方块</a>
+      <a href="docs.html">开发文档</a>
+      <a href="changelog.html" aria-current="page">更新日志</a>
+      <a href="https://forum.mcblockbox.top/" target="_blank" rel="noopener">论坛</a>
+      <a class="btn btn-ghost btn-sm" href="https://github.com/Juanyun0601/BlockBox/" aria-label="GitHub 仓库">
+        <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path fill="currentColor" d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.47v-1.64c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02a9.56 9.56 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.71 1.03 1.62 1.03 2.71 0 3.84-2.35 4.68-4.58 4.93.36.31.68.92.68 1.85V21c0 .27.16.59.67.49C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg>
+        GitHub
+      </a>
+      <a class="btn btn-primary btn-sm" href="download.html">免费下载</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="打开菜单" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+
+<!-- ======================= 页头 ======================= -->
+<section class="cl-hero" id="top">
+  <div class="container">
+    <p class="kicker reveal">更新日志</p>
+    <h1 class="reveal">全部版本记录</h1>
+    <p class="cl-lead reveal">方块盒子的每一次更新都记录在这里：按时间倒序排列，看看每个版本新增、修复与调整了什么。内容与下载页、启动器保持同步。</p>
+  </div>
+</section>
+
+<!-- ======================= 版本列表 + 更新内容 ======================= -->
+<section class="section cl-body">
+  <div class="container cl-layout">
+
+    <aside class="cl-side" aria-label="版本列表">
+      <div class="cl-side-head">
+        <h2>历史版本</h2>
+        <span class="cl-side-hint">按时间倒序</span>
+      </div>
+      <div class="cl-versions" id="clVersions"></div>
+      <div class="cl-side-foot">
+        <a href="download.html">最新版本</a>
+        <a href="https://github.com/Juanyun0601/BlockBox/releases" target="_blank" rel="noopener">GitHub Releases</a>
+      </div>
+    </aside>
+
+    <div class="cl-main" id="clMain">
+      <p class="cl-state" id="clState">正在读取更新日志…</p>
+
+      <article class="cl-release" id="clRelease" aria-labelledby="clVersionTitle" hidden>
+        <header class="cl-release-head">
+          <div class="cl-release-top">
+            <span class="cl-tag" id="clTag">公测版</span>
+            <time class="cl-date" id="clDate"></time>
+          </div>
+          <h2 class="cl-version" id="clVersionTitle"></h2>
+          <p class="cl-release-note" id="clSummary" hidden></p>
+          <div class="cl-links" id="clLinks"></div>
+        </header>
+        <div class="cl-notes" id="clNotes" data-i18n-skip></div>
+        <footer class="cl-release-foot">
+          <span class="cl-foot-hint">安装包、网盘与历史版本都在下载页。</span>
+          <a class="btn btn-ghost btn-sm" href="download.html">返回下载页</a>
+        </footer>
+      </article>
+    </div>
+
+  </div>
+</section>
+
+</main>
+
+<!-- ======================= 页脚 ======================= -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <a class="brand" href="index.html">
+        <img class="brand-logo brand-logo-light" src="assets/img/logo.png?v=20261030" alt="方块盒子 BlockBox" width="319" height="111">
+        <img class="brand-logo brand-logo-dark" src="assets/img/logo-dark.png?v=20261030" alt="" width="319" height="111" aria-hidden="true">
+      </a>
+      <p>一个盒子，装下整个方块世界<br>现代 · 开源 · 免费 · 跨平台。</p>
+    </div>
+    <nav class="footer-col" aria-label="产品">
+      <h4>产品</h4>
+      <a href="index.html#features">核心功能</a>
+      <a href="index.html#unique">独特魅力</a>
+      <a href="download.html">下载体验</a>
+      <a href="changelog.html">更新日志</a>
+    </nav>
+    <nav class="footer-col" aria-label="社区">
+      <h4>社区</h4>
+      <a href="https://github.com/Juanyun0601/BlockBox/">GitHub 仓库</a>
+      <a href="https://forum.mcblockbox.top/feedback.html" target="_blank" rel="noopener">问题反馈</a>
+    </nav>
+    <nav class="footer-col" aria-label="相关链接">
+      <h4>相关站点</h4>
+      <a href="https://www.minecraft.net" target="_blank" rel="noopener">Minecraft 官网</a>
+      <a href="https://www.curseforge.com" target="_blank" rel="noopener">CurseForge</a>
+      <a href="https://modrinth.com" target="_blank" rel="noopener">Modrinth</a>
+      <a href="https://www.mcmod.cn" target="_blank" rel="noopener">MCMod 百科</a>
+    </nav>
+    <nav class="footer-col" aria-label="关注我们">
+      <h4>关注我们</h4>
+      <a href="https://v.douyin.com/BrpxKtD1NJI/" target="_blank" rel="noopener">抖音</a>
+      <a href="https://space.bilibili.com/3690986001664040" target="_blank" rel="noopener">哔哩哔哩</a>
+      <a href="https://github.com/Juanyun0601" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://afdian.com/a/blockbox" target="_blank" rel="noopener">爱发电</a>
+      <a href="https://www.minebbs.com/search/20858424/?c%5Busers%5D=%E5%80%A6%E9%9B%B2juanyun" target="_blank" rel="noopener">MineBBS</a>
+      <a href="https://bbsmc.net/user/%E5%80%A6%E9%9B%B2juanyun" target="_blank" rel="noopener">bbsmc</a>
+    </nav>
+  </div>
+  <div class="container footer-base">
+    <p>© <span id="year">2026</span> BlockBox · 以 GPL-3.0 协议开源</p>
+    <p>Minecraft 为 Mojang Synergies AB 的商标；本站为社区项目，与 Mojang / 微软无隶属关系。</p>
+  </div>
+</footer>
+
+<script src="assets/main.js?v=20261024a"></script>
+<script src="assets/changelog.js?v=20261107a"></script>
+<script src="assets/important-notice.js?v=20261114a"></script>
+</body>
+</html>

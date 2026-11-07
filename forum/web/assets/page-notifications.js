@@ -18,13 +18,14 @@ BB.boot(async () => {
   hint.textContent = `${data.pagination.total} 组通知，${data.unread} 条未读`;
 
   const actionText = (item) => {
+    if (item.type === 'system') return '发来一条消息';
     if (item.type === 'mention') return '在帖子里提到了你';
     if (item.type === 'reply' && item.target_kind === 'post') return '回复了你的回复';
     return '回复了你的主题';
   };
 
   const actorsText = (item) => {
-    if (!item.actors || item.actors.length === 0) return '系统';
+    if (!item.actors || item.actors.length === 0) return item.type === 'system' ? '管理团队' : '系统';
     const first = item.actors[0].display_name || item.actors[0].username;
     if (item.actor_count > 1) return `${first} 等 ${item.actor_count} 人`;
     return first;

@@ -257,6 +257,32 @@ export function listImportantAnnouncements() {
     .all();
 }
 
+/**
+ * 当前生效的启动重要公告（同一时间只让一条生效）。
+ * 启动器启动时弹窗用它，官网与论坛打开时也弹同一条，所以前后端都以这里的格式为准。
+ */
+export function getActiveImportantAnnouncement() {
+  const row = db
+    .prepare(
+      `SELECT id, title, content, link, created_at
+         FROM important_announcements
+        WHERE enabled = 1
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1`,
+    )
+    .get();
+  if (!row) return null;
+
+  const item = {
+    id: `n${row.id}`,
+    title: row.title || '重要公告',
+    content: row.content,
+    date: localDate(row.created_at),
+  };
+  if (row.link) item.link = row.link;
+  return item;
+}
+
 function getImportantAnnouncement(id) {
   return db
     .prepare(

@@ -7,6 +7,7 @@ import { sendMail } from '../lib/mail.js';
 import { removeUpload, saveImage } from '../lib/images.js';
 import { unreadNotifications } from '../lib/notify.js';
 import { socialUnread } from '../lib/social.js';
+import { ensureSupportFriend, supportUserId } from '../lib/support.js';
 import {
   clearSessionCookie,
   createSession,
@@ -19,7 +20,8 @@ import {
 } from '../lib/auth.js';
 import { email as emailField, password as passwordField, text, username as usernameField } from '../lib/validate.js';
 
-const userCount = () => db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+// 官方客服账号不算“第一位用户”，它不应该影响首用户自动成为管理员的规则
+const userCount = () => db.prepare('SELECT COUNT(*) AS n FROM users WHERE id != ?').get(supportUserId()).n;
 
 function findByUsername(name) {
   return db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE').get(name);
@@ -56,6 +58,8 @@ export default function register(router) {
       );
 
     const userId = Number(result.lastInsertRowid);
+    // 新玩家默认就有一位好友：官方客服
+    ensureSupportFriend(userId);
     const { token, expiresAt } = createSession(userId, { ip: ctx.ip, ua: ctx.userAgent });
     sessionCookie(ctx.res, token, expiresAt);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);

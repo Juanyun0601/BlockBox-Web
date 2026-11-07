@@ -32,6 +32,7 @@ export function createNotification({
   postId = null,
   threadTitle = '',
   content = '',
+  excerptMax = 90,
 }) {
   if (!userId) return false;
   if (alreadyNotified(userId, postId, type)) return false;
@@ -46,10 +47,25 @@ export function createNotification({
     threadId,
     postId,
     String(threadTitle || '').slice(0, 120),
-    snippetOf(content, 90),
+    snippetOf(content, excerptMax),
     now(),
   );
   return true;
+}
+
+/**
+ * 管理员给用户发系统通知（target_kind = admin）：后台回复用户、
+ * 举报 / 反馈处理结果都走这里。不带 actor，两端显示为「系统 / 管理团队」。
+ */
+export function notifyAdminMessage(userId, title, content) {
+  return createNotification({
+    userId,
+    type: 'system',
+    targetKind: 'admin',
+    threadTitle: title,
+    content,
+    excerptMax: 200,
+  });
 }
 
 /**

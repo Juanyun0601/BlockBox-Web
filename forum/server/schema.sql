@@ -230,6 +230,7 @@ CREATE TABLE IF NOT EXISTS reports (
   post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   thread_id  INTEGER NOT NULL,
   reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  category   TEXT    NOT NULL DEFAULT '',
   reason     TEXT    NOT NULL DEFAULT '',
   status     TEXT    NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'ignored')),
   handled_by INTEGER,
@@ -378,6 +379,7 @@ INSERT OR IGNORE INTO boards (slug, name, description, icon, sort_order, created
   ('help',     '使用求助',   '安装、启动失败、模组与版本问题，发帖求助',   '🧩', 20, unixepoch()),
   ('guide',    '教程与分享', '玩法心得、配置优化、整合包推荐',             '📘', 30, unixepoch()),
   ('plugin',   '插件与开发', '插件使用、开发文档、编码方块相关',           '🛠️', 40, unixepoch()),
+  ('plugin-share', '插件分享', '发布和分享方块盒子插件包，下载后可在软件里一键安装', '🔌', 45, unixepoch()),
   ('feedback', '意见建议',   '功能建议、缺陷反馈、对官网和论坛的想法',     '💡', 50, unixepoch()),
   ('chat',     '闲聊灌水',   '和方块盒子有关的轻松话题',                   '☕', 60, unixepoch());
 

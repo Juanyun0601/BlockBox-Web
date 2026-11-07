@@ -45,7 +45,7 @@ BB.boot(async () => {
   const insertImageFiles = BB.attachImagePaste(contentInput);
   BB.attachMentions(contentInput);
   BB.bindDraft(contentInput, 'new-thread');
-  BB.attachMarkdownEditor(contentInput, { imageFiles: insertImageFiles });
+  BB.attachMarkdownEditor(contentInput, { imageFiles: insertImageFiles, presets: 'thread' });
 
   // 正文字数（和回复框一致）
   const contentCount = document.getElementById('contentCount');
