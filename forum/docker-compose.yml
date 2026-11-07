@@ -21,5 +21,7 @@ services:
       SECURE_COOKIE: "0"
       REGISTER_OPEN: "1"
       TZ: Asia/Shanghai
+      # 公开资源走 CDN 时取消注释并填域名（只写 https://域名，不带路径）
+      # CDN_BASE: https://cdn.blockbox.cc.cd
     volumes:
       - ./data:/app/data

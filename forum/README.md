@@ -24,6 +24,8 @@
 | 联机大厅 | 启动器把开好的联机房间发布到论坛，网页端能按房间名 / 房主 / 联机方式 / 版本筛选并复制邀请码；房间靠心跳续期，房主关房自动下架 |
 | 管理后台 | 站点数据、板块增删改、主题置顶 / 锁定 / 删除、用户设为管理员 / 一键禁言（勾选禁止发帖、回复或私信，填理由和时长，到点自动恢复）/ 解除、举报队列、标签管理（推荐 / 合并 / 删除）、访问数据（今日 / 7 天 / 30 天的浏览量、访客数，日活与月活，趋势图、今日 24 小时和热门页面） |
 | 其他 | 输入 @ 自动补全用户名、全站深色模式、手机端布局、草稿自动保存、限流（登录 / 注册 / 发帖 / 搜索 / 上传 / 点赞都有）、统一错误提示、404 页面 |
+| 资源分发 | 页面脚本样式（`/assets/`）和站内图片（`/uploads/`）可以整个交给 CDN：填 `CDN_BASE` 即可，接口和页面仍走论坛自己的域名 |
+| 人机验证 | 进站先过一道滑块拼图验证（服务端现场画图、不接第三方），通过后默认 8 小时内不再询问；网页版和启动器共用同一套 |
 
 ## 快速开始
 
@@ -51,12 +53,14 @@ node server/index.js
 │   ├── schema.sql        # 建表语句 + 默认板块
 │   ├── lib/
 │   │   ├── http.js       # JSON 响应、Cookie、静态文件、跨站检查
+│   │   ├── cdn.js        # 公开资源改走 CDN：HTML 里的地址改写与域名注入
 │   │   ├── auth.js       # 密码哈希、会话、权限判断
 │   │   ├── queries.js    # 主题 / 楼层 / 楼中楼 / 点赞 / 收藏 / 标签的公共查询
 │   │   ├── serialize.js  # 数据库行 → 接口 JSON
 │   │   ├── notify.js     # 回复通知、@ 提及解析
 │   │   ├── images.js     # 图片校验、压缩、缩略图、sharp 可选集成
 │   │   ├── png.js        # 纯 JS 的 PNG 解码 / 缩放 / 编码
+│   │   ├── human-check.js # 人机验证：滑块拼图的画图、判定与令牌
 │   │   ├── rate-limit.js # 进程内限流
 │   │   ├── visits.js     # 页面浏览记录、浏览 / 访客 / 日活 / 月活统计
 │   │   └── validate.js   # 入参校验
@@ -67,6 +71,7 @@ node server/index.js
 │       ├── users.js          # 用户主页、@ 补全用的用户搜索
 │       ├── search.js         # 搜索（标题 / 正文 / 标签）
 │       ├── lobby.js          # 联机大厅：发布 / 列表 / 心跳 / 关闭 / 加入计数
+│       ├── human.js          # 人机验证：出题 / 交卷 / 免验状态
 │       └── admin.js          # 后台数据、访问统计与用户管理
 ├── web/                  # 前端页面（服务端直接托管）
 │   ├── index.html        # 首页：公告区、板块卡片、最新讨论
@@ -74,6 +79,7 @@ node server/index.js
 │   ├── thread.html       # 主题详情 + 回复
 │   ├── new.html          # 发帖
 │   ├── login.html        # 登录 / 注册
+│   ├── verify.html       # 人机验证（滑块拼图）
 │   ├── user.html         # 用户主页（自己可编辑资料）
 │   ├── notifications.html# 站内通知（同主题折叠）
 │   ├── gallery.html      # 我的相册（上传记录、复制 Markdown、删除）
@@ -86,7 +92,7 @@ node server/index.js
 │   ├── seed.js           # 造测试数据
 │   ├── set-admin.js      # 建 / 提升管理员
 │   ├── backup.js         # 备份数据库与上传文件
-│   └── smoke.js          # 端到端冒烟测试（npm run smoke，96 项）
+│   └── smoke.js          # 端到端冒烟测试（npm run smoke，105 项）
 ├── deploy/               # 部署物料：systemd、Caddy、Nginx 配置
 ├── Dockerfile            # 生产镜像（Node 22 alpine）
 ├── docker-compose.yml
@@ -108,6 +114,7 @@ node server/index.js
 | `UPLOAD_DIR` | `data/uploads` | 头像存放目录 |
 | `PUBLIC_ORIGIN` | 空 | 对外访问地址，例如 `https://forum.blockbox.cc.cd`，用于生成分享链接和跨站校验 |
 | `ALLOWED_ORIGINS` | 空 | 允许跨域调接口的前端地址，逗号分隔（官网页面想直接调论坛接口时用） |
+| `CDN_BASE` | 空 | 公开资源走 CDN 时填 `https://cdn.你的域名`（只填协议 + 域名，不带路径）。`/assets/` 与 `/uploads/` 会改从这个域名加载，留空则由论坛自己发 |
 | `SESSION_DAYS` | `30` | 登录保持天数 |
 | `REGISTER_OPEN` | `1` | `0` 表示关闭注册，只能管理员开号 |
 | `TRUST_PROXY` | `0` | 在 Nginx / Caddy 后面时设为 `1`，按 `X-Forwarded-For` 取真实 IP |
@@ -121,13 +128,16 @@ node server/index.js
 | `THUMB_SIZE` | `520` | 缩略图长边，正文里优先加载缩略图 |
 | `AVATAR_SIZE` | `256` | 头像最大边长 |
 | `ADMIN_BOOTSTRAP_USER` / `ADMIN_BOOTSTRAP_PASS` | 空 | 首次启动时自动建的管理员账号，之后不再生效 |
+| `HUMAN_CHECK` | `1` | 是否开启进站人机验证（滑块拼图）。`0` 关掉，接口脚本自测时很方便 |
+| `HUMAN_CHECK_TTL_HOURS` | `8` | 通过验证后多少小时内免验 |
+| `HUMAN_CHECK_SECRET` | 空 | 验证令牌的签名密钥。不配则每次重启换一把，用户要重新验证 |
 
 ## 常用命令
 
 ```bash
 node server/index.js              # 启动（生产）
 npm run dev                       # 改代码自动重启（--watch）
-npm run smoke                     # 端到端测试：注册→发帖→回复→通知→图床→举报→权限，39 项
+npm run smoke                     # 端到端测试：人机验证→注册→发帖→回复→通知→图床→举报→权限，105 项
 npm run backup                    # 备份数据库 + 上传文件到 data/backups
 npm run seed -- --demo            # 造演示数据
 node scripts/set-admin.js 张三 密码   # 建管理员 / 重置管理员密码
@@ -163,6 +173,9 @@ sudo cp deploy/nginx-forum.conf /etc/nginx/conf.d/forum.conf && sudo certbot --n
 - 前端渲染用户内容时先转义再做 Markdown 处理，链接与图片只允许 `http(s)`，避免 XSS。
 - 上传的图片**按文件头判断真实类型**而不是看客户端给的 `content-type`，只放行 PNG / JPG / WebP / GIF（SVG 不在白名单，避免脚本注入）。
 - 登录、注册、发帖、回复、搜索、改密码、换头像、传图、举报都有按 IP / 账号的限流。
+- 进站人机验证是服务端现画的滑块拼图：正确答案只留在服务端，前端拿不到；交卷一次性作废，
+  拖得比眨眼还快会当成脚本；出题和交卷都有按 IP 的限流。通过后发的令牌带 HMAC 签名和过期时间，
+  网页端放 `HttpOnly` Cookie，启动器走 `X-Human-Token` 请求头。
 - 举报记录里保留举报人，只有管理员能看；处理动作会写进举报记录（谁处理的、什么时候）。
 - 上传文件只存到 `data/uploads`，文件名由服务端生成；删除时只允许删这个目录。
 

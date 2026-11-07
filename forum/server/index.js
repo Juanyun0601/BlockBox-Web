@@ -18,6 +18,7 @@ import {
 } from './lib/http.js';
 import { SESSION_COOKIE, hashPassword, userFromToken } from './lib/auth.js';
 import { purgeOldVisits, recordVisit } from './lib/visits.js';
+import { cdnBase, rewritePageHtml } from './lib/cdn.js';
 import registerAuth from './routes/auth.js';
 import registerBoards from './routes/boards-threads.js';
 import registerUsers from './routes/users.js';
@@ -28,6 +29,8 @@ import registerFriends from './routes/friends.js';
 import registerFeedback from './routes/feedback.js';
 import registerQuiz from './routes/quiz.js';
 import registerLobby from './routes/lobby.js';
+import registerHuman from './routes/human.js';
+import { isVerified } from './lib/human-check.js';
 
 const VERSION = '0.1.0';
 
@@ -68,7 +71,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerFeedback, registerQuiz, registerLobby]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerFeedback, registerQuiz, registerLobby, registerHuman]) {
   register(router);
 }
 
@@ -99,6 +102,19 @@ function logRequest(req, res, startedAt) {
   const ms = Date.now() - startedAt;
   const status = res.statusCode;
   console.log(`${status} ${req.method} ${req.url} ${ms}ms`);
+}
+
+/** 人机验证门禁的例外：验证接口本身、健康检查 */
+function humanGateExempt(pathname) {
+  return pathname.startsWith('/api/human/') || pathname === '/api/health';
+}
+
+/** 把 /a/b?x=1 收成只允许站内相对路径，防止验证页把人送去站外 */
+function safeNext(target) {
+  const value = String(target || '');
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/';
+  if (value.startsWith('/verify.html')) return '/';
+  return value;
 }
 
 function resolveCors(req, res) {
@@ -153,6 +169,12 @@ async function handle(req, res) {
       throw new HttpError(403, '请求来源不被允许', 'bad_origin');
     }
 
+    // 人机验证门禁：没过验证之前，除了验证接口一律不放行。
+    // 客户端看到 human_required 就该去弹滑块，过了之后把令牌带上重发。
+    if (!humanGateExempt(pathname) && !isVerified(cookies, req.headers)) {
+      throw new HttpError(403, '请先完成人机验证', 'human_required');
+    }
+
     let cachedBody;
     const ctx = {
       req,
@@ -161,6 +183,7 @@ async function handle(req, res) {
       params: matched.params,
       user,
       token,
+      cookies,
       ip,
       userAgent: String(req.headers['user-agent'] || ''),
       async json() {
@@ -184,17 +207,38 @@ async function handle(req, res) {
 
   if (pathname.startsWith('/uploads/')) {
     const relative = pathname.slice('/uploads'.length);
-    if (await serveFile(res, config.uploadDir, relative, { immutable: true })) return;
+    if (await serveFile(res, config.uploadDir, relative, { immutable: true, publicResource: true })) return;
     // 缩略图缺失时（比如老图或没装 sharp 的 JPEG）退回原图，不报 404
     if (pathname.startsWith('/uploads/thumbs/')) {
       const original = `/${path.basename(pathname)}`;
-      if (await serveFile(res, config.uploadDir, original, { immutable: true })) return;
+      if (await serveFile(res, config.uploadDir, original, { immutable: true, publicResource: true })) return;
     }
     throw notFound('文件不存在');
   }
 
+  // 人机验证：页面先过验证再给看，静态资源不拦，免得验证页自己也打不开
+  if (
+    config.humanCheck.enabled &&
+    !pathname.startsWith('/assets/') &&
+    pathname !== '/verify.html' &&
+    !isVerified(cookies, req.headers)
+  ) {
+    res.writeHead(302, {
+      location: `/verify.html?next=${encodeURIComponent(safeNext(pathname + url.search))}`,
+      'cache-control': 'no-store',
+    });
+    res.end();
+    return;
+  }
+
   const immutable = pathname.startsWith('/assets/');
-  if (await serveFile(res, config.webDir, pathname, { immutable })) {
+  if (
+    await serveFile(res, config.webDir, pathname, {
+      immutable,
+      publicResource: immutable,
+      rewrite: rewritePageHtml,
+    })
+  ) {
     // 只有正常打开的页面才计入访问量（静态资源、404 都不算）
     if (!immutable) {
       recordVisit({
@@ -211,7 +255,7 @@ async function handle(req, res) {
   // 页面找不到：给一个 404 页面，而不是纯文本
   const notFoundPage = path.join(config.webDir, '404.html');
   if (fs.existsSync(notFoundPage)) {
-    const html = await fs.promises.readFile(notFoundPage, 'utf8');
+    const html = rewritePageHtml(await fs.promises.readFile(notFoundPage, 'utf8'));
     res.writeHead(404, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
     res.end(html);
     return;
@@ -260,6 +304,11 @@ if (isMain) {
     console.log(`[论坛] 已启动：http://${shown}:${config.port}`);
     console.log(`[论坛] 数据库：${config.dbPath}`);
     console.log(`[论坛] 页面目录：${config.webDir}`);
+    if (cdnBase) {
+      console.log(`[论坛] 公开资源走 CDN：${cdnBase}（/assets/ 与 /uploads/）`);
+    } else if (process.env.CDN_BASE) {
+      console.warn('[论坛] CDN_BASE 填得不对：只写 https://域名[:端口]，不能带路径，已忽略');
+    }
   });
 
   const timer = setInterval(() => {

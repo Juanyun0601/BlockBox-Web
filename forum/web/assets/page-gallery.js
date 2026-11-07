@@ -19,8 +19,8 @@ BB.boot(async () => {
         .map(
           (item) => `
       <div class="gallery-item" data-id="${item.id}">
-        <a class="gallery-thumb" href="${BB.esc(item.url)}" target="_blank" rel="noopener">
-          <img src="${BB.esc(item.thumb || item.url)}" alt="上传的图片" loading="lazy">
+        <a class="gallery-thumb" href="${BB.esc(BB.media(item.url))}" target="_blank" rel="noopener">
+          <img src="${BB.esc(BB.media(item.thumb || item.url))}" alt="上传的图片" loading="lazy">
         </a>
         <div class="gallery-meta">
           <span>${item.width || '?'} × ${item.height || '?'} · ${(item.size / 1024).toFixed(0)} KB</span>

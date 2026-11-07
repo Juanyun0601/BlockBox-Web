@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>人机验证 · 方块盒子论坛</title>
+<meta name="description" content="拖动滑块完成人机验证后进入方块盒子论坛">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/assets/img/icon.ico">
+<link rel="stylesheet" href="/assets/forum.css?v=20261108a">
+<style>
+  .hc-card { padding: 26px 24px 22px; text-align: center; }
+  .hc-card h3 { font-size: 19px; margin-bottom: 6px; }
+  .hc-card > .muted { margin-bottom: 16px; }
+
+  /* 画布：固定 320:180，按容器宽度等比缩放 */
+  .hc-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 320 / 180;
+    overflow: hidden;
+    border-radius: 12px;
+    background: var(--bg-tint);
+    border: 1px solid var(--line);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .hc-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hc-piece {
+    position: absolute;
+    left: 0;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+    will-change: transform;
+  }
+
+  /* 滑轨 */
+  .hc-track {
+    position: relative;
+    height: 46px;
+    margin-top: 14px;
+    border-radius: 12px;
+    background: var(--card-2);
+    border: 1px solid var(--line-2);
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .hc-track-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: var(--ink-3);
+    pointer-events: none;
+  }
+  .hc-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    background: var(--brand-soft);
+    pointer-events: none;
+  }
+  .hc-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 46px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--g800);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: grab;
+    box-shadow: 0 2px 8px rgba(46, 125, 50, 0.28);
+    transition: background 0.15s ease;
+  }
+  [data-theme="dark"] .hc-handle { background: var(--g600); color: #08210b; }
+  .hc-handle:focus-visible { outline: 2px solid var(--brand-line); outline-offset: 2px; }
+  .hc-track.is-dragging .hc-handle { cursor: grabbing; }
+  .hc-track.is-ok .hc-handle { background: var(--g700); }
+  .hc-track.is-ok .hc-track-text { color: var(--brand); font-weight: 600; }
+  .hc-track.is-bad { animation: hc-shake 0.34s ease; border-color: var(--danger); }
+  .hc-track.is-bad .hc-handle { background: var(--danger); }
+
+  @keyframes hc-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-2px); }
+  }
+
+  .hc-hint { margin-top: 14px; }
+  .hc-foot { margin-top: 16px; display: flex; justify-content: center; gap: 10px; }
+  .hc-loading { padding: 34px 0; color: var(--ink-3); font-size: 13px; }
+</style>
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="verify">
+<main class="page" style="display: flex; align-items: center">
+  <div class="wrap" style="max-width: 400px">
+    <div class="card hc-card" id="hcCard">
+      <h3>人机验证</h3>
+      <p class="muted small">拖动下面的滑块，把拼图对准缺口</p>
+      <div class="hc-loading" id="hcLoading">正在准备验证…</div>
+      <div id="hcBody" hidden>
+        <div class="hc-stage" id="hcStage">
+          <img class="hc-bg" id="hcBg" alt="验证图片">
+          <img class="hc-piece" id="hcPiece" alt="">
+        </div>
+        <div class="hc-track" id="hcTrack">
+          <div class="hc-fill" id="hcFill"></div>
+          <span class="hc-track-text" id="hcText">向右拖动滑块</span>
+          <div class="hc-handle" id="hcHandle" role="slider" tabindex="0"
+               aria-label="拖动滑块完成人机验证" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">›</div>
+        </div>
+        <p class="muted small hc-hint" id="hcHint"></p>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="/assets/page-verify.js?v=20261109a"></script>
+</body>
+</html>

@@ -255,7 +255,7 @@ BB.boot(async () => {
       ? `<div class="msg-quote">回复 ${esc(msg.reply_mine ? '我' : (peer ? peer.display_name : ''))}：${esc(msg.reply_body)}</div>`
       : '';
     const inner = msg.kind === 'image'
-      ? `${quote}<a class="img-link" href="${esc(msg.image)}" data-full="${esc(msg.image)}"><img class="msg-image" src="${esc(msg.image)}" alt="图片" loading="lazy"></a>${msg.body ? `<div class="msg-text">${esc(msg.body)}</div>` : ''}`
+      ? `${quote}<a class="img-link" href="${esc(BB.media(msg.image))}" data-full="${esc(BB.media(msg.image))}"><img class="msg-image" src="${esc(BB.media(msg.image))}" alt="图片" loading="lazy"></a>${msg.body ? `<div class="msg-text">${esc(msg.body)}</div>` : ''}`
       : `${quote}<div class="msg-text">${esc(msg.body)}</div>`;
     const canWithdraw = msg.mine && Date.now() / 1000 - msg.created_at <= 600;
     const actions = `<span class="msg-actions">

@@ -36,6 +36,19 @@ const bool = (value, fallback) =>
   value === undefined || value === '' ? fallback : /^(1|true|yes|on)$/i.test(value);
 const resolvePath = (value) => (path.isAbsolute(value) ? value : path.join(ROOT_DIR, value));
 
+/** CDN 地址只接受 http(s)://域名[:端口]；带了路径或参数就当没填，免得静态资源改错根 */
+const normalizeOrigin = (value) => {
+  const raw = String(value || '').trim().replace(/\/+$/, '');
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    if (!/^https?:$/.test(parsed.protocol) || parsed.pathname !== '/' || parsed.search || parsed.hash) return '';
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return '';
+  }
+};
+
 export const config = {
   host: env.HOST || '127.0.0.1',
   port: num(env.PORT, 3210),
@@ -50,6 +63,10 @@ export const config = {
   webDir: resolvePath(env.WEB_DIR || 'web'),
 
   publicOrigin: (env.PUBLIC_ORIGIN || '').replace(/\/+$/, ''),
+
+  // CDN：把公开资源（/assets/ 静态文件、/uploads/ 图片）交给 CDN 域名去发。
+  // 只填协议 + 域名，例如 https://cdn.mcblockbox.top；留空表示仍由论坛自己提供。
+  cdnBase: normalizeOrigin(env.CDN_BASE),
   allowedOrigins: (env.ALLOWED_ORIGINS || '')
     .split(',')
     .map((item) => item.trim().replace(/\/+$/, ''))
@@ -81,6 +98,17 @@ export const config = {
 
   adminBootstrapUser: (env.ADMIN_BOOTSTRAP_USER || '').trim(),
   adminBootstrapPass: env.ADMIN_BOOTSTRAP_PASS || '',
+
+  // 人机验证（滑块拼图）：进站先过一道验证，通过后一段时间内不再打扰。
+  // 网页端和启动器共用同一套接口，启动器用 X-Human-Token 请求头带令牌。
+  // 自测 / 接口脚本可以把 HUMAN_CHECK 设成 0 关掉，省得每次都要过验证。
+  humanCheck: {
+    enabled: bool(env.HUMAN_CHECK, true),
+    // 通过后免验多少小时
+    ttlHours: Math.max(0.5, num(env.HUMAN_CHECK_TTL_HOURS, 8)),
+    // 签名密钥：不配的话每次重启都会换一把，旧令牌随之失效
+    secret: env.HUMAN_CHECK_SECRET || '',
+  },
 
   // 邮件发送（邮箱验证码用）：SMTP_HOST 留空表示不启用，相关接口会明确提示未配置。
   // 465 端口用隐式 TLS（SMTP_SECURE=1）；587 端口配 SMTP_SECURE=0，会自动升级 STARTTLS

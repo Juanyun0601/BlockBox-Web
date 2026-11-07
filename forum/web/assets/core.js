@@ -11,6 +11,28 @@
   const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   BB.esc = (value) => String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
 
+  // ------------------------------------------------------------ 公开资源 / CDN
+
+  // 服务端配了 CDN 时会在页面里注入这个域名，/assets、/uploads 就改从 CDN 加载；
+  // 没配就是空串，所有地址原样使用。接口返回的仍然是站内相对路径，
+  // 这样换 CDN 域名、甚至以后接对象存储，都不用动数据库里的老内容。
+  const CDN_BASE = String((window && window.__BBF_CDN__) || '').replace(/\/+$/, '');
+  const PUBLIC_PREFIXES = ['/assets/', '/uploads/'];
+
+  /** 站内公开资源走 CDN；外链、接口地址等原样返回 */
+  BB.media = (url) => {
+    if (!CDN_BASE || !url) return url;
+    const value = String(url);
+    if (!PUBLIC_PREFIXES.some((prefix) => value.startsWith(prefix))) return value;
+    return CDN_BASE + value;
+  };
+
+  /** 去掉 CDN 域名，还原成站内路径（算缩略图、判断是不是站内图片时用） */
+  const withoutCdn = (url) => {
+    const value = String(url == null ? '' : url);
+    return CDN_BASE && value.startsWith(CDN_BASE) ? value.slice(CDN_BASE.length) : value;
+  };
+
   BB.param = (name) => new URLSearchParams(location.search).get(name);
 
   BB.num = (value) => {
@@ -98,6 +120,12 @@
       const error = new Error((data && (data.error || data.message)) || `请求失败（${res.status}）`);
       error.status = res.status;
       error.code = data && data.code;
+      // 人机验证没过：统一送去验证页，验完再回到当前页面
+      if (error.code === 'human_required' && !BB.state.humanRedirect) {
+        BB.state.humanRedirect = true;
+        const target = location.pathname + location.search;
+        location.replace(`/verify.html?next=${encodeURIComponent(target)}`);
+      }
       throw error;
     }
     return data;
@@ -135,7 +163,7 @@
     if (!user) return `<span class="${cls}" style="background:#9bb39d">?</span>`;
     const name = user.display_name || user.username || '?';
     if (user.avatar) {
-      return `<span class="${cls}"><img src="${BB.esc(user.avatar)}" alt="${BB.esc(name)}" loading="lazy"></span>`;
+      return `<span class="${cls}"><img src="${BB.esc(BB.media(user.avatar))}" alt="${BB.esc(name)}" loading="lazy"></span>`;
     }
     const initial = [...String(name)][0] || '?';
     const hue = hueOf(user.username || name);
@@ -146,11 +174,12 @@
 
   const safeUrl = (url) => /^(https?:\/\/|\/[^/\s])/.test(url);
 
-  /** 站内图片的缩略图地址（服务端缺失时会自动回退到原图） */
-  const thumbFor = (url) =>
-    url.startsWith('/uploads/') && !url.startsWith('/uploads/thumbs/')
-      ? `/uploads/thumbs/${url.slice('/uploads/'.length)}`
-      : url;
+  /** 站内图片的缩略图地址（服务端缺失时会自动回退到原图），原图和缩略图都走 CDN */
+  const thumbFor = (url) => {
+    const relative = withoutCdn(url);
+    if (!relative.startsWith('/uploads/') || relative.startsWith('/uploads/thumbs/')) return url;
+    return BB.media(`/uploads/thumbs/${relative.slice('/uploads/'.length)}`);
+  };
 
   BB.thumbFor = thumbFor;
 
@@ -163,7 +192,8 @@
     });
     text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (match, alt, url) => {
       if (!safeUrl(url)) return match;
-      return `<a class="img-link" href="${url}" data-full="${url}"><img src="${thumbFor(url)}" alt="${alt}" loading="lazy"></a>`;
+      const full = BB.media(url);
+      return `<a class="img-link" href="${full}" data-full="${full}"><img src="${thumbFor(url)}" alt="${alt}" loading="lazy"></a>`;
     });
     text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (match, label, url) =>
       safeUrl(url) ? `<a href="${url}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>` : match,

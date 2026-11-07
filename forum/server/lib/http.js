@@ -127,8 +127,10 @@ const MIME_TYPES = {
 /**
  * 托管静态文件：root 为绝对目录，urlPath 为以 / 开头的路径。
  * 目录请求回退到 index.html，找不到返回 false 交给上层处理。
+ * rewrite：对 HTML 做一次内存改写（走 CDN 时用）；
+ * publicResource：公开资源，放开跨域并允许 CDN / 浏览器长期缓存。
  */
-export async function serveFile(res, root, urlPath, { immutable = false } = {}) {
+export async function serveFile(res, root, urlPath, { immutable = false, rewrite = null, publicResource = false } = {}) {
   const clean = decodeURIComponent(urlPath.split('?')[0]);
   let relative = clean.replace(/^\/+/, '');
   if (relative === '' || relative.endsWith('/')) relative += 'index.html';
@@ -154,11 +156,25 @@ export async function serveFile(res, root, urlPath, { immutable = false } = {}) 
   }
 
   const type = MIME_TYPES[path.extname(target).toLowerCase()] || 'application/octet-stream';
-  res.writeHead(200, {
+  const headers = {
     'content-type': type,
+    'cache-control': immutable ? 'public, max-age=2592000, immutable' : 'no-cache',
+  };
+  // 图片 / 脚本可能被 CDN 回源、也可能被别的页面直接引用，放开跨域读取
+  if (publicResource) headers['access-control-allow-origin'] = '*';
+
+  // 页面 HTML 要在内存里改写资源地址，这类文件很小，直接读成字符串再发
+  if (rewrite && type.startsWith('text/html')) {
+    const body = rewrite(await fs.promises.readFile(target, 'utf8'));
+    res.writeHead(200, { ...headers, 'content-length': Buffer.byteLength(body) });
+    res.end(body);
+    return true;
+  }
+
+  res.writeHead(200, {
+    ...headers,
     'content-length': stat.size,
     'last-modified': stat.mtime.toUTCString(),
-    'cache-control': immutable ? 'public, max-age=2592000, immutable' : 'no-cache',
   });
   fs.createReadStream(target).pipe(res);
   return true;

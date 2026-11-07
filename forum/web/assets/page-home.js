@@ -1,8 +1,9 @@
 BB.boot(async () => {
-  const [boardData, threadData, tagData] = await Promise.all([
+  const [boardData, threadData, tagData, lobbyData] = await Promise.all([
     BB.api('/api/boards'),
     BB.api('/api/threads?sort=latest&per_page=8'),
     BB.api('/api/tags'),
+    BB.api('/api/lobby/rooms?per_page=6').catch(() => ({ rooms: [] })),
   ]);
 
   const { boards, stats } = boardData;
@@ -51,4 +52,25 @@ BB.boot(async () => {
         )
         .join('')
     : '<span class="muted small">还没有标签，发帖时加上就能出现在这里</span>';
+
+  const lobbyRooms = (lobbyData.rooms || []).slice(0, 6);
+  const lobbyTotal = Number(lobbyData.total) || lobbyRooms.length;
+  document.getElementById('homeLobby').innerHTML = lobbyRooms.length
+    ? `${lobbyRooms
+        .map((room) => {
+          const code = room.invite_code || room.address || '';
+          const codeLabel = room.invite_code ? '邀请码' : '连接地址';
+          const host = (room.host && (room.host.display_name || room.host.username)) || '';
+          const meta = [room.game_version, room.loader, host].filter(Boolean).map(BB.esc).join(' · ');
+          return `<a class="lobby-mini" href="/lobby.html">
+            <span class="lobby-mini-core">${BB.esc(room.core_label || '联机')}</span>
+            <span class="lobby-mini-body">
+              <b>${BB.esc(room.title)}</b>
+              <span class="muted small">${meta || '等待玩家加入'}</span>
+            </span>
+            <span class="lobby-mini-code"><i>${codeLabel}</i>${BB.esc(code)}</span>
+          </a>`;
+        })
+        .join('')}<a class="lobby-mini-more" href="/lobby.html">查看全部 ${BB.num(lobbyTotal)} 个在线房间 →</a>`
+    : `<div class="empty">现在还没有人开房间。<br><br>在方块盒子的联机页点「发布到联机大厅」，房间就会出现在这里。<br><br><a class="btn btn-ghost btn-sm" href="/lobby.html">去联机大厅看看</a></div>`;
 });

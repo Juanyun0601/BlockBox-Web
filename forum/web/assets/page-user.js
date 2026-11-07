@@ -36,7 +36,7 @@ BB.boot(async () => {
       : '';
 
   const coverHtml = user.cover
-    ? `<img src="${BB.esc(user.cover)}" alt="" loading="lazy">`
+    ? `<img src="${BB.esc(BB.media(user.cover))}" alt="" loading="lazy">`
     : isSelf
       ? '<span class="profile-cover-hint">还没有设置封面图</span>'
       : '';

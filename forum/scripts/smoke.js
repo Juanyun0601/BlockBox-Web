@@ -23,7 +23,7 @@ function freePort() {
   });
 }
 
-import { encodePng } from '../server/lib/png.js';
+import { decodePng, encodePng } from '../server/lib/png.js';
 
 const results = [];
 const PNG_BASE64 =
@@ -48,6 +48,66 @@ function check(name, condition, detail = '') {
   console.log(`${condition ? 'PASS' : 'FAIL'}  ${name}${condition ? '' : `  <- ${detail}`}`);
 }
 
+/**
+ * 把滑块拼图「解」出来：拼图是从缺口那块原图上切下来的，
+ * 只要拿拼图内容去跟背景里被压暗的区域逐像素比对，就能找到缺口的位置。
+ * 真实用户是拖滑块对上去的，这里用同样的思路验证这道题确实做得出来。
+ */
+function solvePuzzle(challenge) {
+  const fromDataUrl = (url) => Buffer.from(String(url).split(',')[1], 'base64');
+  const bg = decodePng(fromDataUrl(challenge.bg));
+  const piece = decodePng(fromDataUrl(challenge.piece_img));
+  const { pad, size } = challenge.piece;
+  const span = challenge.piece.w;
+  const holeY = challenge.piece.top + pad;
+
+  const opaque = (u, v) =>
+    u >= 0 && v >= 0 && u < span && v < span && piece.data[(v * span + u) * 4 + 3] > 200;
+  // 只用拼图内部像素：边缘那圈描边和投影是加工过的，参与比对只会干扰
+  const inner = [];
+  for (let v = 2; v < span - 2; v += 2) {
+    for (let u = 2; u < span - 2; u += 2) {
+      let edge = false;
+      for (let dy = -2; dy <= 2 && !edge; dy += 1) {
+        for (let dx = -2; dx <= 2; dx += 1) {
+          if (!opaque(u + dx, v + dy)) {
+            edge = true;
+            break;
+          }
+        }
+      }
+      if (!edge) inner.push([u, v]);
+    }
+  }
+
+  let bestX = -1;
+  let bestScore = Infinity;
+  for (let x = 0; x <= challenge.width - size; x += 1) {
+    let score = 0;
+    let count = 0;
+    for (const [u, v] of inner) {
+      const px = x + u - pad;
+      const py = holeY + v - pad;
+      if (px < 0 || py < 0 || px >= challenge.width || py >= challenge.height) continue;
+      const pi = (v * span + u) * 4;
+      const bi = (py * challenge.width + px) * 4;
+      for (let c = 0; c < 3; c += 1) {
+        // 缺口被压暗了：通道系数和 human-check.js 里保持一致
+        const expect = piece.data[pi + c] * [0.34, 0.38, 0.46][c] + [12, 18, 30][c];
+        score += (bg.data[bi + c] - expect) ** 2;
+      }
+      count += 1;
+    }
+    if (count < 50) continue;
+    const avg = score / count;
+    if (avg < bestScore) {
+      bestScore = avg;
+      bestX = x;
+    }
+  }
+  return { x: bestX, score: bestScore };
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function main() {
@@ -65,6 +125,7 @@ async function main() {
       PUBLIC_ORIGIN: base,
       LOG_REQUESTS: '0',
       SESSION_DAYS: '1',
+      HUMAN_CHECK_SECRET: 'smoke-test-secret',
     },
     stdio: ['ignore', 'ignore', 'ignore'],
   });
@@ -106,9 +167,12 @@ async function main() {
 
   // 极简 cookie jar
   let cookie = '';
+  // 人机验证令牌：过了验证之后每个请求都带上（模拟启动器的做法）
+  let humanToken = '';
   async function request(method, urlPath, body, { raw = false } = {}) {
     const headers = { accept: 'application/json' };
     if (cookie) headers.cookie = cookie;
+    if (humanToken) headers['x-human-token'] = humanToken;
     if (body !== undefined) headers['content-type'] = 'application/json';
     const res = await fetch(`${base}${urlPath}`, {
       method,
@@ -129,6 +193,53 @@ async function main() {
 
   const health = await request('GET', '/api/health');
   check('健康检查', health.json?.ok === true);
+
+  // ── 人机验证门禁 ──
+  const gated = await request('GET', '/api/boards');
+  check('没过人机验证时接口被拦', gated.status === 403 && gated.json?.code === 'human_required', gated.text);
+
+  const pageRedirect = await fetch(`${base}/`, { redirect: 'manual' });
+  const redirectTo = String(pageRedirect.headers.get('location') || '');
+  check(
+    '没过人机验证时页面跳验证页',
+    pageRedirect.status === 302 && redirectTo.startsWith('/verify.html?next='),
+    `${pageRedirect.status} ${redirectTo}`,
+  );
+
+  const verifyPage = await fetch(`${base}/verify.html`);
+  check('验证页本身打得开', verifyPage.status === 200);
+
+  const challenge = await request('GET', '/api/human/challenge');
+  const puzzle = challenge.status === 200 ? challenge.json : null;
+  check(
+    '能拿到滑块验证题',
+    !!puzzle?.id && String(puzzle.bg).startsWith('data:image/png') && !!puzzle.piece?.pad,
+    challenge.text,
+  );
+
+  const solved = puzzle ? solvePuzzle(puzzle) : { x: 0, score: Infinity };
+  check('验证题的缺口位置能算出来', puzzle ? solved.score < 50 : false, `残差 ${solved.score?.toFixed?.(1)}`);
+
+  const badId = await request('POST', '/api/human/verify', { id: 'not-a-real-id', answer: solved.x, duration: 800 });
+  check('题目对不上号时交卷被拒', badId.status === 400, badId.text);
+
+  const passed = puzzle
+    ? await request('POST', '/api/human/verify', { id: puzzle.id, answer: solved.x, duration: 800 })
+    : { status: 0, json: null, text: '' };
+  check('拼图对准缺口后通过验证', passed.status === 200 && !!passed.json?.token, passed.text);
+  humanToken = passed.json?.token || '';
+  // 丢掉验证 Cookie，后面全靠 X-Human-Token 请求头（启动器就是这么走的）
+  cookie = '';
+
+  const humanStatus = await request('GET', '/api/human/status');
+  check(
+    '免验状态生效',
+    humanStatus.json?.verified === true && humanStatus.json?.remaining > 0,
+    humanStatus.text,
+  );
+
+  const afterVerify = await request('GET', '/api/boards');
+  check('验证后接口放行', afterVerify.status === 200 && afterVerify.json?.boards?.length >= 6);
 
   const anonMe = await request('GET', '/api/me');
   check('未登录时 /api/me 返回空用户', anonMe.status === 200 && anonMe.json?.user === null);
@@ -182,7 +293,7 @@ async function main() {
   // 头像上传走原始二进制（1x1 透明 PNG），绕过 JSON 解析
   const avatar2 = await fetch(`${base}/api/me/avatar`, {
     method: 'POST',
-    headers: { cookie, 'content-type': 'image/png' },
+    headers: { cookie, 'x-human-token': humanToken, 'content-type': 'image/png' },
     body: Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
       'base64',
@@ -193,7 +304,7 @@ async function main() {
   // 封面同样走原始二进制
   const coverRes = await fetch(`${base}/api/me/cover`, {
     method: 'POST',
-    headers: { cookie, 'content-type': 'image/png' },
+    headers: { cookie, 'x-human-token': humanToken, 'content-type': 'image/png' },
     body: Buffer.from(PNG_BASE64, 'base64'),
   });
   const coverJson = await coverRes.json();
@@ -268,7 +379,7 @@ async function main() {
 
   const uploadRes = await fetch(`${base}/api/upload`, {
     method: 'POST',
-    headers: { cookie, 'content-type': 'image/png' },
+    headers: { cookie, 'x-human-token': humanToken, 'content-type': 'image/png' },
     body: Buffer.from(PNG_BASE64, 'base64'),
   });
   const uploadJson = await uploadRes.json();
@@ -282,7 +393,7 @@ async function main() {
 
   const fakeUpload = await fetch(`${base}/api/upload`, {
     method: 'POST',
-    headers: { cookie, 'content-type': 'image/png' },
+    headers: { cookie, 'x-human-token': humanToken, 'content-type': 'image/png' },
     body: Buffer.from('这不是图片，只是一段文本内容而已', 'utf8'),
   });
   check('伪装成图片的文件被拒绝', fakeUpload.status === 400, `status ${fakeUpload.status}`);
@@ -388,7 +499,7 @@ async function main() {
 
   const normalUpload = await fetch(`${base}/api/upload`, {
     method: 'POST',
-    headers: { cookie, 'content-type': 'image/png' },
+    headers: { cookie, 'x-human-token': humanToken, 'content-type': 'image/png' },
     body: makePng(1200, 800),
   });
   const normalJson = await normalUpload.json();
@@ -398,7 +509,7 @@ async function main() {
 
   const hugeUpload = await fetch(`${base}/api/upload`, {
     method: 'POST',
-    headers: { cookie, 'content-type': 'image/png' },
+    headers: { cookie, 'x-human-token': humanToken, 'content-type': 'image/png' },
     body: makePng(3000, 600),
   });
   const hugeJson = await hugeUpload.json();
