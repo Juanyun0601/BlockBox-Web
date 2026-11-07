@@ -130,9 +130,10 @@ BB.boot(async () => {
         <div class="important-form">
           <input class="input" id="releaseVersion" maxlength="32" placeholder="版本号（如 beta8，与启动器内显示的保持一致）">
         </div>
-        <div class="important-form" style="grid-template-columns: 1fr 1fr">
+        <div class="important-form" style="grid-template-columns: 1fr 1fr 1fr">
           <input class="input" id="releaseLink123" maxlength="500" placeholder="123 盘链接（可选，https://…，老版本文件清理后用户从这里下载）">
           <input class="input" id="releaseLinkQuark" maxlength="500" placeholder="夸克网盘链接（可选，https://…）">
+          <input class="input" id="releaseLinkGithub" maxlength="500" placeholder="GitHub Release 链接（可选，https://github.com/…）">
         </div>
         <div class="important-body">
           <textarea class="input textarea-lg" id="releaseNotes" maxlength="8000" placeholder="更新日志，支持 Markdown：&#10;## 修复&#10;- 修了某某问题"></textarea>
@@ -580,7 +581,7 @@ BB.boot(async () => {
 
     const list = releaseData.versions || [];
     if (!list.length) {
-      rows.innerHTML = '<p class="muted small">还没有发布任何版本。填好版本号和更新日志，点上面的「发布 / 更新版本」。</p>';
+      rows.innerHTML = '<p class="muted small">还没有发布任何版本：先在上面填好版本号、更新日志和下载链接，点「发布 / 更新版本」；发布后这里会出现版本卡片，卡片里就是「上传安装包」的位置。</p>';
       return;
     }
 
@@ -606,6 +607,7 @@ BB.boot(async () => {
         const links = [
           ['123 盘', item.link_123pan],
           ['夸克网盘', item.link_quark],
+          ['GitHub', item.link_github],
         ]
           .filter(([, link]) => link)
           .map(
@@ -754,6 +756,7 @@ BB.boot(async () => {
     const versionInput = document.getElementById('releaseVersion');
     const link123Input = document.getElementById('releaseLink123');
     const linkQuarkInput = document.getElementById('releaseLinkQuark');
+    const linkGithubInput = document.getElementById('releaseLinkGithub');
     const notesInput = document.getElementById('releaseNotes');
     const errorHost = document.getElementById('releaseError');
     const button = document.getElementById('publishReleaseBtn');
@@ -774,11 +777,13 @@ BB.boot(async () => {
           notes: notesInput.value,
           link_123pan: link123Input.value.trim(),
           link_quark: linkQuarkInput.value.trim(),
+          link_github: linkGithubInput.value.trim(),
         },
       });
       versionInput.value = '';
       link123Input.value = '';
       linkQuarkInput.value = '';
+      linkGithubInput.value = '';
       notesInput.value = '';
       await reloadReleases();
       BB.toast(`版本 ${result.release.tag_name} 已发布，官网一键下载与启动器更新通道已生效`, 'ok');

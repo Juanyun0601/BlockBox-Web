@@ -71,6 +71,23 @@
     return asset.browser_download_url || relative;
   }
 
+  function esc(text) {
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  var PLATFORM_NAMES = {
+    'win64': 'Windows x64',
+    'winarm64': 'Windows ARM64',
+    'linux-x64': 'Linux x64',
+    'linux-arm64': 'Linux ARM64',
+    'android-arm64-v8a': 'Android（arm64）',
+    'android-x86_64': 'Android（x86_64）',
+    'harmony-arm64-v8a': 'HarmonyOS',
+    'other': '其他文件'
+  };
+
   fetch('latest.json', { cache: 'no-store' })
     .then(function (res) { return res.ok ? res.json() : null; })
     .then(function (data) {
@@ -113,6 +130,54 @@
       if (pan123 && data.release.link_123pan) pan123.href = data.release.link_123pan;
       var quark = document.getElementById('dlQuarkBtn');
       if (quark && data.release.link_quark) quark.href = data.release.link_quark;
+      var githubBtn = document.getElementById('dlGithubBtn');
+      if (githubBtn && data.release.link_github) githubBtn.href = data.release.link_github;
+
+      /* 描述文字：公测/正式、官方源已有的平台、发布日期，全部跟数据走 */
+      var desc = document.getElementById('dlLatestDesc');
+      if (desc && version) {
+        var kindText = data.release.prerelease ? '公测' : '正式';
+        var platformList = [];
+        (data.release.assets || []).forEach(function (a) {
+          if (a.platform && platformList.indexOf(a.platform) < 0) platformList.push(a.platform);
+        });
+        var text = '面向所有玩家的最新' + kindText + '版本';
+        if (platformList.length) {
+          text += '，官方源提供：' + platformList
+            .map(function (p) { return PLATFORM_NAMES[p] || p; })
+            .join('、') + ' 安装包';
+        } else {
+          text += '，安装包请通过下方网盘或 GitHub 获取';
+        }
+        var date = String(data.release.published_at || '').slice(0, 10);
+        if (date) text += '，发布于 ' + date;
+        desc.textContent = text + '。';
+      }
+
+      /* 历史版本列表：除最新版外的其余启用版本，全部按数据渲染（拉不到数据时保留页面原有静态行） */
+      var historyList = document.querySelector('.ver-list');
+      if (historyList && data.releases && data.releases.length > 1) {
+        var rowsHtml = data.releases.slice(1).map(function (r) {
+          var links = [];
+          if (r.link_123pan) links.push(['123 盘', r.link_123pan]);
+          if (r.link_quark) links.push(['夸克网盘', r.link_quark]);
+          links.push(['GitHub', r.link_github || (latest.github + '')]);
+          var dateText = String(r.published_at || '').slice(0, 10);
+          return '<div class="ver-row">' +
+            '<div class="ver-meta">' +
+              '<span class="ver-name">' + esc(r.tag_name) + '</span>' +
+              '<span class="ver-tag">' + (r.prerelease ? '公测版' : '正式版') + '</span>' +
+              (dateText ? '<span class="small muted">' + esc(dateText) + '</span>' : '') +
+            '</div>' +
+            '<div class="ver-links">' +
+              links.map(function (l) {
+                return '<a class="btn btn-ghost" href="' + esc(l[1]) + '" target="_blank" rel="noopener">' + esc(l[0]) + '</a>';
+              }).join('') +
+            '</div>' +
+          '</div>';
+        }).join('');
+        historyList.innerHTML = rowsHtml;
+      }
       if (quick) {
         if (asset) {
           quick.href = fileUrl(asset);

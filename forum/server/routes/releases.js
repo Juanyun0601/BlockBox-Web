@@ -31,7 +31,7 @@ export default function register(router) {
   router.get('/api/app/releases', async () => {
     const rows = db
       .prepare(
-        `SELECT id, version, notes, link_123pan, link_quark, created_at
+        `SELECT id, version, notes, link_123pan, link_quark, link_github, created_at
            FROM release_versions
           WHERE enabled = 1
           ORDER BY created_at DESC, id DESC
@@ -45,7 +45,7 @@ export default function register(router) {
   router.get('/api/app/releases/latest', async () => {
     const row = db
       .prepare(
-        `SELECT id, version, notes, link_123pan, link_quark, created_at
+        `SELECT id, version, notes, link_123pan, link_quark, link_github, created_at
            FROM release_versions
           WHERE enabled = 1
           ORDER BY created_at DESC, id DESC
@@ -91,6 +91,7 @@ export default function register(router) {
         notes: body.notes,
         link123pan: body.link_123pan,
         linkQuark: body.link_quark,
+        linkGithub: body.link_github,
         admin,
       }),
       file: latestFileStatus(),

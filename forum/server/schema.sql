@@ -392,6 +392,7 @@ CREATE TABLE IF NOT EXISTS release_versions (
   notes       TEXT    NOT NULL DEFAULT '',
   link_123pan TEXT    NOT NULL DEFAULT '',
   link_quark  TEXT    NOT NULL DEFAULT '',
+  link_github TEXT    NOT NULL DEFAULT '',
   enabled     INTEGER NOT NULL DEFAULT 1,
   created_by  TEXT    NOT NULL DEFAULT '',
   created_at  INTEGER NOT NULL

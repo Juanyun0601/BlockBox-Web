@@ -126,14 +126,16 @@ export function getReleasePayload(row, { withToken = false } = {}) {
     tag_name: row.version,
     name: row.version,
     body: row.notes || '',
-    // 网盘直链（123 盘 / 夸克），文件组被清理后旧版本仍从这里下载
+    // 下载入口：网盘（123 盘 / 夸克）与 GitHub Release 页
     link_123pan: row.link_123pan || '',
     link_quark: row.link_quark || '',
+    link_github: row.link_github || '',
     draft: false,
     prerelease: /beta|alpha|rc|dev/i.test(row.version),
     created_at: new Date(Number(row.created_at) * 1000).toISOString(),
     published_at: new Date(Number(row.created_at) * 1000).toISOString(),
-    html_url: 'https://github.com/Juanyun0601/BlockBox/releases/latest',
+    // 「前往下载」的兜底页：优先本版本自己的 GitHub Release 页
+    html_url: row.link_github || 'https://github.com/Juanyun0601/BlockBox/releases/latest',
     assets,
     // 官网直链一键下载按钮用
     files,
@@ -149,7 +151,7 @@ function toGithubRelease(row, files) {
 export function listVersionsForExport() {
   const rows = db
     .prepare(
-      `SELECT id, version, notes, link_123pan, link_quark, created_at
+      `SELECT id, version, notes, link_123pan, link_quark, link_github, created_at
          FROM release_versions
         WHERE enabled = 1
         ORDER BY created_at DESC, id DESC
@@ -167,6 +169,7 @@ export function listVersionsForExport() {
       published_at: release.published_at,
       link_123pan: release.link_123pan,
       link_quark: release.link_quark,
+      link_github: release.link_github,
       assets: release.assets,
     };
   });
@@ -267,7 +270,7 @@ function cleanVersion(value) {
 export function listVersions({ includeDisabled = true } = {}) {
   const rows = db
     .prepare(
-      `SELECT id, version, notes, link_123pan, link_quark, enabled, created_by, created_at
+      `SELECT id, version, notes, link_123pan, link_quark, link_github, enabled, created_by, created_at
          FROM release_versions
         ORDER BY created_at DESC, id DESC`,
     )
@@ -294,6 +297,7 @@ export function listVersions({ includeDisabled = true } = {}) {
     notes: row.notes,
     link_123pan: row.link_123pan || '',
     link_quark: row.link_quark || '',
+    link_github: row.link_github || '',
     enabled: !!row.enabled,
     created_by: row.created_by,
     created_at: row.created_at,
@@ -393,32 +397,38 @@ function syncAfterMutation() {
  * 发布 / 更新一个版本：版本号重复就原地更新说明与网盘链接并补文件。
  * 上传文件走 saveReleaseFile，与本函数解耦；这里只动库与 latest.json。
  */
-export function publishVersion({ version: rawVersion, notes, link123pan, linkQuark, admin }) {
+export function publishVersion({ version: rawVersion, notes, link123pan, linkQuark, linkGithub, createdAt, admin }) {
   const version = cleanVersion(rawVersion);
   const text = String(notes == null ? '' : notes)
     .replace(/\r\n?/g, '\n')
     .slice(0, MAX_NOTES);
   const link123 = sanitizeHttpLink(link123pan);
   const linkQuarkClean = sanitizeHttpLink(linkQuark);
+  const linkGithubClean = sanitizeHttpLink(linkGithub);
+  // 导入历史版本时允许指定原始发布时间；不传就是现在
+  const stamp = Number.isFinite(Number(createdAt)) && Number(createdAt) > 1e6 && Number(createdAt) <= now()
+    ? Math.floor(Number(createdAt))
+    : now();
 
   const existing = db.prepare('SELECT id, version FROM release_versions WHERE version = ?').get(version);
   if (existing) {
-    db.prepare('UPDATE release_versions SET notes = ?, link_123pan = ?, link_quark = ?, created_by = ? WHERE id = ?').run(
+    db.prepare('UPDATE release_versions SET notes = ?, link_123pan = ?, link_quark = ?, link_github = ?, created_by = ? WHERE id = ?').run(
       text,
       link123,
       linkQuarkClean,
+      linkGithubClean,
       admin ? String(admin.username) : '',
       existing.id,
     );
   } else {
     db.prepare(
-      `INSERT INTO release_versions (version, notes, link_123pan, link_quark, enabled, created_by, created_at)
-       VALUES (?, ?, ?, ?, 1, ?, ?)`,
-    ).run(version, text, link123, linkQuarkClean, admin ? String(admin.username) : '', now());
+      `INSERT INTO release_versions (version, notes, link_123pan, link_quark, link_github, enabled, created_by, created_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+    ).run(version, text, link123, linkQuarkClean, linkGithubClean, admin ? String(admin.username) : '', stamp);
   }
 
   const row = db
-    .prepare('SELECT id, version, notes, link_123pan, link_quark, created_at FROM release_versions WHERE version = ?')
+    .prepare('SELECT id, version, notes, link_123pan, link_quark, link_github, created_at FROM release_versions WHERE version = ?')
     .get(version);
   syncAfterMutation();
   return toGithubRelease(row, filesFor(row.id));

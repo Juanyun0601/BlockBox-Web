@@ -45,7 +45,7 @@ jobs:
         run: |
           # systemd 的 ProtectSystem=strict 默认不让写官网目录；用 drop-in 把公告目录加进白名单
           # （与 deploy/blockbox-forum-announcement.conf 内容一致）。失败只提示，不拦部署。
-          ssh -p 48407 deploy@202.181.26.190 "sudo -n mkdir -p /etc/systemd/system/blockbox-forum.service.d && printf '%s\n' '[Service]' 'ReadWritePaths=/var/www/blockbox' | sudo -n tee /etc/systemd/system/blockbox-forum.service.d/announcement.conf >/dev/null && sudo -n systemctl daemon-reload" || echo '警告：公告目录可写配置没装上，管理后台可能无法发布公告'
+          ssh -p 48407 deploy@202.181.26.190 "sudo -n mkdir -p /etc/systemd/system/blockbox-forum.service.d && printf '%s\n' '[Service]' 'ReadWritePaths=/opt/blockbox-forum/data /var/www/blockbox' | sudo -n tee /etc/systemd/system/blockbox-forum.service.d/announcement.conf >/dev/null && sudo -n systemctl daemon-reload" || echo '警告：公告目录可写配置没装上，管理后台可能无法发布公告'
 
       - name: 重启论坛服务
         run: |

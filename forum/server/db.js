@@ -143,6 +143,8 @@ export function migrate() {
   if (addedLink123) console.log('[论坛] 数据库已升级：release_versions 增加 link_123pan（123 盘链接）');
   const addedLinkQuark = ensureColumn('release_versions', 'link_quark', "TEXT NOT NULL DEFAULT ''");
   if (addedLinkQuark) console.log('[论坛] 数据库已升级：release_versions 增加 link_quark（夸克网盘链接）');
+  const addedLinkGithub = ensureColumn('release_versions', 'link_github', "TEXT NOT NULL DEFAULT ''");
+  if (addedLinkGithub) console.log('[论坛] 数据库已升级：release_versions 增加 link_github（GitHub Release 链接）');
 }
 
 migrate();
