@@ -6,6 +6,13 @@
   var quick = document.getElementById('dlQuickBtn');
   if (!buttons.length && !quick) return;
 
+  /* 官网多语言：带占位符的句子交给 BB.tf，没配译文时原样返回中文 */
+  function TF(tpl) {
+    if (!window.BB || !BB.tf) return tpl;
+    var args = Array.prototype.slice.call(arguments, 1);
+    return BB.tf.apply(BB, [tpl].concat(args));
+  }
+
   var latest = null;
 
   function detectOS() {
@@ -185,8 +192,7 @@
           var quickNote = document.getElementById('dlQuickNote');
           if (quickNote) {
             quickNote.textContent =
-              '已识别你的系统，点击即从官网源下载 ' + asset.name +
-              '（首次下载需完成一次滑块验证）';
+              TF('已识别你的系统，点击即从官网源下载 {0}（首次下载需完成一次滑块验证）', asset.name);
           }
         } else {
           quick.hidden = true;

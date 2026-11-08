@@ -8,6 +8,10 @@
   var T = function (s) {
     return (window.BB && window.BB.t) ? window.BB.t(s) : s;
   };
+  function isChinese() {
+    var lang = (window.BB && window.BB.lang) ? window.BB.lang() : 'zh-CN';
+    return lang === 'zh-CN' || lang === 'zh-TW';
+  }
 
   var els = {
     versions: document.getElementById('clVersions'),
@@ -23,7 +27,6 @@
   if (!els.versions || !els.release) return;
 
   var versions = [];
-  var RELEASES_URL = 'https://github.com/Juanyun0601/BlockBox/releases';
 
   /* ------------------------- 基础工具 ------------------------- */
 
@@ -125,7 +128,9 @@
       if (heading) {
         flushAll();
         var level = Math.min(heading[1].length + 1, 6);
-        out.push('<h' + level + '>' + inline(heading[2]) + '</h' + level + '>');
+        var headText = heading[2].trim();
+        var headKey = { '新增': '新增内容', '调整': '调整内容', '修复': '修复内容' }[headText] || headText;
+        out.push('<h' + level + '>' + inline(T(headKey)) + '</h' + level + '>');
         continue;
       }
 
@@ -264,7 +269,9 @@
     });
     els.links.hidden = v.links.length === 0;
 
-    els.notes.innerHTML = v.body ? renderNotes(v.body) : '<p class="cl-notes-empty">—</p>';
+    els.notes.innerHTML = v.body
+      ? (isChinese() ? '' : '<p class="cl-notes-notice">' + esc(T('每个版本的更新正文目前只有中文原文，可用浏览器翻译查看。')) + '</p>') + renderNotes(v.body)
+      : '<p class="cl-notes-empty">—</p>';
 
     try {
       history.replaceState(null, '', '#' + encodeURIComponent(v.version));
@@ -289,16 +296,27 @@
     var layout = document.querySelector('.cl-layout');
     if (layout) layout.classList.add('is-empty');
     els.state.hidden = false;
-    els.state.textContent = message + ' ';
-    var a = document.createElement('a');
-    a.href = RELEASES_URL;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    a.textContent = 'GitHub Releases';
-    els.state.appendChild(a);
+    els.state.textContent = message;
   }
 
   /* ------------------------- 启动 ------------------------- */
+
+  /** 官网内置快照：latest.json 读不到或 releases 为空时用它，页面不出站 */
+  function fallbackList() {
+    var list = window.BB_RELEASES;
+    return Array.isArray(list) ? list : [];
+  }
+
+  function boot(list) {
+    versions = list.map(normalize);
+    if (!versions.length) {
+      showEmpty(T('暂时没有读取到版本记录，请稍后刷新页面。'));
+      return;
+    }
+    buildVersions();
+    var idx = hashIndex();
+    select(idx < 0 ? 0 : idx, false);
+  }
 
   fetch('latest.json', { cache: 'no-store' })
     .then(function (res) {
@@ -312,20 +330,11 @@
       } else if (data && data.release) {
         list = [data.release];
       }
-      versions = list.map(normalize);
-
-      if (!versions.length) {
-        showEmpty(T('暂时没有读取到版本记录，请稍后刷新页面。'));
-        return;
-      }
-
-      buildVersions();
-      var idx = hashIndex();
-      select(idx < 0 ? 0 : idx, false);
+      boot(list.length ? list : fallbackList());
     })
     .catch(function (err) {
-      showEmpty(T('暂时没有读取到版本记录，请稍后刷新页面。'));
-      if (window.console) console.warn('[changelog] 读取 latest.json 失败：', err);
+      if (window.console) console.warn('[changelog] 读取 latest.json 失败，改用官网内置版本快照：', err);
+      boot(fallbackList());
     });
 
   window.addEventListener('hashchange', function () {

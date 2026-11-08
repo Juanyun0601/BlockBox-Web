@@ -843,6 +843,7 @@ async function main() {
   await request('GET', '/board.html?slug=general');
   await request('GET', '/thread.html?id=1');
   await request('GET', '/admin.html'); // 管理后台自己不算访问量
+  await request('GET', '/admin-users.html'); // 管理后台子页面也不算
 
   const visits = await request('GET', '/api/admin/visits?days=7');
   const visitSummary = visits.json?.summary || {};
@@ -859,7 +860,7 @@ async function main() {
   );
   check(
     '访问统计：管理后台浏览量不计入',
-    !(visits.json?.pages || []).some((item) => item.path === '/admin.html'),
+    !(visits.json?.pages || []).some((item) => item.path.startsWith('/admin')),
     visits.text,
   );
 

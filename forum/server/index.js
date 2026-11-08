@@ -242,8 +242,11 @@ async function handle(req, res) {
     pathname !== '/verify.html' &&
     !isVerified(cookies, req.headers)
   ) {
+    // 带上 ?lang=：从外文分享链接进来的访客，验证页也要保持同一语言
+    const lang = url.searchParams.get('lang') || '';
+    const langQuery = lang ? `&lang=${encodeURIComponent(lang)}` : '';
     res.writeHead(302, {
-      location: `/verify.html?next=${encodeURIComponent(safeNext(pathname + url.search))}`,
+      location: `/verify.html?next=${encodeURIComponent(safeNext(pathname + url.search))}${langQuery}`,
       'cache-control': 'no-store',
     });
     res.end();

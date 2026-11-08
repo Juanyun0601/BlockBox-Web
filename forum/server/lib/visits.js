@@ -28,7 +28,12 @@ function startOfDay(seconds = now()) {
 }
 
 /** 不统计的页面：管理后台（管理员自己刷新会刷高数据）和错误页 */
-const SKIP_PATHS = new Set(['/admin.html', '/404.html']);
+const SKIP_PATHS = new Set(['/404.html']);
+
+/** 管理后台的统计首页和全部子页面（/admin.html、/admin-announcements.html 等）都不统计 */
+function isAdminPage(path) {
+  return /^\/admin(?:-[a-z]+)?\.html$/.test(path);
+}
 
 /** 常见的爬虫 / 脚本 UA，不算访客 */
 const BOT_UA =
@@ -45,7 +50,7 @@ export function normalizeVisitPath(pathname) {
 export function shouldTrackVisit(pathname, userAgent = '') {
   const path = normalizeVisitPath(pathname);
   if (!path.endsWith('.html')) return false;
-  if (SKIP_PATHS.has(path)) return false;
+  if (SKIP_PATHS.has(path) || isAdminPage(path)) return false;
   return !BOT_UA.test(String(userAgent || ''));
 }
 

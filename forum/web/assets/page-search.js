@@ -17,12 +17,13 @@ BB.boot(async () => {
   }
 
   const page = Math.max(1, Number(BB.param('page') || 1) || 1);
-  document.title = `搜索：${query} · 方块盒子论坛`;
+  const T = (text, ...args) => (window.BBF ? BBF.tf(text, ...args) : text);
+  document.title = T('搜索：{0} · 方块盒子论坛', query);
 
   const data = await BB.api(
     `/api/search?q=${encodeURIComponent(query)}&page=${page}&per_page=20`,
   );
-  document.getElementById('resultTitle').textContent = `“${query}” 的搜索结果`;
+  document.getElementById('resultTitle').textContent = T('“{0}” 的搜索结果', query);
   document.getElementById('resultCount').textContent = `共 ${data.pagination.total} 条`;
 
   document.getElementById('resultList').innerHTML = data.results.length

@@ -1877,6 +1877,11 @@ body.modal-open { overflow: hidden; }
   border-top: 1px solid var(--line);
 }
 .cl-notes-empty { color: var(--ink-3); }
+.cl-notes-notice {
+  margin: 22px 0 0; padding: 10px 14px; border-radius: 10px;
+  background: var(--brand-soft); border: 1px solid var(--brand-line);
+  color: var(--ink-2); font-size: 13.5px;
+}
 
 .cl-release-foot {
   display: flex;

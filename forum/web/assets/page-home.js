@@ -10,8 +10,8 @@ BB.boot(async () => {
 
   document.getElementById('statsRow').innerHTML = `
     <div class="stat"><b>${BB.num(stats.users)}</b><span>注册成员</span></div>
-    <div class="stat"><b>${BB.num(stats.threads)}</b><span>主题</span></div>
-    <div class="stat"><b>${BB.num(stats.posts)}</b><span>回复</span></div>
+    <div class="stat"><b>${BB.num(stats.threads)}</b><span>主题数</span></div>
+    <div class="stat"><b>${BB.num(stats.posts)}</b><span>回复数</span></div>
     <div class="stat"><b>${BB.num(stats.online)}</b><span>15 分钟在线</span></div>`;
 
   document.getElementById('boardGrid').innerHTML = boards.length
