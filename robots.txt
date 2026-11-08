@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# 静态资源与数据文件无需屏蔽，全部允许抓取
+# 站内没有需要隐藏的私有目录（论坛在独立子域，另有自己的规则）
+
+Sitemap: https://mcblockbox.top/sitemap.xml
+Host: mcblockbox.top

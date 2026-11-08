@@ -81,7 +81,7 @@
      只要经过 BB.t() 就能直接读到 window.BB_I18N_DICT。 */
 
   /* 字典版本号：改了字典就改这里，让浏览器重新下载，别用旧译文 */
-  var DICT_VER = "20261111";
+  var DICT_VER = "20261108seo";
 
   function dictPath(code) {
     return "assets/i18n/" + code + ".js?v=" + DICT_VER;
@@ -241,7 +241,7 @@
       var t = lookup(norm(title.textContent));
       if (t !== null) title.textContent = t;
     }
-    var metas = document.querySelectorAll('meta[name="description"], meta[property^="og:"]');
+    var metas = document.querySelectorAll('meta[name="description"], meta[property^="og:"], meta[property^="twitter:"], meta[name^="twitter:"]');
     for (var i = 0; i < metas.length; i++) translateAttributes(metas[i]);
     translateChildren(root);
     startObserver();

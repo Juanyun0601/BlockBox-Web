@@ -1936,3 +1936,60 @@ body.modal-open { overflow: hidden; }
 /* 特长的链接/文字不要撑破卡片 */
 .cl-notes p,
 .cl-notes li { overflow-wrap: anywhere; }
+
+/* ==================== 常见问题（FAQ，首页 SEO 区块） ==================== */
+.faq { max-width: 880px; margin: 0 auto; display: grid; gap: 12px; }
+.faq-item {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color .25s ease, box-shadow .25s ease;
+}
+.faq-item:hover { border-color: var(--tint-2); }
+.faq-item[open] { border-color: var(--tint-3); box-shadow: 0 12px 32px rgba(23, 37, 26, .07); }
+.faq-item summary {
+  position: relative;
+  padding: 19px 58px 19px 22px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::marker { content: ""; }
+.faq-item summary::after {
+  content: "+";
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--tint-soft);
+  color: var(--green-ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  transition: background .25s ease, transform .25s ease;
+}
+.faq-item[open] summary::after { content: "−"; background: var(--tint-2); }
+.faq-a { padding: 0 22px 20px; }
+.faq-a p { font-size: 14.5px; line-height: 1.8; color: var(--ink-2); }
+.faq-a a { color: var(--green-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 640px) {
+  .faq-item summary { font-size: 15px; padding: 16px 50px 16px 18px; }
+  .faq-a { padding: 0 18px 18px; }
+}
+
+.faq-more { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
+.faq-more a { font-size: 14px; }
+@media (max-width: 640px) { .faq-more a { font-size: 13.5px; } }
+
+/* <picture> 只作为 WebP / PNG 回退容器，不参与布局（保持原有立方体尺寸与动画） */
+.hero-visual picture { display: contents; }

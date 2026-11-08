@@ -6,11 +6,15 @@
 
 ```
 方块盒子官网/
-├── index.html        # 单页官网（导航/英雄区/核心功能/独特魅力/横向对比/下载/页脚）
+├── index.html        # 单页官网（导航/英雄区/核心功能/独特魅力/横向对比/常见问题/下载/页脚）
 ├── download.html     # 下载页（最新版 + 历史版本 + 官方插件包；自动识别当前系统与架构）
 ├── docs.html         # 插件开发文档（开发者平台）
 ├── changelog.html    # 更新日志页（读 latest.json，按版本查看新增/调整/修复）
-├── CNAME             # 自定义域名 blockbox.cc.cd
+├── robots.txt        # 搜索引擎抓取规则，里面声明了 sitemap 地址
+├── sitemap.xml       # 站点地图；页面有改动时顺手更新 lastmod
+├── 8cbafa2b….txt     # IndexNow 密钥（必应 / Yandex 推送用，别删、别改名）
+├── SEO.md            # 搜索引擎优化说明：已做了什么、站长平台待办、IndexNow 用法
+├── tools/            # 运维小脚本（indexnow.mjs：把 sitemap 里的地址推给搜索引擎）
 ├── css/              # 文档页独立样式（含语言切换器样式）
 ├── js/               # 文档页脚本（导航交互）
 └── assets/
@@ -28,9 +32,16 @@
     └── img/          # 品牌 logo，取自现有素材（不自创）
         ├── logo.png      # 立方体 + 字标（源：C-BlockBox/Images/logo.png），导航与页脚
         ├── cube.png      # 品牌立方体（源：promo/poster/cube.png，缩至 640px 高），英雄区
+        ├── cube.webp     # 上一张的 WebP 版（17 KB，首屏用；浏览器不支持时回退 cube.png）
         ├── cube-sm.png   # 上图 64px 版，对比表表头
+        ├── og-cover.png  # 社交分享封面 1200×630（微信/QQ/B站/Discord 里的链接预览）
         └── icon.ico      # 应用图标（源：C-BlockBox/Images/icon.ico），网站 favicon
 ```
+
+## 搜索引擎优化
+
+`robots.txt`、`sitemap.xml`、四页的 canonical / Open Graph / JSON-LD 结构化数据、首页常见问题区块都已内置；
+具体做了什么、还需要在百度 / 必应 / 谷歌后台做哪些一次性操作、IndexNow 怎么用，见 [SEO.md](SEO.md)。
 
 ## 多语言
 
