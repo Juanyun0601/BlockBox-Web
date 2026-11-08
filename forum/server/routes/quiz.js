@@ -2,13 +2,17 @@ import { db, now } from '../db.js';
 import { badRequest } from '../lib/http.js';
 import { enforce } from '../lib/rate-limit.js';
 import { requireUser } from '../lib/auth.js';
-import { QUIZ_RULES, quizQuestions } from '../lib/quiz.js';
+import { QUIZ_RULES, getQuizBank } from '../lib/quiz.js';
 
 export default function register(router) {
   // 题库（含答案，判分在客户端完成：启动器本地判、网页在浏览器里判）
+  // 语言优先级：?lang= → Accept-Language → 英文（国际版）→ 中文
   router.get('/api/quiz/bank', async (ctx) => {
     requireUser(ctx.user);
-    return { rules: QUIZ_RULES, count: quizQuestions.length, questions: quizQuestions };
+    const queryLang = ctx.url.searchParams.get('lang') || '';
+    const headerLang = String(ctx.req.headers['accept-language'] || '');
+    const bank = getQuizBank(queryLang || headerLang);
+    return { rules: QUIZ_RULES, count: bank.questions.length, questions: bank.questions, lang: bank.lang };
   });
 
   // 记录一次答题结果：达到及格线才算通过，历史最高分保留

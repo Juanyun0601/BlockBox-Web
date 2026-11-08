@@ -105,7 +105,11 @@ export const config = {
   maxBodyBytes: num(env.MAX_BODY_BYTES, 256 * 1024),
   maxAvatarBytes: num(env.MAX_AVATAR_BYTES, 512 * 1024),
   maxCoverBytes: num(env.MAX_COVER_BYTES, 3 * 1024 * 1024),
-  maxImageBytes: num(env.MAX_IMAGE_BYTES, 4 * 1024 * 1024),
+  maxImageBytes: num(env.MAX_IMAGE_BYTES, 5 * 1024 * 1024),
+  // 聊天（私聊 / 群聊）发送的文件上限，图片与文件统一 5MB
+  maxChatFileBytes: num(env.MAX_CHAT_FILE_BYTES, 5 * 1024 * 1024),
+  // 聊天文件每周下载提取流量（按自然周，周一 0 点重置），下载自己发的文件不计
+  chatWeeklyQuotaBytes: num(env.CHAT_WEEKLY_QUOTA_BYTES, 30 * 1024 * 1024),
   // 论坛插件帖的插件包（.BlockBox，实为 zip）上限
   maxPluginBytes: num(env.MAX_PLUGIN_BYTES, 20 * 1024 * 1024),
   // 版本发布的安装包上限（Windows 安装版接近 100MB，留裕量）
@@ -142,6 +146,17 @@ export const config = {
     bio: (
       env.SUPPORT_BIO ||
       '使用方块盒子遇到问题？直接在聊天里留言，客服会尽快回复。'
+    ).trim(),
+  },
+
+  // 官方全用户群：第一次启动时自动创建（群主挂靠在官方客服账号上），
+  // 之后每位玩家都默认在这个群里，聊天页打开就能看到；玩家不能退出。
+  // 群名只在创建时用一次，改了配置也不会多建一个群。
+  officialGroup: {
+    name: (env.OFFICIAL_GROUP_NAME || '方块盒子全用户讨论群').trim(),
+    welcome: (
+      env.OFFICIAL_GROUP_WELCOME ||
+      '欢迎来到方块盒子全用户讨论群！这里是所有玩家的公共聊天室，使用心得、问题求助都可以在这里聊，请互相友好交流～'
     ).trim(),
   },
 

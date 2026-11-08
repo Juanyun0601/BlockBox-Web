@@ -127,6 +127,106 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/me/cover \
 
 ---
 
+## 积分（方块）
+
+论坛积分叫「方块」，目前来自每日签到，余额记在 `users.points`；`/api/me` 和
+`/api/users/:id` 返回的 `user` 里都带 `points`。
+
+- 日期按论坛时区 **Asia/Shanghai** 的 0 点切换，同一账号一天只能签一次；
+- 连续第 1～7 天奖励 `10 / 12 / 14 / 16 / 18 / 20 / 20` 方块，第 8 天起每天 `20`；
+- 断签（中间空一天）从第 1 天重新计算；
+- 每周天（周日）签到会额外记一份神秘礼包到 `point_gifts`（内容暂未开放）；
+- 每次签到同时写一条 `point_transactions` 流水，方便以后接兑换和礼包；
+- 补签卡价格 20 方块，可以补上昨天；昨天是周日的话礼包也会一起记上。
+
+### GET /api/points · 我的方块与签到进度（需登录）
+
+```json
+{
+  "name": "方块",
+  "points": 42,
+  "checked_in_today": false,
+  "streak": 3,
+  "next_day": 4,
+  "reward_today": 16,
+  "reward_next": 16,
+  "week": [
+    { "day": 1, "reward": 10, "checked": true, "current": false },
+    { "day": 2, "reward": 12, "checked": true, "current": false },
+    { "day": 3, "reward": 14, "checked": true, "current": false },
+    { "day": 4, "reward": 16, "checked": false, "current": true },
+    { "day": 5, "reward": 18, "checked": false, "current": false },
+    { "day": 6, "reward": 20, "checked": false, "current": false },
+    { "day": 7, "reward": 20, "checked": false, "current": false }
+  ],
+  "rewards": [10, 12, 14, 16, 18, 20, 20],
+  "history": [
+    { "day": "2026-11-07", "streak_day": 3, "points": 14, "sunday_gift": false, "created_at": 1762500000 }
+  ],
+  "total_checkins": 3,
+  "makeup_cards": 1,
+  "makeup": {
+    "price": 20,
+    "yesterday": "2026-11-07",
+    "yesterday_checked": false,
+    "can_buy": true,
+    "can_use": true,
+    "reason": "ok"
+  },
+  "sunday": { "is_sunday": false, "gift_pending": 0 },
+  "timezone": "Asia/Shanghai"
+}
+```
+
+`week` 是当前这轮连续签到的 7 天进度（`checked` 已领、`current` 下次要签的那天）；
+`reward_today` 是今天已领 / 现在签能领的金额，`reward_next` 是下一次签到（今天或明天）的金额。
+`makeup.reason` 为 `ok` / `yesterday_checked` / `no_card`，界面据此决定补签按钮是否可用。
+
+### POST /api/points/check-in · 每日签到（需登录）
+
+请求体为空对象 `{}`。成功后返回的内容和 `GET /api/points` 一样，另外带本次奖励：
+
+```json
+{
+  "awarded": 16,
+  "streak_day": 4,
+  "sunday_gift": false,
+  "...": "同 GET /api/points 的其余字段"
+}
+```
+
+今天已经签过时返回 `400 {"error": "今天已经签到过了，明天再来吧", "code": "already_checked_in"}`。
+
+### POST /api/points/makeup-card/buy · 购买补签卡（需登录）
+
+请求体为空对象 `{}`，扣 20 方块换 1 张补签卡。返回的内容和 `GET /api/points` 一样，
+另外带 `bought: true` / `price: 20`。方块不够时返回
+`400 {"error": "方块不够，补签卡需要 20 方块", "code": "not_enough_points"}`。
+
+### POST /api/points/makeup · 用补签卡补昨天（需登录）
+
+请求体为空对象 `{}`，消耗 1 张补签卡补上昨天的签到。如果今天已经签到过，
+服务端会把今天的连续天数和奖励一起修好，少发的方块补到账上：
+
+```json
+{
+  "awarded": 18,
+  "streak_day": 5,
+  "day": "2026-11-07",
+  "today_bonus": 10,
+  "today_repaired": true,
+  "today_streak": 6,
+  "sunday_gift": false,
+  "...": "同 GET /api/points 的其余字段"
+}
+```
+
+返回前会重新算一遍积分状态，`makeup_cards` 已扣减。昨天已经签到时返回
+`400 {"error": "昨天已经签到过了，不需要补签", "code": "nothing_to_makeup"}`，
+没有补签卡时返回 `400 {"error": "还没有补签卡，先买一张吧", "code": "no_makeup_card"}`。
+
+---
+
 ## 入站答题
 
 发主题和回复都要求账号先通过入站答题（`assertCanPost` 统一拦截），未通过时返回
@@ -137,8 +237,29 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/me/cover \
 ### GET /api/quiz/bank · 题库（需登录）
 
 返回 `rules`（`question_count: 50` / `points_per_question: 2` / `pass_score: 80`）、题目总数
-`count`，以及全部题目 `questions`：每题含 `id / text / options[4] / answer_index / explanation`。
-判分在客户端完成，答案随题库下发。
+`count`、题库语言 `lang`（`zh` / `en`），以及全部题目 `questions`：每题含
+`id / text / options[4] / answer_index / explanation`。判分在客户端完成，答案随题库下发。
+
+语言选择：`?lang=` 优先，其次是请求头 `Accept-Language`；中文（`zh` / `zh-CN` / `zh-TW`）
+返回中文题库（300 题），其他语言返回国际版英文题库（400 题）；英文题库缺失时回退中文。
+例如 `GET /api/quiz/bank?lang=en`。
+
+```json
+{
+  "rules": { "question_count": 50, "points_per_question": 2, "pass_score": 80 },
+  "lang": "en",
+  "count": 400,
+  "questions": [
+    {
+      "id": 0,
+      "text": "In Survival mode, what should you do first to make planks?",
+      "options": ["Punch leaves with your hand", "Mine stone directly", "Punch a log with your hand", "Buy planks from a villager"],
+      "answer_index": 2,
+      "explanation": "Logs can be broken by hand, and planks are crafted from logs."
+    }
+  ]
+}
+```
 
 ### POST /api/quiz/complete · 记录答题结果（需登录）
 
@@ -603,7 +724,7 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 }
 ```
 
-`online` 为最近 10 分钟内活跃。`last_message` 为空表示还没聊过。官方客服始终排在最前面，其余好友按最近联系排序；最多返回 200 个好友。
+`online` 为最近 10 分钟内活跃。`last_message` 为空表示还没聊过。官方客服始终排在最前面，其余好友按最近联系排序；最多返回 200 个好友。响应里还带 `groups`（我参与的群聊列表，结构见下方「群聊」一节）。
 
 ### POST /api/friends/requests · 发好友申请
 
@@ -646,18 +767,60 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ### GET /api/messages/poll · 轮询（角标 / 会话列表 / 新消息）
 
-可选 `peer_id`（当前打开的会话）与 `after_id`（已拿到的最大消息 id）。不标记已读。
+可选 `peer_id`（当前打开的会话）与 `after_id`（已拿到的最大消息 id）；打开的是群会话时传 `group_id` 与 `group_after_id`。不标记已读。
 
 ```json
 {
   "total_unread": 2,
   "incoming_requests": 1,
   "friends": [ { "id": 2, "unread": 2, "online": true, "last_message": { "…": "…" } } ],
-  "messages": [ { "id": 14, "body": "就现在？", "mine": false, "created_at": 1793426500, "read_at": 0 } ]
+  "groups": [ { "id": 1, "name": "周末开黑群", "unread": 3, "last_message": { "…": "…" } } ],
+  "messages": [ { "id": 14, "body": "就现在？", "mine": false, "created_at": 1793426500, "read_at": 0 } ],
+  "group_messages": [ { "id": 5, "body": "来了来了", "mine": false, "sender": { "id": 2, "…": "…" } } ]
 }
 ```
 
-`friends` 字段与 GET /api/friends 相同（含头像昵称，新好友出现时可以直接补进列表）。限流：每分钟 240 次。
+`friends` 字段与 GET /api/friends 相同（含头像昵称，新好友出现时可以直接补进列表）；`groups` 同样每次全量返回。限流：每分钟 240 次。
+
+---
+
+## 群聊
+
+基础版群聊：从自己的好友里挑人建群（最多 50 人含群主），群里可以发文字 / 图片 / 回复引用，自己 10 分钟内的消息可撤回。没有群头像、进群审批和邀请；群主退出即解散（群和消息一并删除）。
+
+群消息的字段与私信一致（`kind` / `body` / `image` / `reply_to` / `mine` / `created_at`），额外多一个 `sender` 对象（`id` / `username` / `display_name` / `avatar`），客户端用来在气泡上方显示发言人。群消息没有已读回执，未读数按「自己入群记录里的 `last_read_id` 指针」计算。
+
+### POST /api/groups · 建群（需登录）
+
+```json
+{ "name": "周末开黑群", "member_ids": [2, 3, 5] }
+```
+
+`name` 1–20 字；`member_ids` 1–49 个，必须都是自己的好友（不是好友或已封禁的自动跳过，一个都没有时返回 400）。自己自动进群并成为群主。限流：每小时 10 次。
+
+返回 `{ "group": { "id": 1, "name": "周末开黑群", "owner_id": 1, "member_count": 4, "unread": 0, "last_message": null } }`。
+
+### GET /api/groups/:id/messages · 打开群会话（需登录，仅成员）
+
+可选 `before_id`（取更早的一页）与 `limit`（默认 40，最大 100）。**调用即把已读指针推到最新消息。**
+
+返回 `{ "group": {…}, "members": [ { "id": 2, "display_name": "红石工程师", "owner": false, "…": "…" } ], "messages": […], "has_more": false }`。`members` 按入群先后排序，`owner` 标记群主。不是成员返回 403，群不存在 / 已解散返回 404。
+
+### POST /api/groups/:id/messages · 发群消息（需登录，仅成员）
+
+```json
+{ "body": "晚上 8 点老地方" }
+```
+
+与发私信同款：文字 1–1000 字；图片传 `{ "kind": "image", "image": "/uploads/…", "body": "可选附言" }`；`reply_to` 只能引用本群消息。限流：每分钟 30 条。返回 `{ "message": {…} }`。
+
+### DELETE /api/group-messages/:id · 撤回群消息（需登录）
+
+只能撤回自己 10 分钟内发出的消息，消息变为「已撤回」占位。
+
+### DELETE /api/groups/:id · 退出群聊（需登录，仅成员）
+
+普通成员退出返回 `{ "ok": true, "dissolved": false }`；群主退出即解散，返回 `{ "ok": true, "dissolved": true }`。
 
 ---
 

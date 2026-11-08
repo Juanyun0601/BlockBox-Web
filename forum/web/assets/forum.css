@@ -1751,3 +1751,158 @@ body.modal-open { overflow: hidden; }
   font-weight: 700;
   line-height: 18px;
 }
+
+/* ============================================================
+   方块积分 / 每日签到
+   ============================================================ */
+
+/* 顶栏余额入口 */
+.nav-points {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--brand-line);
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.18s;
+}
+.nav-points:hover { background: var(--brand-line); }
+.nav-points svg { width: 15px; height: 15px; }
+
+/* 首页侧栏签到卡 */
+.checkin-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.checkin-card-head h3 { margin-bottom: 0; }
+.checkin-card-head a { color: var(--brand); font-weight: 700; white-space: nowrap; }
+.checkin-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.checkin-balance { display: inline-flex; align-items: center; gap: 6px; color: var(--brand); }
+.checkin-balance b { font-size: 23px; font-weight: 900; line-height: 1.1; letter-spacing: -0.5px; }
+.checkin-balance i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--ink-3); margin-left: -3px; }
+.checkin-streak { color: var(--ink-3); font-size: 12px; text-align: right; }
+.checkin-streak b { color: var(--brand); }
+.checkin-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+.checkin-day {
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--bg-tint);
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 700;
+}
+.checkin-day.checked { background: var(--brand-soft); color: var(--brand); }
+.checkin-day.current { outline: 1px solid var(--brand-line); }
+.checkin-reward { margin-top: 10px; color: var(--ink-2); font-size: 12.5px; }
+.checkin-reward b { color: var(--brand); }
+.checkin-btn { width: 100%; height: 36px; margin-top: 8px; }
+.checkin-btn:disabled {
+  background: var(--bg-tint);
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  opacity: 1;
+  box-shadow: none;
+}
+.checkin-gift { margin-top: 8px; color: var(--ink-3); font-size: 11.5px; line-height: 1.5; }
+.checkin-gift span + span::before { content: " · "; }
+.checkin-login { color: var(--ink-2); font-size: 13px; margin-bottom: 10px; }
+
+/* 积分页 */
+.points-wrap { display: flex; flex-direction: column; gap: 16px; padding-top: 22px; padding-bottom: 30px; }
+.points-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px;
+  background: linear-gradient(135deg, var(--brand-soft), transparent 58%), var(--card);
+}
+.points-eyebrow { color: var(--brand); font-size: 13px; font-weight: 800; letter-spacing: 0.4px; }
+.points-balance { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.points-balance b { font-size: 46px; font-weight: 900; line-height: 1.1; letter-spacing: -2px; }
+.points-balance span { color: var(--ink-3); font-size: 14px; font-weight: 700; }
+.points-sub { margin-top: 4px; color: var(--ink-2); font-size: 13.5px; }
+.points-sub b { color: var(--brand); }
+.points-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.points-hero-side { width: 300px; flex: none; }
+.points-gift-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--brand-line);
+  border-radius: 14px;
+  background: var(--card-2);
+}
+.points-gift-card.is-sunday { background: var(--brand-soft); border-color: var(--brand); }
+.points-gift-icon { font-size: 22px; line-height: 1.2; }
+.points-gift-card b { font-size: 14px; }
+.points-gift-card p { margin-top: 2px; color: var(--ink-3); font-size: 12px; line-height: 1.55; }
+.points-week-card, .points-history-card { padding: 20px; }
+.points-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.points-card-head h3 { font-size: 16px; font-weight: 800; }
+.checkin-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.checkin-day-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-2);
+}
+.checkin-day-card .day-label { color: var(--ink-3); font-size: 11.5px; white-space: nowrap; }
+.checkin-day-card .day-reward { color: var(--ink); font-size: 18px; font-weight: 900; }
+.checkin-day-card .day-state { color: var(--ink-3); font-size: 11px; font-weight: 700; }
+.checkin-day-card.checked { background: var(--brand-soft); border-color: var(--brand-line); }
+.checkin-day-card.checked .day-reward, .checkin-day-card.checked .day-state { color: var(--brand); }
+.checkin-day-card.current { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-soft); }
+.points-rule { margin-top: 14px; color: var(--ink-3); font-size: 12px; line-height: 1.65; }
+.points-makeup-card { padding: 20px; }
+.points-makeup-body { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.points-makeup-count { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.points-makeup-icon { font-size: 26px; line-height: 1.2; }
+.points-makeup-number { display: flex; align-items: baseline; gap: 3px; flex: none; }
+.points-makeup-number b { font-size: 28px; font-weight: 900; line-height: 1.1; }
+.points-makeup-number span { color: var(--ink-3); font-size: 12px; font-weight: 700; }
+.points-makeup-count p { flex: 1; min-width: 180px; max-width: 520px; color: var(--ink-3); font-size: 12px; line-height: 1.6; margin-left: 4px; }
+.points-makeup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.points-makeup-actions .btn { height: 36px; }
+.points-history-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+.points-history-row:last-child { border-bottom: none; }
+.points-history-day { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.points-history-streak { color: var(--ink-3); font-size: 12px; }
+.points-history-amount { margin-left: auto; color: var(--brand); font-weight: 800; white-space: nowrap; }
+.points-foot { text-align: center; padding: 0 10px; }
+
+@media (max-width: 860px) {
+  .points-hero { align-items: stretch; flex-direction: column; gap: 16px; padding: 20px; }
+  .points-hero-side { width: 100%; }
+}
+@media (max-width: 720px) {
+  .nav-points { height: 32px; padding: 0 8px; }
+  .nav-points svg { display: none; }
+  .points-balance b { font-size: 38px; }
+  .checkin-week { gap: 5px; }
+  .checkin-day-card { padding: 9px 2px; }
+  .checkin-day-card .day-label { font-size: 10px; }
+  .checkin-day-card .day-reward { font-size: 15px; }
+  .checkin-day-card .day-state { font-size: 10px; }
+  .points-history-row { flex-wrap: wrap; }
+  .points-history-amount { margin-left: auto; }
+  .points-makeup-body { align-items: flex-start; }
+  .points-makeup-actions { width: 100%; }
+  .points-makeup-actions .btn { flex: 1; }
+}

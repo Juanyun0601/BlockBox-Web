@@ -5,6 +5,13 @@ BB.boot(async () => {
   // 只接受站内相对路径，避免跳到站外
   const safeNext = nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '';
 
+  // 动态文案（带数字/字母的句子）走模板翻译；普通文本交给页面级 i18n 扫描
+  const T = (text) => (window.BBF ? BBF.t(text) : text);
+  const TF = (text, ...args) => {
+    if (window.BBF) return BBF.tf(text, ...args);
+    return text.replace(/\{(\d+)\}/g, (match, i) => (args[Number(i)] == null ? match : args[Number(i)]));
+  };
+
   if (!BB.isLoggedIn()) {
     host.innerHTML = `<div class="card composer">
       <h3>先登录，再答题</h3>
@@ -33,7 +40,8 @@ BB.boot(async () => {
   };
 
   try {
-    bank = await BB.api('/api/quiz/bank');
+    const lang = window.BBF && typeof BBF.lang === 'function' ? BBF.lang() : '';
+    bank = await BB.api('/api/quiz/bank' + (lang ? '?lang=' + encodeURIComponent(lang) : ''));
   } catch (error) {
     handleError(error);
     return;
@@ -62,10 +70,10 @@ BB.boot(async () => {
         ? `<div class="notice">你已经通过答题${best >= 0 ? `（最高 ${best} 分）` : ''}，发帖和回复都是解锁状态。想再刷一遍也可以。</div>`
         : ''}
       <ul class="quiz-rules">
-        <li>从题库随机抽 <b>${Number(rules.question_count) || 50}</b> 题，每题 ${perQuestion} 分</li>
-        <li>选错会立刻显示正确答案和解析，边答边学</li>
-        <li>拿到 <b>${passScore}</b> 分及以上即通过，通过后就能发帖和回复</li>
-        <li>不限制次数，没通过随时可以再答</li>
+        <li>${TF('从题库随机抽 {0} 题，每题 {1} 分', Number(rules.question_count) || 50, perQuestion)}</li>
+        <li>${T('选错会立刻显示正确答案和解析，边答边学')}</li>
+        <li>${TF('拿到 {0} 分及以上即通过，通过后就能发帖和回复', passScore)}</li>
+        <li>${T('不限制次数，没通过随时可以再答')}</li>
       </ul>
       <div class="composer-foot">
         <a class="btn btn-ghost btn-sm" href="/">返回论坛</a>
@@ -118,7 +126,7 @@ BB.boot(async () => {
       });
       document.getElementById('quizFeedback').innerHTML = `
         <div class="quiz-explain"><b>${
-          isCorrect ? '答对了！' : `答错了，正确答案是 ${'ABCD'[question.answer_index]}`
+          isCorrect ? T('答对了！') : TF('答错了，正确答案是 {0}', 'ABCD'[question.answer_index])
         }</b>　${BB.esc(question.explanation)}</div>
         <div class="quiz-foot">
           <button class="btn btn-primary" id="nextBtn">${index + 1 >= exam.length ? '查看结果' : '下一题'}</button>

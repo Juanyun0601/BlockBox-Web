@@ -1,0 +1,3199 @@
+001. In Survival mode, what should you do first to make planks?
+A. Punch leaves with your hand
+B. Mine stone directly
+C. Punch a log with your hand
+D. Buy planks from a villager
+Answer: C
+Explanation: Logs can be broken by hand, and planks are crafted from logs.
+
+002. How many planks are needed to craft one crafting table?
+A. 4
+B. 3
+C. 2
+D. 6
+Answer: A
+Explanation: Four planks in a 2×2 square make a crafting table.
+
+003. What is the minimum tool needed to mine stone?
+A. Wooden shovel
+B. Bare hands
+C. Wooden pickaxe
+D. Axe
+Answer: C
+Explanation: Stone requires a pickaxe; a wooden pickaxe is the minimum.
+
+004. What is the minimum pickaxe needed to mine iron ore?
+A. Wooden pickaxe
+B. Wooden shovel
+C. Bare hands
+D. Stone pickaxe
+Answer: D
+Explanation: Iron ore requires a stone pickaxe or better.
+
+005. What is the minimum pickaxe needed to mine diamond ore?
+A. Wooden pickaxe
+B. Stone pickaxe
+C. Bare hands
+D. Iron pickaxe
+Answer: D
+Explanation: Diamond ore needs an iron pickaxe or better, or it drops nothing.
+
+006. Which pickaxe is required to mine obsidian?
+A. Stone pickaxe
+B. Diamond pickaxe
+C. Iron pickaxe
+D. Golden pickaxe
+Answer: B
+Explanation: Obsidian can only be mined with a diamond or netherite pickaxe.
+
+007. What is the crafting recipe for a torch?
+A. Coal + planks
+B. Charcoal + planks
+C. Coal or charcoal + stick
+D. Glowstone + stick
+Answer: C
+Explanation: One coal or charcoal plus one stick makes four torches.
+
+008. What is needed to craft a furnace?
+A. 8 cobblestone
+B. 8 stone
+C. 4 cobblestone
+D. 8 iron ingots
+Answer: A
+Explanation: Eight cobblestone in a ring make a furnace.
+
+009. How many planks are needed to craft a chest?
+A. 4
+B. 8 logs
+C. 6
+D. 8
+Answer: D
+Explanation: Eight planks in a ring make a chest.
+
+010. What is needed to craft a bed?
+A. 3 wool + 3 logs
+B. 3 wool + 3 planks
+C. 2 wool + 2 planks
+D. 4 wool + 4 planks
+Answer: B
+Explanation: Three wool and three planks make a bed.
+
+011. Which of these is the safest and most filling early-game food?
+A. Raw chicken
+B. Rotten flesh
+C. Steak
+D. Spider eye
+Answer: C
+Explanation: Cooked meat has no negative effects and restores plenty of hunger; raw chicken and rotten flesh can hurt you.
+
+012. In 1.18 and later, around which Y level are diamonds most common?
+A. Y=11
+B. Y=-59
+C. Y=64
+D. Y=0
+Answer: B
+Explanation: Since 1.18 diamonds are most common deep underground; Y=-59 is a popular mining level.
+
+013. What is the minimum number of obsidian blocks for a working Nether portal?
+A. 8
+B. 12
+C. 10
+D. 14
+Answer: C
+Explanation: A 2×3 frame needs 10 obsidian; the four corners are optional.
+
+014. One block travelled in the Nether equals how many blocks in the Overworld?
+A. 8
+B. 4
+C. 2
+D. 16
+Answer: A
+Explanation: Nether and Overworld coordinates scale 1:8.
+
+015. Which mob mainly drops ender pearls?
+A. Zombie
+B. Enderman
+C. Skeleton
+D. Witch
+Answer: B
+Explanation: Endermen drop ender pearls when killed.
+
+016. Where do you find blazes for blaze rods?
+A. Village
+B. Stronghold
+C. Nether fortress
+D. Woodland mansion
+Answer: C
+Explanation: Blazes spawn in Nether fortresses and similar Nether structures.
+
+017. What is the crafting recipe for an eye of ender?
+A. Gunpowder + ender pearl
+B. Blaze rod + ender pearl
+C. Ghast tear + ender pearl
+D. Blaze powder + ender pearl
+Answer: D
+Explanation: Blaze powder and an ender pearl make an eye of ender.
+
+018. What item is most commonly used to locate a stronghold?
+A. Eye of ender
+B. Map
+C. Compass
+D. Lodestone
+Answer: A
+Explanation: Throwing an eye of ender makes it fly toward the nearest stronghold.
+
+019. Which dimension is the Ender Dragon in?
+A. The Nether
+B. The Overworld
+C. The End
+D. The Aether
+Answer: C
+Explanation: The Ender Dragon is the main boss of The End.
+
+020. How many iron ingots are needed to craft a bucket?
+A. 3 iron blocks
+B. 3 iron ingots
+C. 1 iron ingot
+D. 3 copper ingots
+Answer: B
+Explanation: Three iron ingots in a V shape make a bucket.
+
+021. What is needed to craft an enchanting table?
+A. 1 book + 1 diamond + 4 obsidian
+B. 1 book + 2 diamonds + 2 obsidian
+C. 1 book + 2 diamonds + 4 obsidian
+D. 1 book + 4 diamonds + 4 obsidian
+Answer: C
+Explanation: An enchanting table needs one book, two diamonds, and four obsidian.
+
+022. How many bookshelves are needed around an enchanting table for level-30 enchants?
+A. 10
+B. 15
+C. 20
+D. 30
+Answer: B
+Explanation: Fifteen bookshelves raise the enchanting level to 30.
+
+023. What is an anvil mainly used for?
+A. Repairing, renaming, and combining enchantments
+B. Smelting ore
+C. Brewing potions
+D. Teleporting players
+Answer: A
+Explanation: An anvil repairs items, renames them, and combines enchantments.
+
+024. What is the crafting recipe for a redstone repeater?
+A. 3 stone + 2 redstone torches + 1 redstone dust
+B. 3 cobblestone + 2 torches + 1 redstone dust
+C. 3 stone + 1 redstone torch + 2 redstone dust
+D. 3 planks + 2 redstone torches + 1 redstone dust
+Answer: A
+Explanation: Three stone, two redstone torches, and one redstone dust make a repeater.
+
+025. Which set of materials crafts one piston?
+A. 3 planks + 4 cobblestone + 1 iron ingot + 1 redstone dust
+B. 4 planks + 3 cobblestone + 1 iron ingot + 1 redstone dust
+C. 3 planks + 4 stone + 1 gold ingot + 1 redstone dust
+D. 3 planks + 4 cobblestone + 1 iron block + 1 redstone dust
+Answer: A
+Explanation: The correct recipe is 3 planks, 4 cobblestone, 1 iron ingot, and 1 redstone dust.
+
+026. What does a creeper drop?
+A. Gunpowder
+B. String
+C. Bone
+D. Slimeball
+Answer: A
+Explanation: Creepers drop gunpowder when killed.
+
+027. What does a zombie usually drop?
+A. Leather
+B. Bone
+C. Rotten flesh
+D. Gunpowder
+Answer: C
+Explanation: Zombies commonly drop rotten flesh.
+
+028. What does a skeleton usually drop?
+A. String
+B. Bones and arrows
+C. Gunpowder
+D. Ender pearl
+Answer: B
+Explanation: Skeletons drop bones and arrows.
+
+029. What does a spider usually drop?
+A. Bone
+B. Gunpowder
+C. Slimeball
+D. String and spider eyes
+Answer: D
+Explanation: Spiders drop string and spider eyes.
+
+030. What currency do villagers use for trading?
+A. Gold ingots
+B. Emeralds
+C. Diamonds
+D. Netherite
+Answer: B
+Explanation: Villagers mainly trade in emeralds.
+
+031. What does the Silk Touch enchantment do?
+A. Makes blocks drop themselves
+B. Increases ore drops
+C. Auto-smelts drops
+D. Repairs the tool automatically
+Answer: A
+Explanation: Silk Touch preserves the block itself, such as grass blocks, glass, and ore blocks.
+
+032. What does the Fortune enchantment do?
+A. Mines faster
+B. Auto-smelts ore
+C. Increases drops from ores and some plants
+D. Increases durability
+Answer: C
+Explanation: Fortune increases drops such as diamonds and wheat.
+
+033. What does the Mending enchantment do?
+A. Repairs at an anvil
+B. Uses collected XP to repair the item
+C. Makes the item unbreakable
+D. Repairs once every day
+Answer: B
+Explanation: Mending converts collected XP into durability.
+
+034. Where do you usually find an elytra?
+A. Stronghold
+B. Nether fortress
+C. Woodland mansion
+D. End ship
+Answer: D
+Explanation: Elytra hang in an item frame on an End ship.
+
+035. Which mob drops the Totem of Undying?
+A. Wither
+B. Elder Guardian
+C. Evoker
+D. Ravager
+Answer: C
+Explanation: Evokers drop the Totem of Undying when killed.
+
+036. What is the core ingredient for a beacon?
+A. Nether star
+B. Dragon egg
+C. Heart of the sea
+D. Echo shard
+Answer: A
+Explanation: A beacon needs a nether star, plus obsidian and glass.
+
+037. What key item activates a conduit?
+A. Nautilus shells only
+B. Heart of the sea
+C. Prismarine shard
+D. Turtle egg
+Answer: B
+Explanation: A conduit needs a heart of the sea and surrounding nautilus shells to activate.
+
+038. In which dimension is a respawn anchor mainly used?
+A. Overworld
+B. The End
+C. The Nether
+D. All dimensions equally
+Answer: C
+Explanation: Respawn anchors are used to set spawn points in the Nether.
+
+039. What does a lodestone do?
+A. Creates maps
+B. Shows time
+C. Sets bed position
+D. Makes a compass point to it
+Answer: D
+Explanation: Using a compass on a lodestone makes it point back to the lodestone.
+
+040. What does a sculk sensor mainly detect?
+A. Vibrations
+B. Light
+C. Only players
+D. Only redstone signals
+Answer: A
+Explanation: Sculk sensors detect vibrations and output a redstone signal.
+
+041. Compared with their stone variants, what is mainly different about deepslate ores such as deepslate diamond ore?
+A. They require one tier higher pickaxe
+B. They take longer to mine but drop the same items
+C. They drop twice as many items
+D. They can only be obtained with Silk Touch
+Answer: B
+Explanation: Deepslate variants are harder (4.5 for deepslate diamond ore versus 3.0 for diamond ore), but the required pickaxe tier and drops are the same.
+
+042. What is the lowest tier pickaxe that can mine gold ore?
+A. Bare hands
+B. Wooden pickaxe
+C. Stone pickaxe
+D. Iron pickaxe
+Answer: D
+Explanation: Gold ore is an iron-tier block; a stone pickaxe makes it drop nothing.
+
+043. What does nether quartz ore usually drop when mined?
+A. Nether quartz
+B. Block of quartz
+C. Glass
+D. Flint
+Answer: A
+Explanation: Nether quartz ore drops nether quartz and can be mined with a wooden pickaxe; blocks of quartz must be crafted from four quartz.
+
+044. What is the lowest tier pickaxe that can mine ancient debris?
+A. Stone pickaxe
+B. Iron pickaxe
+C. Diamond pickaxe
+D. Any pickaxe
+Answer: C
+Explanation: Ancient debris requires a diamond or netherite pickaxe and drops itself; it must then be smelted into netherite scrap.
+
+045. What does nether gold ore mainly drop when mined in the Nether?
+A. Gold ingots
+B. Gold nuggets
+C. Raw gold
+D. Blocks of gold
+Answer: B
+Explanation: Nether gold ore drops 2–6 gold nuggets rather than raw gold, and nine nuggets make one ingot.
+
+046. About how much lapis lazuli does a single lapis lazuli ore drop?
+A. Always 1
+B. Always 16
+C. 4–9
+D. 2–3
+Answer: C
+Explanation: One lapis lazuli ore drops 4–9 lapis lazuli, and Fortune can raise the amount.
+
+047. What happens to copper blocks left in the world over time?
+A. They slowly oxidize and turn green
+B. They turn into iron blocks
+C. They start to glow
+D. They melt away
+Answer: A
+Explanation: Copper blocks oxidize stage by stage into a green patina; waxing them with honeycomb stops it.
+
+048. What is needed to craft one netherite ingot?
+A. 4 netherite scrap + 4 gold ingots
+B. 4 netherite scrap + 4 iron ingots
+C. 1 ancient debris + 1 gold ingot
+D. 4 ancient debris + 4 blocks of gold
+Answer: A
+Explanation: Four netherite scrap plus four gold ingots make one netherite ingot; iron ingots and blocks of gold do not work.
+
+049. In which Overworld biome does emerald ore mainly generate?
+A. Desert
+B. Mountains
+C. Swamp
+D. Mushroom fields
+Answer: B
+Explanation: Emerald ore generates only in mountain biomes, which is why villagers trade in emeralds.
+
+050. What do you get when you mine deepslate with a normal pickaxe without Silk Touch?
+A. Cobbled deepslate
+B. Deepslate itself
+C. Cobblestone
+D. Nothing
+Answer: A
+Explanation: Deepslate turns into cobbled deepslate when mined; use Silk Touch to keep deepslate itself.
+
+051. Compared with a sword, what is characteristic of attacking mobs with an axe?
+A. Higher damage per hit, but a slower attack speed
+B. Lower damage per hit, but a faster attack speed
+C. Damage and speed are identical
+D. It only damages undead mobs
+Answer: A
+Explanation: An axe hits harder than a sword per swing, but its attack cooldown is longer, so it swings noticeably slower.
+
+052. What is a hoe mainly used for?
+A. Turning dirt or grass into farmland
+B. Chopping logs quickly
+C. Mining stone and ores
+D. Shearing wool
+Answer: A
+Explanation: Using a hoe on dirt or grass creates farmland for wheat, carrots, and other crops.
+
+053. Which of these tools has the highest durability?
+A. Diamond pickaxe
+B. Netherite pickaxe
+C. Iron pickaxe
+D. Golden pickaxe
+Answer: B
+Explanation: A netherite pickaxe has 2031 durability versus 1561 for diamond, while a golden pickaxe has only 32.
+
+054. What happens when a tool's durability runs out?
+A. It becomes a broken tool
+B. It goes back into your inventory
+C. It disappears
+D. It turns back into its materials
+Answer: C
+Explanation: In Java Edition a tool at zero durability simply breaks and vanishes, so maintain it with an anvil or Mending beforehand.
+
+055. What do you get when you right-click a grass block while holding a shovel?
+A. A dirt path
+B. Farmland
+C. Gravel
+D. The grass block drops as an item
+Answer: A
+Explanation: A shovel turns grass or dirt into a dirt path, while farmland requires a hoe.
+
+056. What does the Efficiency enchantment do?
+A. Speeds up mining
+B. Increases drops
+C. Slows durability loss
+D. Adds attack damage
+Answer: A
+Explanation: Efficiency only speeds up mining; Fortune controls drops and Unbreaking controls durability loss.
+
+057. Besides repairing items, what else does a grindstone do?
+A. Removes enchantments from an item
+B. Adds enchantments to an item
+C. Raises the enchantment level cap
+D. Duplicates enchanted books
+Answer: A
+Explanation: A grindstone repairs durability while stripping enchantments and refunding some XP; adding enchantments needs an enchanting table or anvil.
+
+058. Two planks placed vertically craft how many sticks?
+A. 1
+B. 2
+C. 4
+D. 8
+Answer: C
+Explanation: Two planks stacked vertically yield 4 sticks, the base material for tools, torches, and fences.
+
+059. How many planks are needed to craft wooden doors?
+A. 3
+B. 4
+C. 6
+D. 8
+Answer: C
+Explanation: Six planks in two columns craft 3 wooden doors, so each door costs two planks.
+
+060. What is needed to craft 3 wooden fences?
+A. 4 planks + 2 sticks
+B. 6 planks + 1 stick
+C. 4 planks + 4 sticks
+D. 6 planks + 3 sticks
+Answer: A
+Explanation: Four planks and two sticks craft 3 fences, which block most mobs but can be jumped over.
+
+061. How many planks are needed to craft a boat?
+A. 3
+B. 4
+C. 5
+D. 6
+Answer: C
+Explanation: Five planks in a U shape make a boat, which is far faster than swimming.
+
+062. Which materials are needed to craft rails?
+A. 6 iron ingots + 1 stick
+B. 3 iron ingots + 3 sticks
+C. 6 iron nuggets + 1 stick
+D. 1 block of iron + 1 stick
+Answer: A
+Explanation: Six iron ingots and one stick craft 16 rails; nuggets and blocks of iron will not work.
+
+063. What is needed to craft ladders?
+A. 3 sticks
+B. 7 sticks
+C. 6 planks
+D. 6 sticks + 1 plank
+Answer: B
+Explanation: Seven sticks in an H shape craft 3 ladders, which let you climb vertically on a block face.
+
+064. How many items can one piece of coal or charcoal smelt in a furnace?
+A. 4
+B. 6
+C. 8
+D. 16
+Answer: C
+Explanation: One coal or charcoal fuels 8 smelts, so a full stack of 64 items takes 8 pieces.
+
+065. Which of these single fuel items smelts the most items?
+A. Coal
+B. Charcoal
+C. Blaze rod
+D. Lava bucket
+Answer: D
+Explanation: A lava bucket smelts 100 items, far more than coal's 8 or a blaze rod's 12, and leaves an empty bucket behind.
+
+066. What is a smoker mainly used for?
+A. Smelting ore
+B. Cooking food at twice the furnace's speed
+C. Firing terracotta
+D. Making charcoal
+Answer: B
+Explanation: A smoker only cooks food, at double speed; ores need a blast furnace or furnace, and charcoal is made in a furnace.
+
+067. What is a blast furnace mainly used for?
+A. Cooking food
+B. Smelting ores and metals at twice the furnace's speed
+C. Burning wood
+D. Brewing potions
+Answer: B
+Explanation: A blast furnace smelts ores, metal tools, and armor at double speed, but cannot cook food.
+
+068. What do you get when you smelt cobblestone in a furnace?
+A. Stone
+B. Smooth stone
+C. Deepslate
+D. Gravel
+Answer: A
+Explanation: Cobblestone smelts into stone, and stone smelted again becomes smooth stone.
+
+069. Which of these blocks cannot be broken in Survival mode?
+A. Bedrock
+B. Block of iron
+C. Ancient debris
+D. Deepslate
+Answer: A
+Explanation: Bedrock is unbreakable in Survival and only removable in Creative or via commands; the other three can be mined with a pickaxe.
+
+070. Which of these blocks breaks fastest with a pickaxe?
+A. Cobblestone
+B. Deepslate
+C. Netherrack
+D. Block of iron
+Answer: C
+Explanation: Netherrack has a hardness of only 0.4, well below cobblestone's 2, deepslate's 3, and iron's 5.
+
+071. Which of these mobs will not fight back even if you attack it?
+A. Wolf
+B. Bee
+C. Sheep
+D. Iron Golem
+Answer: C
+Explanation: Sheep are passive and only flee when hit, while wolves, bees, and iron golems all retaliate once provoked.
+
+072. Which animal stays calm and only spits back when attacked or threatened?
+A. Llama
+B. Pig
+C. Cow
+D. Chicken
+Answer: A
+Explanation: Llamas are neutral mobs and spit at whatever angers them.
+
+073. Which mob should you hunt to collect leather?
+A. Pig
+B. Cow
+C. Chicken
+D. Sheep
+Answer: B
+Explanation: Cows drop leather and raw beef; pigs drop porkchops, chickens feathers, and sheep wool plus mutton.
+
+074. Which item can you use to tame a wolf?
+A. Raw beef
+B. Wheat
+C. Carrot
+D. Bones
+Answer: D
+Explanation: Feed a wolf bones until hearts appear; raw beef only breeds or heals it.
+
+075. You meet a cat in a village. What can you use to tame it?
+A. Bone
+B. Wheat seeds
+C. Raw cod
+D. Sweet berries
+Answer: C
+Explanation: Cats accept only raw cod or raw salmon, and feeding either one tames them.
+
+076. What should you feed two cows to make them breed?
+A. Wheat
+B. Wheat seeds
+C. Carrot
+D. Beetroot
+Answer: A
+Explanation: Cows and sheep breed with wheat, pigs with carrots or potatoes, and chickens with seeds.
+
+077. What is the correct way to tame a wild horse?
+A. Hit it with a sword until it stops resisting
+B. Mount it repeatedly until hearts appear
+C. Lead it around with a lead
+D. Ride it with a carrot on a stick
+Answer: B
+Explanation: A wild horse throws you off; keep mounting until hearts appear. A carrot on a stick is for pigs.
+
+078. Which workstation block turns an unemployed villager into a librarian?
+A. Blast Furnace
+B. Grindstone
+C. Lectern
+D. Composter
+Answer: C
+Explanation: A lectern makes a librarian, a blast furnace an armorer, a grindstone a weaponsmith, and a composter a farmer.
+
+079. Which block must a villager work at to become a weaponsmith?
+A. Smithing Table
+B. Anvil
+C. Fletching Table
+D. Grindstone
+Answer: D
+Explanation: A grindstone is the weaponsmith's workstation; a smithing table is for toolsmiths and a fletching table for fletchers.
+
+080. At the novice level, what does a librarian usually buy for emeralds?
+A. Wheat
+B. Paper
+C. Raw beef
+D. Coal
+Answer: B
+Explanation: Librarians buy paper for emeralds, and later sell bookshelves and enchanted books.
+
+081. In Java Edition, what triggers a raid on a village?
+A. Sleeping in a village bed
+B. Entering a village with Bad Omen
+C. Killing any pillager
+D. Opening a chest in the village
+Answer: B
+Explanation: Killing a pillager captain with a banner gives Bad Omen; only entering a village with it starts a raid.
+
+082. Which flying mob does an evoker summon in combat?
+A. Zombie
+B. Skeleton
+C. Phantom
+D. Vex
+Answer: D
+Explanation: Evokers summon vexes and cast evoker fangs. Vexes chase players through walls.
+
+083. What weapon does a vindicator mainly carry when it storms a village?
+A. Bow
+B. Trident
+C. Iron axe
+D. Golden sword
+Answer: C
+Explanation: Vindicators wield iron axes and use them to break down wooden doors.
+
+084. What materials are needed to craft a golden apple?
+A. 8 gold nuggets + 1 apple
+B. 4 gold ingots + 1 apple
+C. 1 gold block + 1 apple
+D. 8 gold ingots + 1 apple
+Answer: D
+Explanation: Eight gold ingots around an apple make a golden apple, which heals and grants absorption.
+
+085. How can you knock a ghast's fireball back at it?
+A. Hit the fireball with an arrow or a melee attack
+B. Block it with a shield
+C. Extinguish it with a water bucket
+D. Throw snowballs at the ghast
+Answer: A
+Explanation: Striking the fireball in flight sends it back; a shield only reduces the blast, it does not reflect it.
+
+086. How do piglins usually react to a player wearing gold armor?
+A. Stay neutral and not attack
+B. Attack immediately
+C. Run away
+D. Turn into a zombified piglin
+Answer: A
+Explanation: One piece of gold gear keeps piglins neutral, though opening chests or mining gold in front of them still angers them.
+
+087. What happens when you throw a gold ingot to a piglin?
+A. You get an emerald straight away
+B. The piglin attacks you
+C. It barters and gives a random item
+D. Nothing happens
+Answer: C
+Explanation: Gold ingots trigger bartering, and piglins may return obsidian, ender pearls, leather, and other random items.
+
+088. What material do you get from killing a magma cube?
+A. Slimeball
+B. Gunpowder
+C. Blaze powder
+D. Magma cream
+Answer: D
+Explanation: Magma cubes drop magma cream, used for fire resistance potions; slimeballs come from slimes.
+
+089. In which structure do shulkers mainly spawn?
+A. Stronghold
+B. End City
+C. Nether fortress
+D. Woodland mansion
+Answer: B
+Explanation: Shulkers appear only in End Cities and End Ships, and drop shulker shells.
+
+090. What status effect do you get when a shulker bullet hits you?
+A. Slowness
+B. Blindness
+C. Levitation
+D. Poison
+Answer: C
+Explanation: Shulker bullets make you float upward, and the fall back down can hurt.
+
+091. Throwing an ender pearl has a small chance of spawning which mob?
+A. Silverfish
+B. Shulker
+C. Magma cube
+D. Endermite
+Answer: D
+Explanation: Each ender pearl teleport has a small chance to spawn an endermite, which attacks players.
+
+092. In Java Edition, what happens if you spam-click to attack?
+A. Damage is higher than a charged hit
+B. Damage is lower; you must wait for the attack cooldown
+C. There is no difference
+D. It deals no damage at all
+Answer: B
+Explanation: Since 1.9, attacks have a cooldown, and swinging before it refills deals reduced damage.
+
+093. How do you land a critical hit (the starred damage)?
+A. Attack while falling after a jump
+B. Attack while sneaking
+C. Bash the target with a shield
+D. Attack while standing in water
+Answer: A
+Explanation: A critical hit needs you to be falling and off the ground; sneaking, swimming, or riding prevents it.
+
+094. While holding up a shield, which attack can still hit you?
+A. An arrow from the front
+B. A melee hit from the front
+C. An attack from behind
+D. An explosion in front
+Answer: C
+Explanation: A shield only covers damage coming from the front, so hits from behind land normally.
+
+095. Which weapon's hit temporarily disables an opponent's shield?
+A. Sword
+B. Bow
+C. Trident
+D. Axe
+Answer: D
+Explanation: An axe hit disables a raised shield for a few seconds, which is why axes are common in PVP.
+
+096. How many armor points does a full set of diamond armor provide in total?
+A. 10
+B. 15
+C. 20
+D. 25
+Answer: C
+Explanation: Helmet 3, chestplate 8, leggings 6, and boots 3 add up to 20 armor points.
+
+097. What is the main advantage of netherite gear over diamond gear?
+A. More durability and toughness, and it survives lava
+B. It lets the player fly
+C. It repairs itself
+D. It grants full fall damage immunity
+Answer: A
+Explanation: Netherite has the highest durability for its tier, adds toughness, and is not destroyed by lava.
+
+098. What does a splash potion of Instant Health do to a zombie?
+A. Damages it
+B. Heals it
+C. Has no effect
+D. Makes it neutral
+Answer: A
+Explanation: Instant Health and Instant Damage are inverted on undead, so healing potions hurt zombies and skeletons.
+
+099. After drinking a potion of Fire Resistance, which damage are you immune to?
+A. Fall damage
+B. Fire and lava damage
+C. Poison damage
+D. Drowning damage
+Answer: B
+Explanation: Fire Resistance stops you from burning and lets you swim in lava without taking damage.
+
+100. Which statement about saturation is correct?
+A. It drains before hunger, so the hunger bar stays full for a while
+B. It is the same value as hunger
+C. Only potions grant saturation
+D. It only affects movement speed
+Answer: A
+Explanation: Eating fills both hunger and saturation, and saturation is used up first, so the hunger bar drains more slowly.
+
+101. Which villager sells the explorer maps that point to a woodland mansion or an ocean monument?
+A. Librarian
+B. Cartographer
+C. Fletcher
+D. Cleric
+Answer: B
+Explanation: Cartographers sell woodland and ocean explorer maps, and using one marks the target structure on your map.
+
+102. How do you craft a map so that it covers a larger area?
+A. Map + 8 paper
+B. Map + 1 paper
+C. Map + 8 leather
+D. Map + 1 compass
+Answer: A
+Explanation: Place the map in the center with 8 paper around it to zoom out; a compass is for making a locator map instead.
+
+103. What happens when you use a map on a placed banner?
+A. The map is consumed
+B. A marker in the banner's color appears on the map
+C. The banner teleports to the world spawn
+D. The map zooms out by one level
+Answer: B
+Explanation: Right-clicking a banner while holding a map adds a marker in that color, which is handy for marking bases and routes.
+
+104. What does a normal compass usually do in the Nether?
+A. Points to the nearest Nether fortress
+B. Points to the world spawn
+C. Spins randomly
+D. Stops moving entirely
+Answer: C
+Explanation: Normal compasses cannot locate anything in the Nether or the End and spin randomly; only a lodestone compass still works.
+
+105. If you build a portal-shaped frame out of crying obsidian, will it light?
+A. Yes, it works exactly like obsidian
+B. Yes, but it leads to the End
+C. No, the frame has to be obsidian
+D. Yes, but it needs a blaze rod to light
+Answer: C
+Explanation: Nether portal frames must be obsidian; crying obsidian will not activate a portal.
+
+106. What is the largest possible interior of a Nether portal?
+A. 9×9
+B. 12×12
+C. 15×15
+D. 21×21
+Answer: D
+Explanation: The interior can be up to 21×21 inside a 23×23 frame; anything larger will not activate.
+
+107. On the F3 debug screen, negative Z points toward which direction?
+A. East
+B. South
+C. West
+D. North
+Answer: D
+Explanation: North is -Z, south is +Z, east is +X, and west is -X, so coordinates tell you which way you are heading.
+
+108. Besides flint and steel, what can light a Nether portal?
+A. Fire charge
+B. Lava bucket
+C. Torch
+D. Blaze powder
+Answer: A
+Explanation: A fire charge used on the frame lights the portal, and a dispenser loaded with one works too.
+
+109. How many eyes of ender must be placed to activate a completely empty End portal?
+A. 8
+B. 10
+C. 12
+D. 16
+Answer: C
+Explanation: An End portal has 12 frames and each needs one eye; some are already filled when you find it in a stronghold.
+
+110. Strongholds contain infested stone. Which mob bursts out when you break one?
+A. Endermite
+B. Cave spider
+C. Silverfish
+D. Spider
+Answer: C
+Explanation: Infested stone hides silverfish that burst out when the block breaks, often setting off a chain reaction.
+
+111. Where do you mainly collect nether wart for brewing?
+A. Stairs and gardens of Nether fortresses
+B. Chests in bastion remnants
+C. Village farms
+D. Chests in ancient cities
+Answer: A
+Explanation: Nether wart grows on fortress stairwells and in wart gardens and is the base for awkward potions.
+
+112. You enter a bastion remnant in gold armor. Which action still angers the piglins?
+A. Walking past them
+B. Looking at their faces
+C. Opening a chest
+D. Holding a golden sword
+Answer: C
+Explanation: Gold armor only stops them attacking on sight; opening chests or mining gold still provokes them.
+
+113. In which biome do woodland mansions generate?
+A. Birch forest
+B. Taiga
+C. Swamp
+D. Dark forest
+Answer: D
+Explanation: Woodland mansions generate only in dark forests, usually far from spawn.
+
+114. What weapon do pillagers mainly use during raids?
+A. Crossbow
+B. Bow
+C. Iron axe
+D. Trident
+Answer: A
+Explanation: Pillagers use crossbows while vindicators use iron axes; crossbows reload slowly but hit hard.
+
+115. What negative effect do elder guardians inflict near an ocean monument?
+A. Mining Fatigue
+B. Slowness
+C. Blindness
+D. Poison
+Answer: A
+Explanation: Elder guardians apply Mining Fatigue, making blocks nearly impossible to break; milk clears it temporarily.
+
+116. Where in an ocean monument can you get sponge in bulk?
+A. The treasure chamber
+B. Sponge rooms
+C. The entrance hall
+D. The ring corridors
+Answer: B
+Explanation: Sponge rooms hold blocks of wet sponge that dry into usable sponge; the treasure chamber holds gold instead.
+
+117. In which structure's chests can you find Swift Sneak enchanted books?
+A. Woodland mansion
+B. Stronghold library
+C. Trial chamber
+D. Ancient city
+Answer: D
+Explanation: Swift Sneak appears only in ancient city loot; chests in other structures never contain it.
+
+118. In an ancient city, which block summons the Warden when triggered repeatedly?
+A. Sculk sensor
+B. Sculk catalyst
+C. Sculk shrieker
+D. Sculk vein
+Answer: C
+Explanation: Sculk shriekers summon the Warden after repeated triggers; sensors only output redstone, and catalysts spread sculk.
+
+119. What do you need in order to open a vault in a trial chamber?
+A. Trial key
+B. Iron key
+C. Echo shard
+D. Ominous bottle
+Answer: A
+Explanation: Clearing a trial spawner awards a trial key that opens vaults, while an ominous bottle is used to start an ominous trial.
+
+120. The item dropped by a breeze is mainly used to craft which weapon?
+A. Trident
+B. Mace
+C. Bow
+D. Crossbow
+Answer: B
+Explanation: A breeze rod plus a heavy core crafts the mace, which deals far more damage when you fall onto a target.
+
+121. Which mob does the spawner commonly found in abandoned mineshafts produce?
+A. Silverfish
+B. Zombie
+C. Cave spider
+D. Skeleton
+Answer: C
+Explanation: Mineshaft spawners produce cave spiders, which squeeze through one-block gaps and poison you when they bite.
+
+122. In a desert temple's treasure room, what is hidden under the pressure plate?
+A. Nine TNT
+B. A stack of gold blocks
+C. A monster spawner
+D. A chest of diamonds
+Answer: A
+Explanation: Nine TNT sit under the plate and destroy the loot above when triggered, so dig in from the side.
+
+123. What happens when you trip the tripwire in a jungle temple?
+A. Sand falls from the ceiling
+B. Dispensers fire arrows
+C. The floor opens into a pit
+D. Lava pours out of the walls
+Answer: B
+Explanation: Hidden dispensers shoot arrows when the wire is tripped; cut the wire or break the dispensers to pass safely.
+
+124. In ocean ruins, which block can you brush to obtain pottery sherds?
+A. Prismarine
+B. Gravel
+C. Clay
+D. Suspicious sand
+Answer: D
+Explanation: Ocean ruins contain suspicious sand; brushing it yields pottery sherds and other archaeology loot.
+
+125. Which item from a shipwreck chest usually leads you to more loot?
+A. Buried treasure map
+B. Explorer map
+C. Eye of ender
+D. Echo shard
+Answer: A
+Explanation: Shipwreck chests often hold a buried treasure map; dig down at the red X to reach the buried chest.
+
+126. After killing a pillager captain carrying the ominous banner, what happens when you enter a village?
+A. You get Hero of the Village
+B. A raid begins
+C. All the villagers vanish
+D. Lightning strikes the village
+Answer: B
+Explanation: Killing a captain grants Bad Omen, and entering a village with it starts a raid; Hero of the Village is the reward for winning one.
+
+127. Which profession does an unemployed villager take when given a blast furnace?
+A. Armorer
+B. Weaponsmith
+C. Toolsmith
+D. Shepherd
+Answer: A
+Explanation: A blast furnace makes an armorer; grindstones make weaponsmiths and smithing tables make tool smiths.
+
+128. After defeating the Ender Dragon, how do you normally reach the outer End islands?
+A. Ride a minecart there
+B. Sleep in a bed in the End
+C. Right-click the ground with an eye of ender
+D. Throw an ender pearl into the End gateway
+Answer: D
+Explanation: The End gateway carries the thrown pearl and the player out to the islands, where end cities and end ships are.
+
+129. Why do players like building bases in mushroom fields?
+A. Hostile mobs do not spawn naturally
+B. It is always daytime there
+C. Ores generate more often
+D. Diamonds lie on the ground
+Answer: A
+Explanation: Mushroom fields spawn no hostile mobs except phantoms, so bases stay safe, and mooshrooms provide mushroom stew.
+
+130. Which Nether biome is the calmest for a base because it is mostly just endermen?
+A. Soul sand valley
+B. Basalt deltas
+C. Warped forest
+D. Crimson forest
+Answer: C
+Explanation: Warped forests spawn mostly endermen with almost no piglins or ghasts, making them relatively safe for a base.
+
+131. In Survival mode, what is the most direct way to get an enchanted book?
+A. Enchant a book at an enchanting table
+B. Smelt a book in a furnace
+C. Hammer a book on an anvil
+D. Boil a book in a brewing stand
+Answer: A
+Explanation: An enchanting table enchants books directly, using XP and lapis lazuli; fishing and librarian trades are other sources.
+
+132. Two identical swords are combined on an anvil. How does their durability change?
+A. Keeps the higher of the two values
+B. Refills to full durability
+C. Averages the two values
+D. Adds both, plus a 12% bonus of max durability
+Answer: D
+Explanation: Combining on an anvil sums the remaining durability and adds a 12% bonus of max durability, capped at the maximum.
+
+133. In Survival, at what XP cost does an anvil refuse a job as "Too Expensive!"?
+A. Level 20
+B. Level 30
+C. Level 40
+D. Level 50
+Answer: C
+Explanation: Jobs costing 40 levels or more are rejected in Survival; Creative mode ignores the limit.
+
+134. What happens to an anvil after many uses?
+A. It gradually cracks and finally breaks
+B. It never breaks
+C. It repairs itself after each use
+D. It always vanishes after three uses
+Answer: A
+Explanation: Each use may damage the anvil; it goes through slightly damaged and very damaged stages before breaking.
+
+135. Which enchantment cannot share a piece of armor with Protection?
+A. Unbreaking
+B. Fire Protection
+C. Thorns
+D. Respiration
+Answer: B
+Explanation: Protection, Fire Protection, Blast Protection, and Projectile Protection are mutually exclusive; Unbreaking and Thorns can coexist.
+
+136. Besides XP levels, what else does enchanting at a table consume?
+A. Redstone dust
+B. Diamonds
+C. Lapis lazuli
+D. Glowstone dust
+Answer: C
+Explanation: The table consumes lapis by tier: one for level 1, two for level 2, three for level 3.
+
+137. Which ingredient turns a water bottle into an Awkward Potion?
+A. Nether wart
+B. Sugar
+C. Spider eye
+D. Ghast tear
+Answer: A
+Explanation: Nether wart makes the Awkward Potion that most recipes build on; sugar leads to Swiftness and a spider eye to Poison.
+
+138. Awkward Potion plus a glistering melon slice yields which potion?
+A. Potion of Swiftness
+B. Potion of Night Vision
+C. Potion of Fire Resistance
+D. Potion of Healing
+Answer: D
+Explanation: The glistering melon gives Healing; sugar gives Swiftness, a golden carrot Night Vision, and magma cream Fire Resistance.
+
+139. To make a timed potion such as Strength last longer, what should you add?
+A. Glowstone dust
+B. Gunpowder
+C. Redstone dust
+D. Dragon's breath
+Answer: C
+Explanation: Redstone extends duration, glowstone raises potency, gunpowder makes it splash, and dragon's breath makes it lingering.
+
+140. What do you get by adding gunpowder to a potion?
+A. A lingering potion
+B. A tipped arrow
+C. The same potion, unchanged
+D. A splash potion
+Answer: D
+Explanation: Gunpowder turns a drinkable potion into a throwable splash potion; lingering needs dragon's breath, and tipped arrows are crafted with lingering potions.
+
+141. What fuel does a brewing stand consume while brewing?
+A. Coal
+B. Blaze powder
+C. Redstone dust
+D. Magma cream
+Answer: B
+Explanation: One blaze powder powers 20 brewing operations before it must be refilled.
+
+142. A comparator reads a chest behind it. What does its signal strength reflect?
+A. How often the chest was opened
+B. How full the chest is
+C. How many item types it holds
+D. Which way the chest faces
+Answer: B
+Explanation: The comparator outputs 0–15 based on how full the container is, which is handy for fullness detection.
+
+143. When does an observer emit a redstone pulse?
+A. Only when a player comes near
+B. Only when the light level changes
+C. When the block it faces changes
+D. Only when it is powered by redstone
+Answer: C
+Explanation: The observer watches the block in front of it for updates and emits a short pulse of about two game ticks.
+
+144. What happens to a hopper when it receives a redstone signal?
+A. It transfers items twice as fast
+B. It sends items back upward
+C. It empties itself instantly
+D. It stops pulling and pushing items
+Answer: D
+Explanation: A powered hopper is locked: it neither pulls items in nor pushes them out.
+
+145. What is the main difference between a dispenser and a dropper?
+A. A dispenser uses items; a dropper only ejects them
+B. A dropper shoots arrows; a dispenser cannot
+C. A dispenser can only face upward
+D. They work exactly the same
+Answer: A
+Explanation: A dispenser shoots arrows, places water, ignites TNT, or deploys boats; a dropper just spits items out or feeds a container.
+
+146. Which rail emits a redstone signal when a minecart passes over it?
+A. Rail
+B. Powered rail
+C. Detector rail
+D. Activator rail
+Answer: C
+Explanation: A detector rail outputs power while a cart sits on it, useful for counters and doors; activator rails trigger TNT carts or eject riders.
+
+147. What is a redstone torch most often used for in circuits?
+A. Amplifying a signal
+B. Inverting a signal
+C. Extending signal range
+D. Delaying a signal
+Answer: B
+Explanation: The torch turns off when its supporting block is powered, making it a NOT gate; repeaters handle range and delay.
+
+148. What does sugar cane need in order to be planted?
+A. Sand or dirt next to water
+B. Planted directly in water
+C. Stone kept completely dry
+D. Jungle biomes only
+Answer: A
+Explanation: Sugar cane must sit on sand, dirt, or similar blocks and be adjacent to water or a waterlogged block.
+
+149. What is the most important condition when building a mob farm?
+A. Build it in a desert
+B. Keep the spawning platforms at light level 0
+C. Cover the platforms with torches
+D. Enclose the tower in glass
+Answer: B
+Explanation: Hostile mobs need light level 0 to spawn; torches on the platforms would block spawning instead.
+
+150. What is a hopper minecart running on rails mainly used for?
+A. Carrying players
+B. Powering the rails
+C. Lighting the tunnel
+D. Collecting dropped items while moving
+Answer: D
+Explanation: A hopper minecart sucks up items it passes, even through a block above it, so farms use it to gather drops.
+
+151. Which command sets the world time to day right away?
+A. /time set day
+B. /time day
+C. /set time day
+D. /gamerule time day
+Answer: A
+Explanation: time add。 / /time set day sets the clock to 1000; use /time add to advance it instead.
+
+152. Which command switches you to Creative mode?
+A. /mode creative
+B. /gamemode creative
+C. /player creative
+D. /gamemode 3
+Answer: B
+Explanation: /gamemode creative equals /gamemode 1; the number 3 is Spectator mode.
+
+153. Which command locates the nearest stronghold?
+A. /locate stronghold
+B. /find structure stronghold
+C. /locate structure minecraft:stronghold
+D. /tp stronghold
+Answer: C
+Explanation: /locate structure takes a structure ID; minecraft:stronghold returns the coordinates of the nearest one.
+
+154. Which command gives you 64 diamonds?
+A. /give diamond 64
+B. /give @s 64 diamond
+C. /item @s diamond 64
+D. /give @s diamond 64
+Answer: D
+Explanation: /give takes target, item, then count; @s refers to whoever runs the command.
+
+155. Which command clears the weather immediately?
+A. /weather clear
+B. /weather sun
+C. /time clear
+D. /gamerule weather clear
+Answer: A
+Explanation: /weather clear accepts an optional duration in seconds; the other values are rain and thunder.
+
+156. Which command teleports you to the coordinates (100, 64, 200)?
+A. /tp @s to 100 64 200
+B. /tp @s 100 64 200
+C. /move @s 100 64 200
+D. /goto @s 100 64 200
+Answer: B
+Explanation: /tp is followed directly by the three coordinates; no connector word like "to" is used.
+
+157. Which command stops players from dropping items when they die?
+A. /gamerule doDropItems false
+B. /gamerule deathDrop false
+C. /gamerule inventorySave true
+D. /gamerule keepInventory true
+Answer: D
+Explanation: With keepInventory set to true, players keep both their inventory and their XP on death.
+
+158. On which difficulty can zombies break down wooden doors?
+A. Peaceful
+B. Easy
+C. Normal
+D. Hard
+Answer: D
+Explanation: Only on Hard do zombies tear down wooden doors; on Peaceful hostile mobs never spawn at all.
+
+159. Which command creates a scoreboard objective named kills?
+A. /scoreboard add kills
+B. /scoreboard create kills
+C. /scoreboard objectives add kills dummy
+D. /scoreboard players add kills
+Answer: C
+Explanation: The syntax is /scoreboard objectives add <name> <criterion>; dummy means scores change only through commands.
+
+160. Which command shows the kills objective on the sidebar?
+A. /scoreboard show kills
+B. /scoreboard objectives setdisplay sidebar kills
+C. /scoreboard objectives display kills
+D. /scoreboard sidebar kills
+Answer: B
+Explanation: setdisplay picks the slot: sidebar is the on-screen panel, while list shows scores in the tab list.
+
+161. Someone insults you in a thread. What is the best response?
+A. Insult them back even harder
+B. Report the content and ignore them
+C. Post their personal information
+D. Flood the thread with protest posts
+Answer: B
+Explanation: Report abuse to the moderators instead of escalating or doxxing anyone.
+
+162. Someone asks you to post a classmate's home address on the forum. What should you do?
+A. Refuse and report them
+B. Post it
+C. Send it privately to a few people
+D. Use abbreviations to avoid detection
+Answer: A
+Explanation: Publishing someone's real address is doxxing and is never allowed.
+
+163. What happens if you post a download link for pirated Minecraft?
+A. It is fine if you label it “for learning”
+B. It is allowed in off-topic only
+C. It is not allowed; it will be removed and may be punished
+D. It is fine if you add a password
+Answer: C
+Explanation: Piracy infringes copyright and is not allowed on the forum or launcher.
+
+164. A teammate asks you to use X-ray and aimbot on a multiplayer server. What should you do?
+A. Use them quietly
+B. Refuse and report it to the server owner
+C. Only use them on a private server
+D. Share them with the whole team
+Answer: B
+Explanation: Cheating ruins other players' experience and breaks server and community rules.
+
+165. Someone offers to “log in for you” and asks for your password. What should you do?
+A. Never share your password
+B. Give the password but not the email
+C. Give it and change it later
+D. Post it in a group chat for advice
+Answer: A
+Explanation: Anyone asking for your password may be a scammer; never share it.
+
+166. You see a link offering a “free cape if you sign in with Microsoft”. What should you do?
+A. Sign in right away
+B. Do not open it; treat it as phishing and report it
+C. Forward it to friends and try it
+D. Try it with someone else's account
+Answer: B
+Explanation: Official services do not ask for your account through random links; these are usually phishing.
+
+167. A minor you met online wants to meet you alone in person. What should you do?
+A. Agree immediately and keep it secret
+B. Ask them to come to you alone
+C. Refuse and tell a trusted adult
+D. Meet only at night
+Answer: C
+Explanation: Meetings involving minors require a guardian's knowledge; safety comes first.
+
+168. You want to post a screenshot of a private chat. What is the right approach?
+A. Post it; it is real anyway
+B. Crop out only your own name
+C. Share it with friends but not publicly
+D. Get their consent first and hide personal details
+Answer: D
+Explanation: Private chats are private; posting them without consent can harm others and break the rules.
+
+169. You think a moderator unfairly deleted your post. What should you do?
+A. Calmly message the admins and appeal
+B. Keep posting to confront the moderator
+C. Use an alt account to insult them
+D. Post the moderator's personal information
+Answer: A
+Explanation: Use the proper appeal channel; public fights or revenge only make things worse.
+
+170. You want to advertise your own Minecraft server. What should you do?
+A. Reply with it under every thread
+B. Post it in the section where advertising is allowed, following the rules
+C. DM every online user
+D. Put it into other people's threads
+Answer: B
+Explanation: Advertising belongs only where allowed; spam and mass DMs are punished.
+
+171. Is adult or sexual content allowed on the forum?
+A. Yes, if marked NSFW
+B. Yes, but only in off-topic
+C. No
+D. Images are fine, text is not
+Answer: C
+Explanation: This is an all-ages community; sexual or adult content is not allowed.
+
+172. What happens to attacks based on nationality, race, gender, or religion?
+A. It is hate speech and will be removed with penalties
+B. It is fine if no one is named
+C. It is removed only if reported
+D. It is fine if wrapped in a meme
+Answer: A
+Explanation: Hate speech has zero tolerance; jokes or memes are not an excuse.
+
+173. To keep your thread on top, you keep replying “bump”. What is correct?
+A. Bump every few minutes
+B. Bump with several accounts
+C. Delete others' replies to move up
+D. Stop spamming and update the content according to the rules
+Answer: D
+Explanation: Bumping is spam, disturbs others, and can be removed or punished.
+
+174. What happens if you rename yourself “Administrator” and imitate official notices?
+A. It is fine as long as you do not take money
+B. It is impersonating staff and will be punished
+C. It is fine if you say it is a joke
+D. It only counts after three times
+Answer: B
+Explanation: Impersonating staff misleads players and is a serious violation.
+
+175. When reporting a post, how should you choose the reason?
+A. Pick anything; admins will figure it out
+B. Select every reason to raise the chance
+C. Pick the closest category and explain what happened
+D. Write “you know what I mean”
+Answer: C
+Explanation: Accurate categories and details help moderators act; false reports are also punished.
+
+176. After being muted, you register an alt account to keep posting. What happens?
+A. It is ban evasion; both accounts will be handled
+B. It is fine if the alt behaves
+C. A mute only applies to the main account
+D. It is allowed with a different nickname
+Answer: A
+Explanation: Using alternate accounts to bypass a mute or ban is evasion and makes things worse.
+
+177. A friend sends a modpack from an unknown source. What is safest?
+A. Install it; a friend would not harm you
+B. Disable antivirus first
+C. Install it into a system folder
+D. Do not run it; scan it and download from a trusted source
+Answer: D
+Explanation: Unknown archives and executables may contain malware; scan them and use official sources.
+
+178. You want to showcase someone else's build in your post. What should you do?
+A. Post the screenshots; it is just a game
+B. Ask the creator first and credit them
+C. Change a few blocks and claim it
+D. Post a small crop without credit
+Answer: B
+Explanation: Builds are creative work; reposting needs permission and credit.
+
+179. A site claims it can “generate a free official Minecraft account from your username”. What should you do?
+A. It is a scam; do not enter anything
+B. Try it with an alt account
+C. Enter fake details first
+D. Share it with classmates
+Answer: A
+Explanation: Official accounts cannot be generated; these sites steal accounts or personal data.
+
+180. You are meeting an online friend in person for the first time. What should you do?
+A. Go alone to their home
+B. Pick a remote place for privacy
+C. Meet in a public place and tell family or friends
+D. Tell no one
+Answer: C
+Explanation: First meetings should be in public, with someone trusted knowing your plans.
+
+181. A stranger DMs you an .exe and says it “enables skin mods”. What should you do?
+A. Double-click it
+B. Disable antivirus and run it
+C. Send it to a friend first
+D. Do not run it; delete it and report the sender
+Answer: D
+Explanation: Executables from strangers are often malware, and skin mods do not need them.
+
+182. You post a screenshot for help, but it shows your email and real name. What should you do?
+A. Blur or crop the personal details first
+B. Post it; nobody cares
+C. Hide the name but keep the email
+D. Post the original and delete it later
+Answer: A
+Explanation: Screenshots persist; hide emails, real names, addresses, and similar details.
+
+183. You want to use images and music from the internet in a video. What is correct?
+A. Anything searchable is free to use
+B. Check the license, follow it, and credit the creator
+C. It is not infringement if you do not earn money
+D. Changing the tune hides it
+Answer: B
+Explanation: Images and music are copyrighted; follow their licenses, including credit requirements.
+
+184. A friend gives you their email to register an account for them. What should you do?
+A. Post it in a group so others can help
+B. Use it to sign up on many sites
+C. Use it only for what they agreed to
+D. Save it for later
+Answer: C
+Explanation: An email is personal data; use it only for the purpose the owner agreed to.
+
+185. Someone keeps harassing you in DMs. What should you do?
+A. Argue back
+B. Send them your contact details
+C. Delete your account
+D. Block and report them
+Answer: D
+Explanation: Do not engage; keep evidence, block, and report.
+
+186. What is correct about age requirements for using the community?
+A. Follow local law and platform rules; minors need guardian consent
+B. Just enter any age
+C. Register with a parent's identity
+D. Age does not matter
+Answer: A
+Explanation: Rules for minors vary by region; answer honestly and follow them.
+
+187. Someone DMs: “Buy a gift card and I will unban your account.” What should you do?
+A. Buy a small one first
+B. It is a scam; refuse and report
+C. Ask them to unban first
+D. Send the gift card code
+Answer: B
+Explanation: Officials never unban accounts for gift cards; anyone asking for codes is a scammer.
+
+188. Someone threatens real-world violence in a post. What should you do?
+A. Ignore it as a joke
+B. Argue with them
+C. Report it immediately and keep screenshot evidence
+D. Forward it to other groups for fun
+Answer: C
+Explanation: Real-world threats must be taken seriously; report and preserve evidence.
+
+189. Another user expresses thoughts of self-harm. What should you do?
+A. Mock them
+B. Treat it as a joke
+C. Tell them to “just cheer up” and move on
+D. Take it seriously, encourage professional help, and inform moderators
+Answer: D
+Explanation: Self-harm talk is not a joke; encourage professional or trusted help and involve moderators.
+
+190. You disagree with the length of your mute. What is the best approach?
+A. Explain calmly through the appeal channel
+B. Insult the moderators publicly
+C. Continue with an alt account
+D. Post the moderator's personal information
+Answer: A
+Explanation: Punishments can be appealed; attacking staff only makes it worse.
+
+191. You joke with a slur for an ethnic group. Someone says it is not okay, and you reply “it's just a joke”. Is that fine?
+A. Fine; jokes are not discrimination
+B. Fine, as long as no one is named
+C. Not fine; the slur itself is discriminatory
+D. Fine; they can joke back
+Answer: C
+Explanation: A “joke” built on an ethnic slur is still discrimination and hate speech; remove it and apologize when called out.
+
+192. A player keeps making sexual comments at strangers in public chat and continues after being told to stop. What is this?
+A. Just friendly banter
+B. Sexual harassment; it must stop
+C. Fine as long as it is not in DMs
+D. Normal socializing
+Answer: B
+Explanation: Sexual comments that continue after a clear refusal are harassment and can be punished.
+
+193. Someone starts a group to crowd around one player, mock them, and invent insulting nicknames. What should you do?
+A. Join; it is just a meme
+B. Stay out, keep evidence, and report
+C. Bring more people to watch
+D. DM the target to mock them too
+Answer: B
+Explanation: Organizing mockery against one person is bullying; stay out and pass evidence to the staff.
+
+194. A stranger DMs “I already found your neighborhood. Pay up or I post it.” What should you do?
+A. Pay to keep it quiet
+B. Negotiate the price
+C. Keep evidence, tell a trusted adult, and report
+D. Publish it yourself first
+Answer: C
+Explanation: Extorting money with doxxed details is blackmail; do not pay, and hand the records to a guardian and the staff.
+
+195. You want to turn a classmate's real photo into a meme and post it in a group and on the forum. What is correct?
+A. Ask first; do not post if they say no
+B. Post it; memes are not photos
+C. Post it in the group only, not the forum
+D. Blur the face and post freely
+Answer: A
+Explanation: A real person's photo is their private data; turning it into a meme still needs their consent.
+
+196. You block someone who harasses you, and they message you from another account. What should you do?
+A. Block and report again, keeping the records
+B. Reply once and tell them to stop
+C. Make an alt and harass them back
+D. Give them your account
+Answer: A
+Explanation: Switching accounts after a block escalates the harassment; block, report, and keep the screenshots.
+
+197. A player copies a well-known player's name and skin to borrow items in their name. What is this?
+A. Fan imitation with no harm
+B. Impersonation, which breaks the rules
+C. Fine if the items are returned
+D. Roleplay
+Answer: B
+Explanation: Pretending to be someone to gain trust and items is impersonation and enables scams.
+
+198. After an argument, you report every recent post from that person. What is this?
+A. Normal use of the report tool
+B. Report abuse that wastes moderation time
+C. Helping moderators spot problems
+D. Fine if one report was valid
+Answer: B
+Explanation: Mass-reporting out of spite abuses the tool and buries the reports that actually matter.
+
+199. A group follows one player and spams the same taunt under each of their posts. What is this?
+A. Just a group meme
+B. Brigading and harassment
+C. Normal discussion
+D. Fine without swear words
+Answer: B
+Explanation: A crowd targeting one person is brigading; both organizers and participants are handled.
+
+200. Someone posts “everyone on that version is a noob”, clearly trying to start a fight. What should you do?
+A. Insult them back to teach a lesson
+B. Do not reply; report the bait
+C. Share it to other groups to pile on
+D. Start a rival thread
+Answer: B
+Explanation: Bait threads feed on replies; not engaging and reporting is the right move.
+
+201. Two users are flooding a thread with insults, dozens of posts deep. As a bystander, what should you do?
+A. Join and pick a side
+B. Screenshot and share for fun
+C. Stay out and report the thread
+D. Spam unrelated posts to interrupt
+Answer: C
+Explanation: A flame war only grows with more participants; leave it and report instead of adding fuel.
+
+202. Someone DMs a player who says they are 12, asking for photos and their school name. What should you do?
+A. Not my business
+B. Warn the player, and report it
+C. Ask along with them
+D. Treat it as a joke
+Answer: B
+Explanation: Asking a minor for photos and school details is high risk; warn them to refuse and involve staff.
+
+203. A user posts “I will end it all on stream tonight” and gives a time. What should you do?
+A. Take it seriously; report it and alert moderators
+B. Joke in the replies
+C. Wait until the stream starts
+D. DM them for attention-seeking
+Answer: A
+Explanation: A self-harm threat with a set time must be taken seriously; report it so staff can involve professional help.
+
+204. You agreed to meet at a mall, but they change it to “come to my building, tell no one”. What should you do?
+A. Go along; a friend would not harm you
+B. Refuse; keep it public and tell your family
+C. Tell just one online friend
+D. Go at night instead
+Answer: B
+Explanation: Switching to a private spot and demanding secrecy is a red flag; keep it public and let family know.
+
+205. Someone DMs “I know what city you are in. Just wait.” What should you do?
+A. Insult them back
+B. Delete it as a joke
+C. Keep evidence, report, and tell a trusted adult
+D. Tell them your city too
+Answer: C
+Explanation: This is intimidation; do not trade insults or ignore it — keep the record and inform staff and a guardian.
+
+206. Someone posts hateful content in letter and number codes, saying “the filters cannot catch this”. What is correct?
+A. A different spelling is not a violation
+B. The intent is the same; it is still hate speech
+C. Only the full spelling counts
+D. Posting it as an image is fine
+Answer: B
+Explanation: Abbreviations, homophones, and images do not change what the content is; evading filters makes it worse.
+
+207. A player openly says “no women or players from that country on our team” and kicks those who join. What is this?
+A. A team may choose; it is fine
+B. Identity-based discrimination, which breaks the rules
+C. Fine inside a private group
+D. A gameplay strategy
+Answer: B
+Explanation: Publicly excluding people by gender or nationality is discrimination, private groups included.
+
+208. A player keeps following you and breaking blocks you just placed “for fun”, after you asked them to stop. What is this?
+A. Normal interaction
+B. Harassment; record it and report
+C. Part of PvP
+D. Fine as long as there is no swearing
+Answer: B
+Explanation: Continuing to target someone after a clear no is harassment, not a prank; record it and report.
+
+209. Someone collects another player's Discord, social handles, and birthday and posts them. What is this?
+A. Just sharing information
+B. A privacy leak; it needs consent
+C. Fine if it was all public
+D. Helping them get followers
+Answer: B
+Explanation: Aggregating someone's accounts and details is a privacy leak even if each piece was public.
+
+210. You see someone mocked by a group in a chat, and they have already left. What is best?
+A. Laugh along
+B. Turn the logs into a joke
+C. Keep evidence, report the ringleader, and support the target
+D. Look the other way
+Answer: C
+Explanation: Silence lets bullying continue; keep evidence, report it, and check on the target privately.
+
+211. Someone DMs explicit images to a player who says they are underage. What is this?
+A. A private joke
+B. A serious violation; report it at once
+C. Fine if they did not object
+D. Only a content-section issue
+Answer: B
+Explanation: Sending explicit material to a minor is a serious violation and may break local law; report immediately.
+
+212. Someone says “say one more word and I will report you”, then files baseless reports. What is this?
+A. Legitimate use of reports
+B. Using reports as a threat is abuse
+C. Moderators will back it up
+D. Enough reports always work
+Answer: B
+Explanation: Reports are for rule-breaking content, not arguments; abusing them gets the reporter punished.
+
+213. Someone claims to be a moderator's or famous player's “alt” and asks newcomers to hand over items. What is this?
+A. Impersonation to gain trust, which breaks the rules
+B. Normal help for newcomers
+C. Fine if the items come back
+D. A normal trade
+Answer: A
+Explanation: Staff never collect items through alts; anyone claiming to be an alt asking for items is scamming.
+
+214. A group chat plans to “flood a server with insults tonight”. What should you do?
+A. Join; the more the merrier
+B. Do not join, and point out it gets accounts banned
+C. Watch without posting
+D. Recruit more people
+Answer: B
+Explanation: Organized flooding is group harassment; both organizers and participants can be banned.
+
+215. A user who says they are in primary school posts their school, class, and pickup time. What should you do?
+A. Tell them to remove it and inform moderators
+B. Save it for later contact
+C. Forward it to friends
+D. Praise them for being brave
+Answer: A
+Explanation: A minor posting their school and schedule is dangerous; get it removed and ask staff to help.
+
+216. A friend DMs “I do not want to live anymore” and asks you to tell no one. What should you do?
+A. Promise secrecy and say nothing
+B. Tell them to cheer up and drop it
+C. Do not keep it secret; involve a trusted adult or professional help
+D. Post it in a group for advice
+Answer: C
+Explanation: Safety outranks a promise of secrecy; bring in a trusted adult or professional while staying with them privately.
+
+217. At an in-person meeting, they keep asking you to turn off location sharing and “not tell your family”. What should you do?
+A. Do it to show trust
+B. Refuse; keep sharing and tell your family
+C. Turn off only part of it
+D. Hand over your phone
+Answer: B
+Explanation: Cutting your location and family contact is a red flag; refuse and make sure family knows where you are.
+
+218. Someone threatens “do what I say or I send our chat logs to your school”. What should you do?
+A. Comply to avoid exposure
+B. Keep evidence, tell a guardian or teacher, and report
+C. Delete the chat logs first
+D. Threaten them back
+Answer: B
+Explanation: Threatening exposure to control you is blackmail; giving in only invites more demands.
+
+219. After signing in to the forum on a shared or public computer, what should you do before leaving?
+A. Sign out and do not save the password
+B. Let the browser save the password for next time
+C. Just turn off the monitor
+D. Let the person next to you use the account
+Answer: A
+Explanation: Shared computers may be used by others or run keyloggers; sign out and clear saved passwords.
+
+220. You reported a harasser, and they post calling you a “snitch” and urge others to isolate you. What should you do?
+A. Fight back publicly
+B. Keep evidence and report the retaliation
+C. Delete your account and hide
+D. Rally others to isolate them
+Answer: B
+Explanation: Retaliating against a reporter is further abuse; keep evidence for the staff instead of fighting back.
+
+221. You reuse one password across many sites, and one shopping site is breached. What does that mean for your Minecraft account?
+A. Nothing; the game account is unrelated to that site
+B. A password over 8 characters cannot be guessed
+C. Change the game password to the site's new password
+D. Attackers may reuse the same pair elsewhere, so change the password and enable 2FA
+Answer: D
+Explanation: Reusing a password turns one breach into many; attackers retry the leaked pair on other services.
+
+222. You have dozens of accounts with different passwords. What is the safest way to keep track of them?
+A. Keep them in a txt file on the desktop
+B. Switch back to one complex password you can remember
+C. Use a password manager with a strong master password and 2FA
+D. Put a screenshot of the list in the screenshots folder
+Answer: C
+Explanation: A manager lets you memorize one strong master password and gives every site its own; protect it with 2FA.
+
+223. Right after enabling 2FA, your phone keeps showing “approve sign-in” prompts you did not request. What should you do?
+A. Approve one and see what happens
+B. Deny all, change the password, and sign out other devices
+C. Turn 2FA off so the prompts stop
+D. Ignore it until the sender gives up
+Answer: B
+Explanation: Repeated prompts mean someone already has your password; denying, changing it, and signing out sessions removes them.
+
+224. When you enable 2FA, the service gives you a set of recovery codes. How should you store them?
+A. Post a screenshot in your own group chat for quick access
+B. Write them on signs in your world
+C. Keep an offline copy, printed or inside a password manager
+D. Ask a friend who plays with you to remember them
+Answer: C
+Explanation: Recovery codes are the only way back in when 2FA fails, so keep them offline; sharing them exposes that path.
+
+225. A friend in real life wants to borrow your official account for a few days. What should you do?
+A. Refuse and suggest they use or buy their own account
+B. Lend it; it is only a game
+C. Lend it if they promise not to cheat
+D. Lend it for one day, then change the password
+Answer: A
+Explanation: Sharing breaks Microsoft's terms, and any cheating, ban, or purchase during the loan lands on the owner.
+
+226. Your child wants to play Minecraft, but you want separate worlds and purchase records. What is the right setup?
+A. Give the child your password and let them use your account
+B. Take turns on one account with separate worlds
+C. Let the child join official servers with an offline account
+D. Create a separate Microsoft account for the child and manage it in a family group
+Answer: D
+Explanation: Separate accounts keep worlds and purchases distinct, and a family group manages a minor's permissions and spending.
+
+227. Someone offers “half-price top-ups” for the game or Minecoins if you hand over your account and payment password. What is best?
+A. Try a small amount first
+B. Refuse and buy only from the official store
+C. Hand over the account but change the payment password first
+D. Let them remote into your PC to pay
+Answer: B
+Explanation: Cheap top-ups often use stolen payment methods that get reversed and get you banned; handing over credentials is giving the account away.
+
+228. Someone posts a QR code in a group and says scanning it “unbans your account or claims a reward”. What should you do?
+A. Scan it; it is just a sign-in
+B. Scan it and sign out right away
+C. Do not scan it; a stranger's login QR code can authorize their sign-in to your account
+D. Forward it to a friend to try first
+Answer: C
+Explanation: A login QR code is an authorization, so scanning it signs the other person in; no real reward works that way.
+
+229. A stranger DMs you claiming to be “BlockBox support”, saying your account is flagged and you must enter your password on a link to verify.
+A. Fill it in, or the account gets banned
+B. Enter the username only, not the password
+C. Share the link in a group and ask if it is real
+D. Do not open it; verify through official channels listed on the site or forum
+Answer: D
+Explanation: Staff never DM for passwords or send verification links; fake support is one of the most common account-theft routes.
+
+230. A number found by searching “Microsoft support phone” asks you to install remote-control software. What should you do?
+A. Install it and let them check the PC
+B. Refuse; official support does not call first or demand remote access
+C. Let them connect but keep passwords secret
+D. Pay a diagnostic fee first
+Answer: B
+Explanation: Microsoft support does not call you first or ask for remote access; such “support numbers” are usually scams.
+
+231. A link in an email opens a login page that looks exactly like the official one. What is the most reliable check?
+A. A padlock in the address bar means it is safe
+B. Looking identical to the official page is enough
+C. Check that the registrable domain is the official one, and enter from a bookmark where possible
+D. Opening it is fine as long as you type nothing
+Answer: C
+Explanation: A padlock only means encryption, and phishing sites get certificates too; the registrable domain is what matters.
+
+232. An email says your account will be deleted in 24 hours and you must “verify now”. You do have an account there. What should you do?
+A. Click the button in the email
+B. Reply to ask whether it is real
+C. Forward it to a friend to confirm
+D. Skip the link and check the notice by logging in on the official site
+Answer: D
+Explanation: Urgency is a phishing staple; real notices appear inside your account page after you sign in.
+
+233. A forum DM says you won “10,000 Minecoins” and asks you to fill in a survey with your name, address, and birthday.
+A. Fill in real details to receive the prize
+B. Fill in name and birthday, fake the address
+C. Do not fill it in; official events never collect personal data by DM — report it
+D. Fill it in and see whether the prize arrives
+Answer: C
+Explanation: Real events never DM for name, address, and birthday; that data feeds password guessing and follow-up scams.
+
+234. You “won a prize”, but the sender wants a $20 “tax” before releasing it. What does this tell you?
+A. It is an advance-fee scam; real prizes never require the winner to pay
+B. Normal procedure; pay and collect
+C. Small fees are safe, only large ones are suspicious
+D. Pay if they show a photo of their ID
+Answer: A
+Explanation: Pay-first prizes are classic advance-fee fraud; genuine prizes never require the winner to pay.
+
+235. A video description says “free official capes — just enter your game ID and email”. What should you do?
+A. Fill it in; it is safe without a password
+B. Submit it once with a backup email
+C. Claim one and recommend it if it works
+D. Skip it; official capes are not given out this way, and the data feeds later phishing
+Answer: D
+Explanation: Official capes go automatically to eligible accounts; “enter your ID” pages are harvesting data for later phishing.
+
+236. Someone sends a “skin installer” that says to replace files inside the vanilla jar under .minecraft/versions. What should you do?
+A. Replace the files so the skin takes effect
+B. Do not replace; a Java skin is a PNG uploaded to your profile, not a game file edit
+C. Back up the vanilla jar, then replace
+D. Replace only some of the files
+Answer: B
+Explanation: Editing the vanilla jar breaks file integrity and invites injected code; changing a skin is just uploading a PNG to your profile.
+
+237. After running a “modpack installer”, your documents are encrypted and a Bitcoin demand appears. What is the first step?
+A. Disconnect from the network, keep evidence, then restore from backup or get professional help
+B. Pay as instructed to get the key
+C. Keep rebooting to see if it recovers
+D. Delete the encrypted files to free space
+Answer: A
+Explanation: Paying rarely returns a key; cutting the network stops further encryption, and backups are the reliable recovery.
+
+238. You suspect your PC has an info-stealing trojan. What is the correct order of actions?
+A. Change the password here first, then scan
+B. Change the password and enable 2FA from a clean device, then clean this PC
+C. Format the disk and ignore the account
+D. Uninstall antivirus and reinstall the system
+Answer: B
+Explanation: Changing the password on an infected PC can be captured again; secure the account from a clean device first.
+
+239. You want a server plugin but can only find it on a “cracked resources” site. What should you do?
+A. Download it; a .jar cannot carry malware
+B. Download it and rename the extension
+C. Disable the server firewall, then install
+D. Get it from the author's repository or a trusted platform, and check source and version
+Answer: D
+Explanation: Jars execute code too and cracked plugins often carry backdoors; verify source, version, and checksums.
+
+240. A browser extension promises “one-click skins” and requests permission to “read and change all your data on all websites”. What should you do?
+A. Install it; permissions are formalities
+B. Install it in a rarely used browser, then sign in
+C. Do not install it; that permission can read credentials and cookies, and skins need no extension
+D. Install it and disable auto-update
+Answer: C
+Explanation: That permission can steal credentials and cookies, and changing a skin needs no browser extension at all.
+
+241. A player says “drop your diamonds first and I will send the netherite right after”. What should you do?
+A. Give half first to lower the risk
+B. Trust them; players should trust each other
+C. Ask for a screenshot as proof
+D. Do not hand anything over first; use the server trade system or a staff middleman
+Answer: D
+Explanation: Screenshots are easy to fake and paying first offers no protection; a middleman settles both sides at once.
+
+242. A forum user sells a “rare cape account” cheaply and offers to change the email first. What is the best judgment?
+A. Sales break the terms and the seller can still recover it — do not buy
+B. Buy it; a new email makes it yours
+C. Buy if the seller has good ratings
+D. Buy with a middleman guarantee
+Answer: A
+Explanation: Account sales break the terms, and the seller can still recover the account with original proof, leaving the buyer with nothing.
+
+243. A friend's account suddenly messages you: they are locked out and need you to buy two gift cards and send the codes. What should you do?
+A. Buy them right away
+B. Buy one now, the other later
+C. Verify by phone or another channel; do not buy cards in chat
+D. Meet in person before buying
+Answer: C
+Explanation: Stolen accounts are used to beg friends for cards; codes cannot be recovered once sent, so verify identity first.
+
+244. Someone on the forum “buys gift cards at a high price” and wants your code before paying. What is the risk?
+A. No risk; transfers can be reversed
+B. Once redeemed a code cannot be recovered, so they can simply vanish
+C. Only high-value cards are risky
+D. Safe if they send a photo of their ID
+Answer: B
+Explanation: A gift card code is cash: it cannot be reversed or traced once redeemed, so whoever sends first bears the risk.
+
+245. An online acquaintance asks your real age, school, and address, offering a skin in return. What should you do?
+A. Tell them; you met in a game
+B. Share the school and age, not the address
+C. Give a fake address and keep chatting
+D. Do not share real identity details; decline and end the topic
+Answer: D
+Explanation: Age, school, and address together can locate a person; refuse any request baited with cosmetics.
+
+246. Your forum profile is public and shows your main email and full birthday. What should you change?
+A. Nothing; only friends can see it
+B. Change only the birth year
+C. Use a nickname and a secondary email, and hide identifying details
+D. Keep the email so people can reach you
+Answer: C
+Explanation: Birthdays and main emails feed password guessing, recovery abuse, and harassment, so share as little as possible.
+
+247. Your world exists on a single drive in one PC. What is the safest backup practice?
+A. Copy saves to another drive or cloud regularly and check that the copy opens
+B. Copy it to another folder on the same drive
+C. Rely on the game's autosave
+D. Zip it and leave it on the desktop
+Answer: A
+Explanation: A copy on the same drive dies with the drive; an off-device backup you have actually opened is what counts.
+
+248. You overwrite the same backup file every time; after deleting a world you synced again and the backup is empty too. How do you avoid this?
+A. Turn off sync and back up once
+B. Keep several dated backups instead of only the newest
+C. Store backups inside the game install folder
+D. Clean old worlds during backup
+Answer: B
+Explanation: Keeping only the newest copy syncs your deletion into it; dated copies let you go back further.
+
+249. Your account was stolen and its email was changed. What is the most effective first step?
+A. Use the official account recovery process and prepare proof of purchase
+B. Post your email and purchase records on the forum for help
+C. Pay a “recovery service”
+D. Register a new account and give up
+Answer: A
+Explanation: The official process proves ownership with purchase records, while posting them just feeds the thief.
+
+250. A “professional account recovery” service charges a fee and asks for your verification codes and billing screenshots. What should you do?
+A. Provide them; they need it to do the work
+B. Refuse; use only the official recovery flow and never hand codes or bills to a third party
+C. Give the code but blur the bill
+D. Pay half the fee first
+Answer: B
+Explanation: Codes and bills are the keys to account recovery; handing them to a third party hands over the account.
+
+251. You spot a thread in the resources section selling cheats. What is the best way to handle it?
+A. Reply “reported” in the thread so everyone knows
+B. Share the link in a group and rally everyone to report
+C. Use the report button directly and do not reply in the thread
+D. Post your own sales thread to push it off the page
+Answer: C
+Explanation: Reports go to the moderation queue for staff to handle; replying only bumps the bad thread, and rallying mass reports can count as report abuse.
+
+252. A player scammed you out of gear and you want to warn others on the forum. What is the best way to write it?
+A. Title it “scammer” and attach their account, contacts, and full chat logs
+B. Give the evidence to staff; in the public post describe the trick without personal details
+C. Repeat “so-and-so is a scammer” across ten different threads
+D. Ask friends to post the same thread so it looks credible
+Answer: B
+Explanation: Publishing accounts and contacts invites false accusations and counter-reports; hand the evidence to staff and describe only the method in public.
+
+253. You enter the “Redstone Research” board for the first time and are about to post. What should you do first?
+A. Post it and fix it if it gets removed
+B. Post a test thread to see whether it gets deleted
+C. DM a moderator and ask them to post it for you
+D. Read the pinned rules and posting format, then post accordingly
+Answer: D
+Explanation: Boards differ in tags, format, and content rules, and the pinned rules explain them; a test thread is itself spam.
+
+254. You made a few Minecraft survival videos and want to share them. Which approach follows the rules?
+A. Post once in the board that allows sharing, with a short description and tags
+B. Reply “watch my video” under every new thread
+C. DM the link to every user who is online
+D. Slip the link into other people's resource threads
+Answer: A
+Explanation: Sharing belongs in the board that allows it, at the permitted frequency; link-spamming threads or DMs is ad harassment.
+
+255. Someone DMs you: “this forum is too strict, come chat in my group”, with an invite code. What should you do?
+A. Join and take a look; it is only chatting
+B. Forward the invite to more forum users
+C. Do not join, and report the DM recruitment
+D. Publicly promote the group on the forum for them
+Answer: C
+Explanation: DM recruitment is soliciting spam and a common scam entry; reporting protects other members better than forwarding.
+
+256. Forum levels depend on points, and you want to level up fast. Which approach is right?
+A. Reply “bump” and “nice” under lots of threads to pad the count
+B. Reply thoughtfully to one or two threads you actually understand
+C. Split one sentence into ten separate replies
+D. Reply to your own thread with emoji over and over
+Answer: B
+Explanation: Pointless short replies are spam and can be deleted or penalized; points should come from useful content.
+
+257. Someone posts twenty “6666” replies under your thread and fills the whole page. What should you do?
+A. Join in so the thread looks lively
+B. Delete all their replies yourself
+C. DM them an angry message to make them stop
+D. Report the flooding replies for staff to clean up
+Answer: D
+Explanation: Regular users cannot delete others' replies, so reporting is the way; joining in gets the whole thread cleaned.
+
+258. You find a two-year-old redstone guide whose method is outdated. You want to add a note. What should you do?
+A. Check the rules on old threads, then start a new one citing the old if needed
+B. Reply “outdated” and bump it to the top
+C. Reply once a day so more people see it
+D. Bump it with three alt accounts in turn
+Answer: A
+Explanation: Bumping old threads without substance is grave-digging; when you do have substance, a new thread citing the old one is clearer.
+
+259. You want to repost someone else's villager trading guide on the forum. What is correct?
+A. Copy it in full and title it “original guide”
+B. Swap a few words and call it your own
+C. Get the author's permission, then credit them and link the source
+D. Post only the first half so no credit is needed
+Answer: C
+Explanation: Reposting needs permission and credit; rewording it or excerpting part of it does not avoid that.
+
+260. You find a great modpack, but its page says “no reposting, no redistribution”. What should you do?
+A. Repost it as long as you name the author
+B. Do not repost; link to the author's official page instead
+C. Repost only the config files
+D. Repost an old version; authors rarely mind
+Answer: B
+Explanation: Credit is not permission; when the author forbids reposting, linking the official page is the option.
+
+261. You filmed a build showcase using someone else's resource pack. What should you do when publishing?
+A. Leave the pack out; viewers will not ask
+B. Claim you made the pack to look skilled
+C. Upload the pack alongside the video
+D. Name the pack, its author, and the download page in the description
+Answer: D
+Explanation: Fan works using others' assets should credit and link them; claiming authorship or redistributing the pack infringes the author's rights.
+
+262. You think a modpack is badly balanced and want to post about it. Which is better?
+A. Point out which mechanic is off and suggest an improvement
+B. Post “the author has no idea how to make a pack”
+C. Spam the same complaint under each of the author's posts
+D. Call on everyone to boycott the pack
+Answer: A
+Explanation: Criticism of the work can be blunt if it targets the content and gives reasons; attacking the author or spamming is abuse.
+
+263. You think a new posting rule from the moderators is unreasonable. How should you raise it?
+A. Post calling the moderators dictators so they learn
+B. Spam protest slogans in every thread
+C. Use the feedback board's format, explaining the impact and an alternative
+D. Simply ignore the rule
+Answer: C
+Explanation: Rules can be debated through feedback with reasons; insults and spam only discredit the point.
+
+264. Your Java vs. Bedrock comparison thread turns into insults in the comments. What should you do?
+A. Call out the ringleaders by name in the thread
+B. Ask staff to clean or lock it, and add a note asking for calm discussion
+C. Delete every opinion that differs from yours
+D. Pick a side and keep arguing
+Answer: B
+Explanation: Thread starters share responsibility for order, so involving staff and cooling it down works best; naming names only escalates.
+
+265. You joke with a friend by sending “you are so stupid, just die”. What is this?
+A. Fine as long as the tone is joking
+B. Fine if they did not get upset
+C. Fine when said in private chat
+D. Verbal abuse; even as a joke, delete it and apologize
+Answer: D
+Explanation: Such words are hurtful on their own, and joking or private chat does not excuse them; take them back and apologize when they land badly.
+
+266. In a debate someone says: “your take is as garbage as you are.” What is this?
+A. A personal attack that can be reported
+B. A normal rebuttal of the argument
+C. Not a violation without swear words
+D. Only staff can decide whether it is wrong
+Answer: A
+Explanation: Once the target shifts from the argument to the person, it is a personal attack; lacking swear words changes nothing.
+
+267. A new member from another country asks for help in imperfect English. What should you do?
+A. Mimic their grammar mistakes as a joke
+B. Tell them to come back once their language improves
+C. Answer in simple, clear language and rephrase if needed
+D. Discuss their accent in a group chat
+Answer: C
+Explanation: Cross-cultural talk should accommodate different fluency; mocking someone's language drives them away.
+
+268. A member posts “Merry Christmas”, and another member does not celebrate it. What is the best handling?
+A. Demand the post be deleted because someone does not celebrate
+B. Respect different customs; a friendly reply or none at all is fine
+C. Argue in the replies about which holiday matters more
+D. Mock them for “having no culture”
+Answer: B
+Explanation: Holiday greetings are well-meant and need no uniformity; turning them into an argument or mockery is the rude part.
+
+269. You recorded a friend's funny voice moment in a voice channel and want to post it. What should you do?
+A. Post it; it is just in-game audio
+B. Cut only your own voice and post it
+C. Pitch-shift it and skip asking
+D. Ask the people recorded first, then post
+Answer: D
+Explanation: Voice is personal data too; recording and publishing it both need consent.
+
+270. Someone DMs asking for the IP of the server you play on and its private group link. What should you do?
+A. Check who they are and whether the owner allows sharing
+B. Send it so more people can join
+C. Post it in the forum recruitment board to help
+D. Tell them to search for it themselves
+Answer: A
+Explanation: A server IP and private group link may be non-public; spreading them without the owner's consent invites spam and griefing.
+
+271. A group chat shares a screenshot claiming “a well-known mod now ships a crypto miner”. What should you do?
+A. Forward it to the forum to warn everyone at once
+B. Delete every mod on your PC
+C. Check the official release page and the author's statement before believing it
+D. Say “a friend said the same” as evidence
+Answer: C
+Explanation: Security claims about a specific project need a primary source; unverified forwarding causes false damage and panic.
+
+272. A post says “the service shuts down next week, back up now” with no source. What should you do?
+A. Forward it to every group as a warning
+B. Do not forward it; wait for an official notice and ask the poster for a source
+C. Reply “it should have shut down long ago”
+D. Post your own “inside info” thread
+Answer: B
+Explanation: Shutdown news must come from official notices; repeating unsourced claims amplifies panic.
+
+273. You want to suggest a new “Builds” sub-board. How should the suggestion be written to be taken seriously?
+A. Write only “add a builds board”
+B. Post the same suggestion five times
+C. Spam the idea in other people's threads
+D. Explain the purpose, expected activity, and gaps in current boards
+Answer: D
+Explanation: Actionable suggestions cover the need, scale, and current gaps; repeating them reads as spam.
+
+274. The forum is voting on a new board and you want it to pass. What should you do?
+A. Vote once and explain your reasoning in the comments
+B. Register a few alts and vote yes with them
+C. Vote repeatedly from different browsers
+D. Trade red packets for yes votes in a group
+Answer: A
+Explanation: One person, one vote keeps a poll meaningful; alts or vote trading destroy the value of the result.
+
+275. Someone DMs claiming to be a “forum volunteer” who can unban you internally, if you hand over your account. What should you do?
+A. Hand it over; volunteers have internal access
+B. Give the username but not the password
+C. Refuse; unbans only go through the official appeal channel
+D. Pay a small “processing fee” first
+Answer: C
+Explanation: Volunteers and staff never DM for accounts and have no “internal unban”; such messages are scams.
+
+276. You report a rule-breaking player, and the moderator replies “they are my friend, I will handle it”. What should you do?
+A. Accept it; friends talk things out easily
+B. Ask another or a senior moderator, noting the conflict of interest
+C. Delete their reply yourself
+D. Publicly accuse the moderator of protecting a friend
+Answer: B
+Explanation: Handling a case involving your own friend is a conflict of interest and should be avoided; reassignment beats public accusation.
+
+277. You are banned for seven days but want to keep discussing. Which approach is acceptable?
+A. Post from a friend's account
+B. Ask a friend to post your points for you
+C. Register a new account with the same name
+D. Wait it out, and only read in the meantime
+Answer: D
+Explanation: A ban applies to the person; borrowing accounts or relaying posts is evasion and usually extends it.
+
+278. Your ban has ended and you want to request restoration. How should the request be written?
+A. State what you did, what you understand now, and how you will avoid it
+B. Argue that many others do it too, so why only you
+C. Threaten to badmouth the community elsewhere
+D. Resubmit the same request until it passes
+Answer: A
+Explanation: Staff look for understanding and willingness to change; comparing, threatening, or resubmitting hurts the case.
+
+279. Someone DMs you ads and insults. You want to report it. What is the right way?
+A. Post the full chat log in off-topic for public judgment
+B. Reply “I will report you” and leave it there
+C. Submit the screenshots and timing through the report function
+D. Publish their contact details in a group
+Answer: C
+Explanation: DMs fall under the rules too, and reports need times and content; publishing logs or contacts can itself violate privacy.
+
+280. Your report was judged “not a violation”, and you disagree. What should you do?
+A. Resubmit the same report every day until it passes
+B. Add new evidence and explain once more through the appeal channel
+C. Repeat the report from several alt accounts
+D. Post in the staff section accusing staff of doing nothing
+Answer: B
+Explanation: A verdict can be appealed with new facts; repeat reports and public accusations read as abuse.
+
+281. What does Minecraft Java Edition usually require before it can run?
+A. Python
+B. A Java runtime
+C. Node.js
+D. .NET Framework
+Answer: B
+Explanation: Minecraft Java Edition needs a Java runtime; the launcher detects it and offers to install one.
+
+282. Which Java version does Minecraft 1.20.1 usually need?
+A. Java 8
+B. Java 11
+C. Java 17
+D. Java 21
+Answer: C
+Explanation: 1.20.1 needs Java 17; newer versions may need Java 21.
+
+283. In BlockBox, what is an “instance”?
+A. An isolated game folder with its own version, mods, and worlds
+B. A forum account
+C. A skin image
+D. A download task
+Answer: A
+Explanation: Each instance has its own version, loader, mods, and worlds, kept separate.
+
+284. What is the correct way to add mods to an instance?
+A. Put them in the game root
+B. Put them on the desktop
+C. Rename the extension to .jar2
+D. Put them in the instance's mods folder and match the loader
+Answer: D
+Explanation: Mods go into the instance's mods folder and must match the loader and game version.
+
+285. Which group lists Minecraft mod loaders?
+A. Iris, OptiFine, Sodium
+B. Forge, Fabric, NeoForge
+C. CurseForge, Modrinth
+D. Java, Bedrock
+Answer: B
+Explanation: Forge, Fabric, NeoForge, and Quilt are loaders; Iris/OptiFine handle shaders and Sodium is a performance mod.
+
+286. What is the main difference between a modpack and a single mod?
+A. Modpacks are Bedrock-only
+B. Modpacks do not need a launcher
+C. A modpack usually bundles many mods, configs, and resources
+D. Modpacks cannot use shaders
+Answer: C
+Explanation: A modpack is a curated set of mods and configs for a particular theme and version.
+
+287. What do you usually need in order to use shaders?
+A. Iris or OptiFine (or similar)
+B. Only Java 8
+C. Only the vanilla client
+D. A skin pack
+Answer: A
+Explanation: Shaders require Iris, OptiFine, or a similar environment, with packs placed in shaderpacks.
+
+288. What does a resource pack mainly change?
+A. Game rules
+B. Textures, sounds, and UI appearance
+C. Player worlds
+D. The Java version
+Answer: B
+Explanation: Resource packs replace visuals and sounds, not gameplay logic.
+
+289. Downloads are slow. Where should you check first?
+A. Shut down the PC
+B. Delete all instances
+C. Change the resolution
+D. The download source or mirror in Settings
+Answer: D
+Explanation: Switching the download source (official or a mirror such as BMCL) often helps.
+
+290. The launcher says a new version is available. What is recommended?
+A. Update as prompted, or download the latest version from the site
+B. Keep the old version forever
+C. Download a “cracked” build from an unknown site
+D. Delete the update files
+Answer: A
+Explanation: Use the built-in updater or the official site to get fixes and current download sources.
+
+291. After signing in to a forum account, which progress syncs to the launcher?
+A. Only skins
+B. Only bookmarks
+C. Quiz results, notifications, and some community data
+D. Nothing syncs
+Answer: C
+Explanation: Quiz results are stored on the account and work across devices and the launcher.
+
+292. What are the entry quiz rules?
+A. 100 questions, pass at 60
+B. 50 random questions, 2 points each, pass at 80
+C. 10 questions, all correct
+D. No pass mark
+Answer: B
+Explanation: Each attempt draws 50 questions; 40 correct (80 points) passes.
+
+293. If you fail the entry quiz, can you try again?
+A. Yes, you can start another attempt
+B. No, the account is locked forever
+C. Only after one year
+D. Only with a new account
+Answer: A
+Explanation: You can retry; submitting too often is rate-limited.
+
+294. Where do you usually find the feedback entry in the launcher?
+A. The home carousel
+B. Task manager
+C. In-game chat
+D. Settings → About
+Answer: D
+Explanation: Settings → About has a Feedback entry that opens the in-app feedback page.
+
+295. You see a rule-breaking post on the forum. What should you do?
+A. Argue with the poster
+B. Use the report button and pick the right category
+C. Share it in other groups
+D. Post something similar
+Answer: B
+Explanation: Reports go to the moderation queue for staff to handle.
+
+296. What does “mute” mean on the forum?
+A. Cannot sign in
+B. The account is deleted
+C. Temporarily cannot post, reply, or DM
+D. Cannot read threads
+Answer: C
+Explanation: A mute restricts posting for a period, lifts automatically, and can be appealed.
+
+297. What does it mean when a thread is “pinned”?
+A. It stays at the top of the board for visibility
+B. The thread is deleted
+C. Only the author can see it
+D. The thread is locked
+Answer: A
+Explanation: Pinning highlights announcements or guides at the top of a board.
+
+298. Which formatting syntax do forum posts support?
+A. HTML
+B. LaTeX
+C. BBCode
+D. Markdown
+Answer: D
+Explanation: Markdown is supported, including bold, code, quotes, lists, and links.
+
+299. What are the usual limits for uploading a single image on the forum web page?
+A. Images cannot be uploaded
+B. GIF
+C. BMP only
+D. 100 MB per image
+Answer: B
+Explanation: Oversized images are rejected with a compression hint; you can also paste screenshots directly.
+
+300. What is an invite code shared in the multiplayer lobby for?
+A. Unlocking achievements
+B. Redeeming skins
+C. Joining someone's multiplayer room
+D. Resetting a world
+Answer: C
+Explanation: Invite codes join rooms; the web page can copy them, but joining needs the client.
+
+301. Before updating a game version or loader, what is the most important preparation?
+A. Back up worlds and important configs
+B. Delete all mods
+C. Turn off the monitor
+D. Empty the recycle bin
+Answer: A
+Explanation: Major updates can change world formats; a backup prevents irreversible loss.
+
+302. The game fails to launch. What is most useful when asking for help?
+A. Just say “it does not open”
+B. A desktop wallpaper
+C. Your password
+D. Launcher logs, crash reports, and system info
+Answer: D
+Explanation: Logs and crash reports reveal the cause; attach them to your post.
+
+303. After a crash, which file should you usually look for?
+A. A skin image
+B. crash report or latest.log
+C. A resource pack zip
+D. A server icon
+Answer: B
+Explanation: crash reports and latest.log record the cause and the last steps executed.
+
+304. The launcher cannot find Java. What should you do first?
+A. Reinstall Windows
+B. Delete the launcher
+C. Check the Java path in Settings, or let the launcher detect it
+D. Change the monitor
+Answer: C
+Explanation: Make sure Java is installed and point Settings at the correct java.exe.
+
+305. For a large modpack, how should memory usually be set?
+A. Raise it to fit the pack, often 4 GB or more
+B. Lower is always better
+C. Always 512 MB
+D. Twice the physical RAM
+Answer: A
+Explanation: Modpacks need more memory, but do not exceed your physical RAM.
+
+306. To join official servers and sync skins, which account type is usually needed?
+A. An offline account
+B. Any local account
+C. A guest account
+D. A Microsoft account (official login)
+Answer: D
+Explanation: Official servers require a Microsoft account; offline accounts are for single-player and LAN.
+
+307. What are the limitations of an offline account?
+A. It cannot launch the game
+B. It cannot join official servers or sync official skins
+C. It cannot install mods
+D. It cannot create worlds
+Answer: B
+Explanation: Offline accounts skip Mojang authentication; they work for single-player and LAN but not official servers.
+
+308. What format is a Java Edition skin file usually?
+A. Any-size JPG
+B. 1024×1024 BMP
+C. 64×64 PNG
+D. 32×32 GIF
+Answer: C
+Explanation: Standard Java skins are 64×64 PNGs; legacy 64×32 skins still display.
+
+309. You are moving to a new PC and want to keep accounts, settings, and instances. What is safest?
+A. Back up the launcher data folder and instance folders
+B. Copy only the desktop shortcut
+C. Just remember the password
+D. Re-download everything
+Answer: A
+Explanation: Accounts, settings, and instances live in the data and instance folders; back them up together.
+
+310. The launcher UI is behaving strangely and you want default settings. What should you do?
+A. Delete all game files
+B. Format the disk
+C. Disable antivirus
+D. Restore defaults in Settings or reset the config as documented
+Answer: D
+Explanation: Try restoring defaults first; back up accounts and instances before resetting.
+
+311. Where should you type your Microsoft password when the launcher asks you to sign in?
+A. A password box inside the launcher
+B. The official Microsoft sign-in page
+C. The forum's account settings page
+D. A config file in the launcher folder
+Answer: B
+Explanation: The launcher only opens the Microsoft sign-in page or a device-code flow; the password belongs on Microsoft's own domain.
+
+312. After signing in, the launcher says this account does not own Minecraft: Java Edition. What is the most likely cause?
+A. Java is not installed on the PC
+B. The wrong game version is selected
+C. The Microsoft account is not the one that bought Java Edition
+D. The disk is almost full
+Answer: C
+Explanation: Java Edition ownership is tied to the Microsoft account, so signing in with a different account reports no ownership.
+
+313. When creating an offline account in BlockBox, what rules must the username follow?
+A. 1–8 characters, Chinese only
+B. Any length, spaces allowed
+C. Must match the registered email
+D. 3–16 characters, letters, digits, and underscores only
+Answer: D
+Explanation: Java usernames are 3–16 characters of letters, digits, and underscores; offline accounts follow the same rule.
+
+314. Can the launcher store an official account and an offline account at the same time?
+A. Yes, add several accounts and switch at any time
+B. No, only one account can be stored
+C. Yes, but each switch needs a reinstall
+D. No, an offline account overwrites the official one
+Answer: A
+Explanation: The launcher manages multiple accounts; official and offline accounts stay separate and switching does not touch instances.
+
+315. An offline account wants a custom skin. What should you usually do?
+A. Bind the skin on the Microsoft website
+B. Put the skin file into the mods folder
+C. Change the game language and it applies
+D. Pick a local skin file for that account in the launcher
+Answer: D
+Explanation: Offline accounts have no official skin data, so point the launcher at a local 64×64 PNG.
+
+316. When installing a game version for the first time, what else does the launcher download besides the version files?
+A. Every mod and modpack
+B. Other players' worlds
+C. Libraries and assets
+D. Server maps
+Answer: C
+Explanation: The version jar alone is not enough: libraries and assets are needed too, and missing ones stop the game from starting.
+
+317. No Java is installed on the PC. Can BlockBox still run Java Edition?
+A. No, Java must be installed by hand first
+B. Yes, the launcher can download and install a suitable Java
+C. Yes, but only Bedrock Edition
+D. Yes, as long as antivirus is turned off
+Answer: B
+Explanation: BlockBox can fetch a Java runtime that matches the game version, or use one you installed yourself.
+
+318. Why is 32-bit Java not recommended for modpacks now?
+A. 32-bit Java cannot load mods
+B. 32-bit Java cannot go online
+C. 32-bit Java breaks skins
+D. It can use very little memory, and newer versions require 64-bit
+Answer: D
+Explanation: A 32-bit process can address only a small amount of memory, so big packs run out, and newer Minecraft no longer supports 32-bit.
+
+319. An older 1.16.5 modpack usually needs which Java version?
+A. Java 8
+B. Java 16
+C. Java 21
+D. Java 25
+Answer: A
+Explanation: 1.16.5 comes from the Java 8 era and most old packs are tuned for it; newer Java often breaks them.
+
+320. Java 8 and Java 21 are both installed. How can different instances use different ones?
+A. Delete one and keep the other
+B. Rename java.exe to minecraft.exe
+C. Set the Java per instance, or in the global settings
+D. The game picks one and it cannot be changed
+Answer: C
+Explanation: The launcher can point each instance at its own Java, so Java 8 for old versions and Java 21 for new ones can coexist.
+
+321. Choosing “Vanilla” when creating an instance means what?
+A. Forge is installed automatically
+B. Only Bedrock Edition can be played
+C. Resource packs cannot be used
+D. No loader is installed; the official game runs as-is
+Answer: D
+Explanation: A vanilla instance ships without Forge or Fabric, so mods need an instance with the matching loader.
+
+322. You want to play a 1.20.1 Forge pack and a 1.21 Fabric pack. What is best?
+A. Install everything into one instance
+B. Create two instances and install each one separately
+C. Install Forge, then Fabric into the same folder
+D. Rename both version jars to the same name
+Answer: B
+Explanation: Packs with different versions and loaders need separate instances, or their files overwrite each other.
+
+323. What happens when you delete an instance in the launcher?
+A. Only the desktop shortcut is removed
+B. Only mods are deleted and worlds stay
+C. Its worlds and configs are deleted with the folder
+D. Other instances are deleted too
+Answer: C
+Explanation: An instance is its own folder, so deleting it removes the worlds inside; export them first.
+
+324. After importing a modpack the game starts vanilla with no mods. What is the most likely cause?
+A. The pack went to the wrong instance, or its loader failed to install
+B. The PC is offline
+C. The skin file is corrupt
+D. The game language is wrong
+Answer: A
+Explanation: A pack must land in the right instance with its loader installed, or the game launches as vanilla.
+
+325. What are snapshot versions best used for?
+A. Long-term survival worlds
+B. Running a stable modded server
+C. Replacing release versions for daily play
+D. Trying new features and testing
+Answer: D
+Explanation: Snapshots are development builds with possible serious bugs and little mod support, so they are poor for long-term worlds.
+
+326. A mod download page shows tags like “1.20.1” and “Fabric”. What do they mean?
+A. The author's country
+B. The game version and loader the file works with
+C. The size of the file
+D. Points needed to download
+Answer: B
+Explanation: The tags say which game version and loader the build targets; installing a mismatched file usually crashes.
+
+327. Can a mod built for Forge go straight into a Fabric instance?
+A. Yes, all mods are interchangeable
+B. Yes, if you rename the extension
+C. No, their APIs differ; the author must publish a matching build
+D. Yes, but only on servers
+Answer: C
+Explanation: Forge and Fabric use completely different mod APIs, so mods are usually published separately for each.
+
+328. Can one instance have both Forge and NeoForge installed?
+A. Yes, the two loaders complement each other
+B. Yes, but only one mod
+C. Yes, after installing OptiFine
+D. No, an instance takes a single loader
+Answer: D
+Explanation: The loader defines how the game starts and an instance takes exactly one; NeoForge is a separate fork of Forge.
+
+329. How does Quilt relate to Fabric?
+A. Quilt is a Fabric fork and usually runs most Fabric mods
+B. Quilt is the old name of Forge
+C. Quilt only works on Bedrock Edition
+D. Quilt is a shader loader
+Answer: A
+Explanation: Quilt forked from Fabric and keeps much of that compatibility, though not every Fabric mod is guaranteed.
+
+330. OptiFine is installed and you also want to add Iris. What should you do?
+A. Install both; the effects stack
+B. Pick one; do not install both
+C. Install Iris, then overwrite OptiFine's files
+D. Put OptiFine into the shaderpacks folder
+Answer: B
+Explanation: OptiFine and Iris both patch rendering, so running both tends to conflict; choose one.
+
+331. After downloading from a mirror, how does the launcher confirm the files match the official ones?
+A. Comparing file sizes
+B. Comparing file names
+C. Verifying the files' hashes
+D. Recording the download time
+Answer: C
+Explanation: The launcher checks every file against the SHA-1 values in the official manifest and re-downloads mismatched or missing ones.
+
+332. The network dropped during a download. What should you do once it is back?
+A. Rename the temp file to the final name
+B. Delete the version folder and reinstall the OS
+C. Turn off verification to speed things up
+D. Download again and let the launcher verify and complete the files
+Answer: D
+Explanation: An interruption leaves partial files; a fresh download repairs them by hash, while renaming by hand often leaves corrupt files.
+
+333. Launching fails because a file in libraries is missing. What is the most effective fix?
+A. Have the launcher re-download or repair that version
+B. Create an empty file with the same name
+C. Switch to another PC
+D. Close the error and launch again
+Answer: A
+Explanation: Libraries come from the version manifest, so re-downloading or repairing is reliable; empty placeholders only fail sooner.
+
+334. Installing Forge fails with a “cannot write file” error. What is the most likely cause?
+A. Java is too old
+B. The skin size is wrong
+C. The game or launcher is still running, or the folder is not writable
+D. The memory setting is too high
+Answer: C
+Explanation: Locked files or missing permissions block writes; fully exit the game and launcher, then check permissions and antivirus.
+
+335. When using the Forge installer to add the loader to your own game, which option do you choose?
+A. Install server
+B. Install client
+C. Extract
+D. No choice needed; just close it
+Answer: B
+Explanation: You are installing for your own client, so Install client writes the loader into the game folder; Install server is for servers.
+
+336. Before installing a large modpack, what should you check first?
+A. The monitor resolution
+B. The keyboard layout
+C. The desktop wallpaper
+D. Whether the target disk has enough free space
+Answer: D
+Explanation: A pack grows a lot once extracted and needs room for runtime caches, so a full disk fails the install midway.
+
+337. The C: drive is nearly full and you want game data on another drive. What is correct?
+A. Point the game or instance folder at another disk in Settings and move existing instances there
+B. Drag files from Program Files to the desktop
+C. Zip the whole folder
+D. Delete other software on the system drive
+Answer: A
+Explanation: The launcher can use another data folder; move the old instances over as whole folders and the game reads from there.
+
+338. What is the difference between “JVM arguments” and “game arguments” in the launch settings?
+A. They are identical; either one works
+B. JVM arguments only affect skins
+C. Game arguments only affect download speed
+D. JVM arguments go to Java; game arguments go to Minecraft
+Answer: D
+Explanation: JVM arguments control Java behavior such as memory and GC; game arguments are options passed to the game, such as --username or --server.
+
+339. The game stops launching after you paste a long list of arguments from the internet. Why?
+A. Arguments that are too long stop working
+B. Pasting arguments logs the account out
+C. The arguments do not fit your Java version or hardware
+D. Arguments can only be entered once
+Answer: C
+Explanation: Other people's arguments assume a different Java and RAM setup, so copying them wholesale adds invalid or conflicting options; start clean and add them one by one.
+
+340. How do you make the game start with a specific window size?
+A. Set the window width and height in the game arguments
+B. Change the skin file's size
+C. Change the Java version
+D. Delete options.txt
+Answer: A
+Explanation: Window size is a game argument set with --width and --height; changing Java or skins does not affect it.
+
+341. A Fabric mod fails at launch, reporting that “Fabric API” is missing. What is the right fix?
+A. Rename the mod to fabric-api.jar
+B. Install the Fabric API build that matches the game version
+C. Switch the instance to Forge and launch
+D. Raise the memory limit in Settings
+Answer: B
+Explanation: Fabric API is a shared library many Fabric mods depend on and must match the game version; it is not a loader, so renaming files or switching loaders will not help.
+
+342. What does a “dependency” listed on a mod page usually mean?
+A. A mod installed only on the server
+B. The first mod in a modpack list
+C. Paid add-on content
+D. Another mod that must be installed for it to load
+Answer: D
+Explanation: A dependency supplies shared code or assets; without it the mod that needs it fails to load, and it often adds no gameplay itself.
+
+343. A mod lists one of its dependencies as “optional”. What does that mean?
+A. It still loads without it, just without that feature
+B. It must be installed or the game will not start
+C. Installing it will conflict with other mods
+D. Only the server needs it
+Answer: A
+Explanation: With an optional dependency missing the mod still loads, minus the linked feature; only a required one blocks loading.
+
+344. Two mods change the same mechanics and the game crashes. What is the most effective way to find the culprit?
+A. Delete every mod and play vanilla from then on
+B. Rename both mods and put them back together
+C. Enable one at a time, adding mods back until the crash returns
+D. Set render distance to the minimum
+Answer: C
+Explanation: Enabling mods one by one narrows the conflict to specific files; renaming does not change mod IDs, so the clash remains.
+
+345. The mods folder holds two versions (1.2 and 1.3) of the same mod. What usually happens?
+A. Only 1.3 loads automatically
+B. The loader reports duplicate mods and the game will not start
+C. The two versions merge into one
+D. Nothing changes
+Answer: B
+Explanation: Only one copy per mod ID can load; duplicates break startup, so keep a single version.
+
+346. You are downloading mods for a 1.20.1 Fabric instance. Which file should you pick?
+A. The newest file on the page, ignoring labels
+B. The 1.21 file, since it is more compatible
+C. The one marked 1.20.1 with a Fabric build
+D. Any file; the loader converts it
+Answer: C
+Explanation: A mod must match both the game version and the loader; a mismatch usually fails to load.
+
+347. What does “mc1.20.1” in a mod's file name usually mean?
+A. The mod's own version number
+B. The minimum Java version required
+C. The resource pack format number
+D. The Minecraft version the file targets
+Answer: D
+Explanation: File names usually combine the mod version with the targeted game version; the mod's own version is the leading number.
+
+348. Several resource packs are enabled and all of them change the same texture. Which one wins?
+A. The one lowest in the list
+B. The largest file
+C. The one highest in the list
+D. A random one each launch
+Answer: C
+Explanation: Java resource packs override from top to bottom, so the top pack wins; drag yours to the top to make it apply.
+
+349. A self-made resource pack does not show up after being placed in resourcepacks. What is most likely missing?
+A. The pack.mcmeta at the pack root
+B. A mods.toml in the instance root
+C. A shaderpacks folder
+D. server.properties
+Answer: A
+Explanation: The game identifies a pack and its format version through pack.mcmeta; without it the pack never appears.
+
+350. Frame rate drops sharply after enabling shaders. What should you adjust first?
+A. Max out render distance
+B. The shader's own quality options, such as shadow resolution and volumetric light
+C. Raise allocated memory to 16 GB
+D. Switch the game to 4K
+Answer: B
+Explanation: Shader cost comes mostly from shadows, reflections, and similar effects; more memory or higher resolution makes it worse.
+
+351. A shader pack errors out or renders black under Iris. What should you check first?
+A. Whether Forge is installed
+B. Whether you use an official account
+C. Whether a resource pack is enabled
+D. Whether the pack supports your Iris and game version
+Answer: D
+Explanation: Shader packs target specific loader and game versions; a mismatch often shows as errors or a black screen, and a matching build fixes it.
+
+352. A friend sends you a world folder. Where do you put it to keep playing in your instance?
+A. The instance's saves folder
+B. The instance's mods folder
+C. The instance's resourcepacks folder
+D. The launcher install directory
+Answer: A
+Explanation: A single-player world is just a folder under saves; drop it there and it shows up in the world list.
+
+353. You want to send your world to a friend. What should you send?
+A. Only level.dat
+B. Just a few screenshots
+C. The whole world folder, including level.dat and region
+D. Only options.txt
+Answer: C
+Explanation: Terrain, entities, and player data live in region, entities, and other files; level.dat alone gives an empty world.
+
+354. Where should a world backup go so it is least likely to be lost with the original?
+A. Inside the same world folder
+B. Another drive or cloud storage
+C. A desktop shortcut
+D. The instance's mods folder
+Answer: B
+Explanation: A backup on the same disk disappears with the original; another drive or the cloud actually protects it.
+
+355. A world is corrupted and you want to restore a backup. What is the right order?
+A. Close the game, then put the backup back into saves, replacing the broken folder
+B. Overwrite it while the game is running
+C. Extract the backup into mods
+D. Delete the whole instance
+Answer: A
+Explanation: The game locks world files while running, so overwriting can fail or corrupt them; quit first.
+
+356. What file extension does Litematica use for its own schematics?
+A. .mcmeta
+B. .dat
+C. .jar
+D. .litematic
+Answer: D
+Explanation: Litematica uses .litematic natively; other formats such as .schematic must be converted first.
+
+357. Your minimap mapped a server, but the data is gone on a new PC. Why?
+A. The server wipes players' map data regularly
+B. Minimap data is stored locally in the instance and is not synced by the server
+C. Map data lives only in the official account cloud
+D. Minimaps only save in single-player
+Answer: B
+Explanation: Exploration records live in map and waypoint files inside the instance, so copy them manually when changing PCs.
+
+358. To join a friend's Java server from the multiplayer menu, what do you mainly enter?
+A. Your friend's Microsoft email
+B. The server's world folder path
+C. The server address, written as address:port for a non-default port
+D. The server's resource pack name
+Answer: C
+Explanation: The client only needs the address; if the port is not 25565 it must be included or the connection fails.
+
+359. Connecting gives an “Outdated client” error. What should you do?
+A. Launch the same game version as the server
+B. Reinstall Java
+C. Turn off the firewall
+D. Switch to an offline account
+Answer: A
+Explanation: The message means the versions differ, e.g. a 1.20.1 server and a 1.21 client; modded servers also need a matching loader.
+
+360. After a room is published to the multiplayer lobby, what keeps it listed?
+A. A moderator pins it manually
+B. Keeping the game open keeps it forever
+C. Each join renews it
+D. The client sends periodic heartbeats
+Answer: D
+Explanation: The client sends a heartbeat about every 40 seconds; after two minutes without one the room is removed.
+
+361. A room hosted through a tunneling service such as SakuraFrp or OpenFrp is usually joined with what?
+A. A Terracotta invite code
+B. The host:port address given by the tunnel service
+C. The host's forum username
+D. The world seed
+Answer: B
+Explanation: Tunneling maps a local port to a public address that the host puts in the room; invite codes belong to Terracotta.
+
+362. The same account publishes a room to the lobby again. What happens?
+A. Several rooms stay listed at once
+B. The old room transfers to a friend
+C. Only the newest entry remains; the old one is replaced
+D. The two rooms merge into one
+Answer: C
+Explanation: Each account keeps one lobby room; publishing again updates it and refreshes the heartbeat.
+
+363. What information is required when publishing a room to the lobby?
+A. The host's real name
+B. The world seed
+C. An invite code or a connection address, at least one
+D. A world backup file
+Answer: C
+Explanation: Without a way in nobody can join, so at least one of invite code and address is required; the rest is optional.
+
+364. You and a friend share a LAN and want them to join your single-player world. What is simplest?
+A. Send them the world and play separately
+B. Open the world to LAN and have them join via your local address
+C. Let them sign in with your account
+D. Uploading to the lobby adds it to their list automatically
+Answer: B
+Explanation: Opening to LAN produces a local address and port that players on the same network can use.
+
+365. You and a friend play modded together; they connect but disconnect often and see broken blocks. What is the likeliest cause?
+A. The two monitors have different refresh rates
+B. One side enabled a resource pack
+C. One side plays with a controller
+D. The two sides run different mod lists or versions
+Answer: D
+Explanation: Client and server mods must match; missing or mismatched versions cause registry mismatches, seen as disconnects or broken blocks.
+
+366. What problem does NAT traversal mainly solve?
+A. Letting a machine without a public IP accept outside connections
+B. Raising the frame rate
+C. Backing up worlds automatically
+D. Speeding up mod downloads
+Answer: A
+Explanation: Home connections usually lack a public IP; a tunnel relays outside connections to the local port.
+
+367. You host through a tunnel and share the address in the lobby. What matters most?
+A. Map every port for convenience
+B. Disable the whitelist so strangers can join
+C. Map only the game port and keep remote-admin ports private
+D. Put the tunnel account password in the room description
+Answer: C
+Explanation: Every extra mapped port is another exposed service; mapping only the game port greatly reduces scanning and intrusion risk.
+
+368. What format are Bedrock Edition resource packs usually distributed in?
+A. .jar
+B. .mcpack, essentially a renamed zip
+C. .litematic
+D. .mcmeta
+Answer: B
+Explanation: Bedrock ships resource and behavior packs as .mcpack files that import on double-click; several packs can be bundled as .mcaddon.
+
+369. Can Java Edition Forge or Fabric mods be installed in Bedrock Edition directly?
+A. No, the two modding systems are incompatible
+B. Yes, after renaming .jar to .mcpack
+C. Yes, after installing Java for Bedrock
+D. Shaders no, mods yes
+Answer: A
+Explanation: Bedrock uses the official add-on system of resource and behavior packs, unrelated to Java loader mods.
+
+370. You copy a Bedrock world straight into a Java saves folder. What happens?
+A. It opens fine, just without shaders
+B. It loads as a resource pack
+C. It is upgraded automatically
+D. Java cannot read it; a conversion tool is needed
+Answer: D
+Explanation: The two world formats differ completely; third-party converters are required, and some content may still be lost.
+
+371. When posting a new thread, how many tags can one thread have at most?
+A. 2
+B. 3
+C. 4
+D. Unlimited
+Answer: C
+Explanation: A thread can carry at most 4 tags, which are used for filtering and search; extra ones are rejected.
+
+372. You edit a reply you already posted. What will other users see?
+A. The reply goes back to drafts
+B. The reply is marked as edited
+C. The floor number changes
+D. It shows only after moderator review
+Answer: B
+Explanation: An edited reply is tagged as edited so others know it changed; the floor number stays the same.
+
+373. What happens after you delete a thread you posted?
+A. The thread and all its replies disappear, and it cannot be undone
+B. Only the title is cleared; the replies stay
+C. It moves to a recycle bin and can be restored anytime
+D. It becomes private but others can still reply
+Answer: A
+Explanation: Deleting a thread hides every reply under it and cannot be undone, so be sure before you confirm.
+
+374. Which of these gives you an in-site notification?
+A. Someone views your thread
+B. Someone bookmarks your thread
+C. Someone shares your thread off-site
+D. Someone replies to your thread
+Answer: D
+Explanation: Replies to your thread or your reply, and @ mentions, create notifications; views and bookmarks do not.
+
+375. You want to alert a specific user in a post. What actually notifies them?
+A. Write their nickname in the text without @
+B. Put their email address in the post
+C. Type @ and pick the username from the autocomplete list
+D. DM the thread link to a moderator
+Answer: C
+Explanation: Typing @ opens username autocomplete, and only a picked name creates a real mention; plain text is not detected.
+
+376. What is the right way to add a friend on the forum?
+A. Search by username or nickname, send a request, and they accept
+B. Enter their password to add them directly
+C. You must be in the same multiplayer room
+D. It only works on the web page
+Answer: A
+Explanation: Friendship requires the other person's approval and works on both web and launcher; never hand over a password.
+
+377. How long after sending a DM can you still recall it?
+A. Within 1 minute
+B. Within 10 minutes
+C. Within 1 hour
+D. It cannot be recalled
+Answer: B
+Explanation: DMs can be recalled within 10 minutes of sending; after that the message stays in the conversation.
+
+378. Which statement about the “BlockBox Official Support” friend is correct?
+A. You must search for its username to add it
+B. You can ask once, then it is removed
+C. You can delete it and never add it back
+D. It is in your friend list by default and cannot be deleted
+Answer: D
+Explanation: Every player has an official support friend by default, pinned near the top, so you can just message it when stuck.
+
+379. On the forum, what do bookmarks and likes apply to?
+A. Bookmarks apply to a whole thread; likes apply to a single reply
+B. Bookmarks apply to a reply; likes apply to a thread
+C. Both apply only to threads
+D. Both apply only to replies
+Answer: A
+Explanation: Threads can be bookmarked and individual replies liked, listed separately under bookmarks and likes on your profile.
+
+380. Where can you find the threads you bookmarked?
+A. Only in the browser's bookmarks bar
+B. They are sent to you as DMs
+C. In the bookmark list on your profile
+D. Only by reopening the original thread
+Answer: C
+Explanation: Bookmarked threads land in the bookmark list on your profile and are visible in the launcher with the same account.
+
+381. What does forum search match in a thread?
+A. Only the title
+B. The title, body, and tags
+C. Only the body
+D. Only the tags
+Answer: B
+Explanation: Search covers the title, body, and tags together, and results show the matching snippet.
+
+382. What is the simplest way to see only threads with a certain tag?
+A. Page through the board by hand
+B. Search the tag in your DMs
+C. Ask a moderator to export the threads
+D. Click the tag in the thread list to filter
+Answer: D
+Explanation: Tags are clickable filters, so the list shows only threads carrying that tag.
+
+383. The host closes a multiplayer room. What happens to its entry in the lobby?
+A. It is removed from the lobby automatically
+B. It stays until someone deletes it manually
+C. It becomes “full” but is still joinable
+D. It disappears after 7 days
+Answer: A
+Explanation: Lobby rooms renew by heartbeat, so when the host closes the room it drops off the list instead of lingering.
+
+384. What does the launcher do when you click “one-click join” in the lobby?
+A. It only copies the invite code
+B. It picks a local instance matching the version, loader, and mods, then launches the game
+C. It creates an empty instance for you to set up
+D. It opens the web lobby so you can copy things yourself
+Answer: B
+Explanation: One-click join matches version, loader, and mods, then starts the game straight into the room.
+
+385. Which two feedback types can you choose in the launcher?
+A. Report and appeal
+B. Top-up and refund
+C. Bug report and feature suggestion
+D. Bug reports only
+Answer: C
+Explanation: Feedback comes as a bug report or a feature suggestion; bug reports require reproduction steps.
+
+386. Which statuses can a feedback entry have in the list?
+A. Unread, read, pinned
+B. New, hot, featured
+C. Pending review, published, deleted
+D. Open, handled, ignored
+Answer: D
+Explanation: Feedback is grouped as open, handled, or ignored, and staff replies update the entry.
+
+387. Can you submit feedback in the launcher without signing in to a forum account?
+A. No, you must sign in to a forum account first
+B. Yes, but only feature suggestions
+C. Yes, but you will never get a reply
+D. Yes, just fill in an email
+Answer: A
+Explanation: Feedback is tied to an account; after signing in, progress and staff replies appear in your feedback list.
+
+388. How do the AI assistant's Chat mode and Work mode differ?
+A. The two modes are identical
+B. Chat only talks; Work can call tools and actually perform actions
+C. Chat can edit files; Work only talks
+D. Work mode only supports English
+Answer: B
+Explanation: Work mode calls tools to list instances, detect Java, download resources, launch the game, and analyze crash logs.
+
+389. What does setting the AI assistant to “full access” mean?
+A. The AI can only read files, never modify them
+B. The AI asks you before every action
+C. The AI performs actions such as editing and deleting files without asking each time
+D. It only applies to Chat mode
+Answer: C
+Explanation: Full access skips per-action prompts and warns you when enabled; the default level is “confirm everything”.
+
+390. The AI assistant says “configure an API key in model settings first”. What should you do?
+A. Restart the computer and try again
+B. Switch to another instance
+C. Disable your antivirus
+D. Add a model in model selection and enter its API key
+Answer: D
+Explanation: The assistant needs a model service; add a model and its API key in model selection before chatting.
+
+391. What happens first when you add (import) a plugin in the launcher?
+A. It shows a trust prompt listing the requested permissions and risk level
+B. It installs silently with no prompt
+C. It only checks whether the file name is valid
+D. It grants every permission automatically
+Answer: A
+Explanation: Before import it shows the plugin's details, requested permissions, and risk, and high-risk ones need an extra checkbox.
+
+392. After you trust an imported plugin, does it ask again every time it runs an action?
+A. Yes, on every action
+B. No; trust is confirmed once, when the plugin is added
+C. Yes, once per day
+D. Yes, after every launcher restart
+Answer: B
+Explanation: Trust is confirmed only when adding the plugin, not on each run, so read the permissions carefully at import time.
+
+393. What does declaring the `system` permission in a plugin manifest mean?
+A. It can only change UI colors
+B. It can only read files in the launcher folder
+C. It can run system-level actions such as shutdown or services; it is high risk and needs an explicit checkbox
+D. It only affects network request speed
+Answer: C
+Explanation: `system` covers shutdown, services, and formatting; it is high risk and requires an explicit confirmation to import.
+
+394. In the skin editor, what mainly differs between the Classic and Slim models?
+A. The model height
+B. Only Slim supports an overlay
+C. Classic cannot use 64×64 skins
+D. Arm width: 4 pixels for Classic, 3 for Slim
+Answer: D
+Explanation: They differ in arm width — 4 pixels for Classic and 3 for Slim — while the other parts match.
+
+395. What happens if you open an old 64×32 skin in the skin editor?
+A. You can still edit it normally, but it has no overlay layer
+B. It refuses to open as an unsupported format
+C. It is converted to 64×64 with the overlay filled in
+D. It only works in Bedrock, not Java
+Answer: A
+Explanation: 64×32 is the legacy layout; it edits and previews fine but has no overlay, so hats and jackets cannot be drawn.
+
+396. You want to send the launcher's runtime log to staff. Where do you export it?
+A. Take an F3 screenshot in game
+B. Settings → Advanced → Runtime log → Export log
+C. Task Manager → Details
+D. Forum profile → My bookmarks
+Answer: B
+Explanation: The runtime log lives in Advanced settings; use “Export log” and attach the saved file to your report.
+
+397. What does enabling verbose debug logging in Advanced settings do?
+A. Turns logging off to save disk space
+B. Records crashes only, not normal launches
+C. Each line also records its source file and thread, so the log is fuller and larger
+D. Encrypts the log behind a password
+Answer: C
+Explanation: It adds source file and thread info for more precise diagnosis, at the cost of noticeably larger log files.
+
+398. In update settings, how do “early access” and “stable only” differ?
+A. There is no difference
+B. Early access receives stable releases only
+C. Stable only also receives test builds
+D. Early access gets test and stable builds; stable only gets stable builds
+Answer: D
+Explanation: Pick early access to get test builds alongside stable ones; pick stable only if you just want release builds.
+
+399. What can you do on the Settings → About page?
+A. See the current version and manually check for launcher and runtime dependency updates
+B. Adjust instance memory and JVM arguments
+C. Manage friends and DMs
+D. Edit skins and export PNGs
+Answer: A
+Explanation: The About page shows your version and offers launcher update checks, dependency update checks, and the feedback entry.
+
+400. After switching the language in Interface settings, what is needed for it to fully apply?
+A. Nothing; it applies immediately
+B. Restart the launcher
+C. Sign in to the forum again
+D. Reinstall the launcher
+Answer: B
+Explanation: The choice is saved first; after a restart the whole UI switches over, with no reinstall or re-login needed.

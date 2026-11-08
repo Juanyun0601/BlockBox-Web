@@ -9,9 +9,11 @@ forum.blockbox.cc.cd {
 		header_up X-Forwarded-Proto {scheme}
 	}
 
-	# 上传图片允许到 5 MB
+	# 请求体上限按最大的那一类上传给：图片 4 MB、插件包 20 MB，
+	# 最大的是后台上传的安装包（.env 的 MAX_RELEASE_FILE_BYTES，默认 300 MB），
+	# 所以这里给 320MB 留余量；只按图片的 5 MB 配会让传安装包报 413。
 	request_body {
-		max_size 5MB
+		max_size 320MB
 	}
 
 	header {

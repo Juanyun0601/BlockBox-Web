@@ -6,6 +6,9 @@ BB.boot(async () => {
     BB.api('/api/lobby/rooms?per_page=6').catch(() => ({ rooms: [] })),
   ]);
 
+  // 侧栏「每日签到」独立加载，论坛其它内容不受影响
+  mountHomeCheckin();
+
   const { boards, stats } = boardData;
 
   document.getElementById('statsRow').innerHTML = `
@@ -74,3 +77,91 @@ BB.boot(async () => {
         .join('')}<a class="lobby-mini-more" href="/lobby.html">查看全部 ${BB.num(lobbyTotal)} 个在线房间 →</a>`
     : `<div class="empty">现在还没有人开房间。<br><br>在方块盒子的联机页点「发布到联机大厅」，房间就会出现在这里。<br><br><a class="btn btn-ghost btn-sm" href="/lobby.html">去联机大厅看看</a></div>`;
 });
+
+// ------------------------------------------------------------ 每日签到
+
+const CHECKIN_CUBE =
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 2.6 21 7.4v9.2L12 21.4 3 16.6V7.4z"/><path d="m3 7.4 9 4.8 9-4.8"/><path d="M12 12.2v9.2"/></svg>';
+
+async function mountHomeCheckin() {
+  const host = document.getElementById('homeCheckin');
+  if (!host) return;
+  if (!BB.state.me) {
+    renderHomeCheckin(null);
+    return;
+  }
+  try {
+    renderHomeCheckin(await BB.api('/api/points'));
+  } catch {
+    host.innerHTML = '<p class="muted small">签到信息加载失败，刷新页面试试。</p>';
+  }
+}
+
+function renderHomeCheckin(state) {
+  const host = document.getElementById('homeCheckin');
+  if (!host) return;
+
+  if (!state) {
+    host.innerHTML = `
+      <p class="checkin-login">登录后每天签到领方块，连续 7 天奖励越领越多。</p>
+      <a class="btn btn-primary btn-sm" href="${BB.loginLink('/')}">登录签到</a>`;
+    return;
+  }
+
+  const checked = !!state.checked_in_today;
+  const reward = checked ? state.reward_next : state.reward_today;
+  const streakText = state.streak > 0 ? `连续签到 ${state.streak} 天` : '今天签到开始记录';
+  const rewardText = checked
+    ? `今天已领 ${state.reward_today} 方块，明天可得 ${reward} 方块`
+    : `今天签到可得 ${reward} 方块`;
+  const days = (state.week || [])
+    .map(
+      (day) =>
+        `<span class="checkin-day${day.checked ? ' checked' : ''}${day.current ? ' current' : ''}" title="第 ${day.day} 天 · ${day.reward} 方块">${day.day}</span>`,
+    )
+    .join('');
+  const gift = state.sunday && state.sunday.gift_pending > 0
+    ? '神秘礼包已到账，内容敬请期待'
+    : state.sunday && state.sunday.is_sunday
+      ? '今天是周日，签到送神秘礼包'
+      : '每周天签到都有神秘礼包';
+  const pendingGift = state.sunday && state.sunday.gift_pending > 0
+    ? `<span>待开启 ${state.sunday.gift_pending} 份</span>`
+    : '';
+
+  host.innerHTML = `
+    <div class="checkin-top">
+      <span class="checkin-balance">${CHECKIN_CUBE}<b>${BB.num(state.points)}</b><i>方块</i></span>
+      <span class="checkin-streak">${streakText}</span>
+    </div>
+    <div class="checkin-days" aria-label="7 天签到进度">${days}</div>
+    <div class="checkin-reward">${rewardText}</div>
+    <button class="btn btn-primary btn-sm checkin-btn" id="homeCheckinBtn"${checked ? ' disabled' : ''}>${checked ? '今天已签到' : `签到领 ${reward} 方块`}</button>
+    <p class="checkin-gift">🎁 <span>${gift}</span>${pendingGift}</p>`;
+
+  const button = host.querySelector('#homeCheckinBtn');
+  if (button && !checked) button.addEventListener('click', () => homeCheckin(button));
+}
+
+async function homeCheckin(button) {
+  button.disabled = true;
+  button.textContent = '签到中…';
+  try {
+    const result = await BB.api('/api/points/check-in', { method: 'POST', body: {} });
+    BB.setPoints(result.points);
+    renderHomeCheckin(result);
+    BB.toast(
+      result.sunday_gift
+        ? `+${result.awarded} 方块，神秘礼包已记下，敬请期待`
+        : `+${result.awarded} 方块，连续签到第 ${result.streak_day} 天`,
+      'ok',
+    );
+  } catch (error) {
+    if (error.code === 'already_checked_in') mountHomeCheckin();
+    else {
+      button.disabled = false;
+      button.textContent = '签到';
+    }
+    BB.toast(error.message || '签到失败，稍后再试', 'error');
+  }
+}

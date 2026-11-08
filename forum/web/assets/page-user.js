@@ -70,12 +70,14 @@ BB.boot(async () => {
         <div class="profile-stats">
           <span><b>${BB.num(user.thread_count)}</b> 主题</span>
           <span><b>${BB.num(user.post_count)}</b> 帖子</span>
+          <span><b>${BB.num(user.points || 0)}</b> 方块</span>
           <span>加入于 ${BB.datetime(user.created_at).slice(0, 10)}</span>
           <span>最近活跃 ${BB.time(user.last_seen_at) || '很久前'}</span>
         </div>
       </div>
       <div class="profile-actions">
         ${friendActionHtml}
+        ${isSelf ? '<a class="btn btn-ghost btn-sm" href="/points.html">我的方块</a>' : ''}
         ${isSelf ? '<a class="btn btn-ghost btn-sm" href="/gallery.html">我的相册</a>' : ''}
         ${isSelf ? '<button class="btn btn-ghost btn-sm" id="editProfileBtn">编辑资料</button>' : ''}
         ${isSelf && (user.role === 'admin' || user.role === 'moderator') ? '<a class="btn btn-ghost btn-sm" href="/admin.html">管理后台</a>' : ''}

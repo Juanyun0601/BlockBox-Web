@@ -21,8 +21,9 @@ export function peerOut(row) {
 }
 
 /**
- * 私信统一序列化：kind = text / image / withdrawn（撤回占位），带引用摘要。
+ * 私信统一序列化：kind = text / image / file / withdrawn（撤回占位），带引用摘要。
  * viewerId 决定 mine / reply_mine，用户页与后台客服工作台共用。
+ * 私信永不走 CDN：image / file_url 一律站内相对路径，客户端拼论坛自己的地址。
  */
 export function dmOut(row, viewerId) {
   let replyBody = '';
@@ -30,6 +31,7 @@ export function dmOut(row, viewerId) {
     const replyKind = row.reply_kind || 'text';
     if (replyKind === 'withdrawn') replyBody = '[已撤回]';
     else if (replyKind === 'image') replyBody = '[图片]';
+    else if (replyKind === 'file') replyBody = '[文件]';
     else replyBody = String(row.reply_body || '').slice(0, 60);
   }
   return {
@@ -37,6 +39,9 @@ export function dmOut(row, viewerId) {
     kind: row.kind || 'text',
     body: row.body,
     image: row.image || '',
+    file_url: row.file_url || '',
+    file_name: row.file_name || '',
+    file_size: row.file_size || 0,
     reply_to: row.reply_to || 0,
     reply_body: replyBody,
     reply_mine: row.reply_sender === viewerId ? 1 : 0,
@@ -48,7 +53,7 @@ export function dmOut(row, viewerId) {
 
 /** 带引用消息的 SELECT 片段（配合 dmOut 使用） */
 export const DM_SELECT = `
-  SELECT m.id, m.sender_id, m.body, m.kind, m.image, m.reply_to, m.read_at, m.created_at,
+  SELECT m.id, m.sender_id, m.body, m.kind, m.image, m.file_url, m.file_name, m.file_size, m.reply_to, m.read_at, m.created_at,
          q.body AS reply_body, q.kind AS reply_kind, q.sender_id AS reply_sender
     FROM direct_messages m
     LEFT JOIN direct_messages q ON q.id = m.reply_to`;

@@ -30,13 +30,16 @@ import registerSupport from './routes/support.js';
 import registerFeedback from './routes/feedback.js';
 import registerQuiz from './routes/quiz.js';
 import registerLobby from './routes/lobby.js';
+import registerGroups from './routes/groups.js';
 import registerHuman from './routes/human.js';
 import registerReleases from './routes/releases.js';
 import registerNotice from './routes/notice.js';
+import registerPoints from './routes/points.js';
 import { isVerified } from './lib/human-check.js';
 import { initAnnouncements } from './lib/announcements.js';
 import { handleReleaseFileRequest, initReleases } from './lib/releases.js';
 import { ensureAllSupportFriends, supportUserId } from './lib/support.js';
+import { ensureAllOfficialGroupMembers } from './lib/official-group.js';
 
 const VERSION = '0.1.0';
 
@@ -77,7 +80,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints]) {
   register(router);
 }
 
@@ -307,6 +310,8 @@ if (isMain) {
   bootstrapAdmin();
   // 官方客服账号 + 给所有老玩家补上「默认好友」关系
   ensureAllSupportFriends();
+  // 官方全用户群 + 给所有老玩家补上成员关系（依赖官方客服账号已存在）
+  ensureAllOfficialGroupMembers();
   initAnnouncements();
   initReleases();
   purgeExpiredSessions();

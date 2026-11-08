@@ -43,7 +43,7 @@ export function createSession(userId, { ip = '', ua = '' } = {}) {
 const SESSION_USER_SQL = `
   SELECT u.id, u.username, u.display_name, u.email, u.bio, u.avatar, u.cover, u.role, u.status,
          u.muted_until, u.mute_scope, u.mute_reason,
-         u.thread_count, u.post_count, u.quiz_passed_at, u.quiz_best_score,
+         u.thread_count, u.post_count, u.points, u.quiz_passed_at, u.quiz_best_score,
          u.email_verified_at, u.created_at, u.last_seen_at,
          s.expires_at
     FROM sessions s
@@ -127,10 +127,10 @@ export function assertCanPost(user, kind = 'thread') {
   return user;
 }
 
-/** 禁言能管到的内容：thread 发帖 / reply 回复 / dm 私信；all 表示全部都禁 */
-export const MUTE_SCOPES = ['thread', 'reply', 'dm'];
+/** 禁言能管到的内容：thread 发帖 / reply 回复 / dm 私信 / group 群聊；all 表示全部都禁 */
+export const MUTE_SCOPES = ['thread', 'reply', 'dm', 'group'];
 
-const MUTE_SCOPE_LABELS = { thread: '发帖', reply: '回复', dm: '私信' };
+const MUTE_SCOPE_LABELS = { thread: '发帖', reply: '回复', dm: '私信', group: '群聊' };
 
 /** 把数据库里的 mute_scope 拆成范围列表（空 / all 都表示全部） */
 export function muteScopeList(value) {
@@ -205,6 +205,7 @@ export function publicUser(row, { self = false } = {}) {
     muted_until: expired ? 0 : row.muted_until || 0,
     thread_count: row.thread_count || 0,
     post_count: row.post_count || 0,
+    points: row.points || 0,
     quiz_passed: !!row.quiz_passed_at,
     quiz_passed_at: row.quiz_passed_at || 0,
     quiz_best_score: row.quiz_best_score ?? -1,

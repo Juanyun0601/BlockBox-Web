@@ -706,6 +706,12 @@ BB.boot(async () => {
           return;
         }
         for (const file of files) {
+          // 先按服务端给的上限拦一道：省得把一个超大包整个传完才被拒
+          if (maxBytes && file.size > maxBytes) {
+            progress.textContent = '';
+            BB.toast(`${file.name}：超过单个文件上限 ${fileSizeText(maxBytes)}，请传网盘或 GitHub 后把链接填进发布表单`, 'error');
+            return;
+          }
           const platform = select.value || guessReleasePlatform(file.name) || 'other';
           try {
             await uploadReleaseFile(versionId, file, platform, progress);
@@ -761,7 +767,12 @@ BB.boot(async () => {
           if (progressHost) progressHost.textContent = `${file.name} 上传完成`;
           resolve(data);
         } else {
-          reject(new Error((data && data.error) || `上传失败（${xhr.status}）`));
+          // 413 一般是反向代理拦的（响应不是我们的 JSON），提示里直接说清楚往哪儿改
+          const reason =
+            xhr.status === 413
+              ? `文件太大，服务器拒绝接收（413）：反代允许的上传上限小于 ${fileSizeText(file.size)}，请把 Nginx 的 client_max_body_size / Caddy 的 max_size 调到 320m 以上，或改传网盘`
+              : (data && data.error) || `上传失败（${xhr.status}）`;
+          reject(new Error(reason));
         }
       };
       xhr.onerror = () => reject(new Error('网络错误，上传失败'));

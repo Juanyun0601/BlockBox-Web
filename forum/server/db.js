@@ -31,6 +31,12 @@ function ensureColumn(table, column, definition) {
 
 /** 结构升级（每次启动跑一遍，重复执行无副作用） */
 export function migrate() {
+  // 论坛积分「方块」：老库补一列，放在重建 users 表之前，重建时才能原样带走余额
+  const addedPoints = ensureColumn('users', 'points', 'INTEGER NOT NULL DEFAULT 0');
+  if (addedPoints) console.log('[论坛] 数据库已升级：users 增加 points（方块积分）');
+  const addedMakeupCards = ensureColumn('users', 'makeup_cards', 'INTEGER NOT NULL DEFAULT 0');
+  if (addedMakeupCards) console.log('[论坛] 数据库已升级：users 增加 makeup_cards（补签卡）');
+
   const addedParent = ensureColumn('posts', 'parent_post_id', 'INTEGER REFERENCES posts(id) ON DELETE SET NULL');
   if (addedParent) console.log('[论坛] 数据库已升级：posts 增加 parent_post_id（楼中楼）');
   db.exec('CREATE INDEX IF NOT EXISTS idx_posts_parent ON posts(parent_post_id)');
@@ -97,6 +103,8 @@ export function migrate() {
           muted_until   INTEGER NOT NULL DEFAULT 0,
           thread_count  INTEGER NOT NULL DEFAULT 0,
           post_count    INTEGER NOT NULL DEFAULT 0,
+          points        INTEGER NOT NULL DEFAULT 0,
+          makeup_cards  INTEGER NOT NULL DEFAULT 0,
           quiz_passed_at  INTEGER NOT NULL DEFAULT 0,
           quiz_best_score INTEGER NOT NULL DEFAULT -1,
           created_at    INTEGER NOT NULL,
@@ -106,10 +114,10 @@ export function migrate() {
       // 老库的列是 ALTER TABLE 追加的，物理顺序和新建表不同，必须按列名对齐拷贝
       db.exec(
         `INSERT INTO users_new (id, username, display_name, pass_hash, email, bio, avatar, cover,
-                                role, status, muted_until, thread_count, post_count,
+                                role, status, muted_until, thread_count, post_count, points, makeup_cards,
                                 quiz_passed_at, quiz_best_score, created_at, last_seen_at)
          SELECT id, username, display_name, pass_hash, email, bio, avatar, cover,
-                role, status, muted_until, thread_count, post_count,
+                role, status, muted_until, thread_count, post_count, points, makeup_cards,
                 quiz_passed_at, quiz_best_score, created_at, last_seen_at
            FROM users`,
       );
@@ -149,6 +157,16 @@ export function migrate() {
   // 举报分类（客户端举报页选的分类 slug；网页版旧数据为空）
   const addedReportCategory = ensureColumn('reports', 'category', "TEXT NOT NULL DEFAULT ''");
   if (addedReportCategory) console.log('[论坛] 数据库已升级：reports 增加 category（举报分类）');
+
+  // 聊天支持发文件：私信 / 群消息各加三个字段（站内文件路径、原始文件名、字节数）
+  for (const table of ['direct_messages', 'group_messages']) {
+    const addedFileUrl = ensureColumn(table, 'file_url', "TEXT NOT NULL DEFAULT ''");
+    const addedFileName = ensureColumn(table, 'file_name', "TEXT NOT NULL DEFAULT ''");
+    const addedFileSize = ensureColumn(table, 'file_size', 'INTEGER NOT NULL DEFAULT 0');
+    if (addedFileUrl || addedFileName || addedFileSize) {
+      console.log(`[论坛] 数据库已升级：${table} 增加 file_url / file_name / file_size（聊天文件）`);
+    }
+  }
 }
 
 migrate();

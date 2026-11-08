@@ -24,7 +24,7 @@
   ];
   var STORE_KEY = "bbf-lang";
   var DEFAULT_LANG = "zh-CN";
-  var DICT_VER = "20261113";
+  var DICT_VER = "20261118c";
   var SKIP_TAGS = { script: 1, style: 1, svg: 1, pre: 1, code: 1, kbd: 1, samp: 1, textarea: 1 };
   var ATTRS = ["placeholder", "title", "aria-label", "alt"];
   var SKIP_SELECTOR = [

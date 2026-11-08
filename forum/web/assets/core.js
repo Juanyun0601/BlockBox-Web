@@ -391,6 +391,9 @@
 
     const actions = me
       ? `<a class="btn btn-primary" href="/new.html">发帖</a>
+         <a class="nav-points" href="/points.html" title="我的方块：每天签到可以领" aria-label="我的方块">
+           ${CUBE_SVG}<span id="navPointsValue">${BB.num(me.points || 0)}</span>
+         </a>
          <a class="icon-btn nav-bell" href="/notifications.html" title="站内通知" aria-label="站内通知">
            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
            ${BB.state.unread > 0 ? `<span class="badge">${BB.state.unread > 99 ? '99+' : BB.state.unread}</span>` : ''}
@@ -1245,6 +1248,14 @@
   };
 
   BB.refreshNav = () => renderNav(document.body.dataset.page || '');
+
+  /** 签到 / 发奖励后同步顶栏的方块余额，不用整条导航重画 */
+  BB.setPoints = (points) => {
+    if (!BB.state.me) return;
+    BB.state.me.points = Number(points) || 0;
+    const value = document.getElementById('navPointsValue');
+    if (value) value.textContent = BB.num(BB.state.me.points);
+  };
 
   /** 只更新顶栏「好友」角标的数字，不重建整个导航（好友页轮询时用） */
   BB.syncFriendNav = () => {

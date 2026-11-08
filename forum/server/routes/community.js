@@ -3,6 +3,7 @@ import { badRequest, notFound, readRawBody } from '../lib/http.js';
 import { requireAdmin, requireUser } from '../lib/auth.js';
 import { enforce } from '../lib/rate-limit.js';
 import { saveImage, removeUpload } from '../lib/images.js';
+import { saveChatFile } from '../lib/chat-files.js';
 import { savePluginPackage } from '../lib/plugins.js';
 import { config } from '../config.js';
 import { markAllRead, markRead, notifyAdminMessage, unreadNotifications } from '../lib/notify.js';
@@ -43,6 +44,18 @@ export default function register(router) {
 
     const buffer = await readRawBody(ctx.req, config.maxPluginBytes);
     return savePluginPackage(buffer, { userId: user.id });
+  });
+
+  // ---------------- 聊天附件：私聊 / 群聊发文件 ----------------
+  // 客户端先 POST 这里拿到 { url, name, size }，再把 url 放进消息里发出去。
+
+  router.post('/api/upload/chat', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`upload-chat:${user.id}`, 20, 60 * 60 * 1000, '文件发得太频繁');
+
+    const name = decodeURIComponent((ctx.req.headers['x-file-name'] || '').toString());
+    const buffer = await readRawBody(ctx.req, config.maxChatFileBytes);
+    return saveChatFile(buffer, { userId: user.id, originalName: name });
   });
 
   // ---------------- 我的相册 ----------------

@@ -8,6 +8,7 @@ import { removeUpload, saveImage } from '../lib/images.js';
 import { unreadNotifications } from '../lib/notify.js';
 import { socialUnread } from '../lib/social.js';
 import { ensureSupportFriend, supportUserId } from '../lib/support.js';
+import { ensureOfficialGroupMember } from '../lib/official-group.js';
 import {
   clearSessionCookie,
   createSession,
@@ -58,8 +59,9 @@ export default function register(router) {
       );
 
     const userId = Number(result.lastInsertRowid);
-    // 新玩家默认就有一位好友：官方客服
+    // 新玩家默认就有一位好友：官方客服；同时默认进官方全用户群
     ensureSupportFriend(userId);
+    ensureOfficialGroupMember(userId);
     const { token, expiresAt } = createSession(userId, { ip: ctx.ip, ua: ctx.userAgent });
     sessionCookie(ctx.res, token, expiresAt);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);

@@ -13,8 +13,18 @@ import {
   peerOut,
   unreadTotal,
 } from '../lib/social.js';
+import { GM_SELECT, groupMessageOut, isGroupMember, listGroups } from '../lib/groups.js';
 import { ensureSupportFriend, isSupportUser } from '../lib/support.js';
+import { ensureOfficialGroupMember } from '../lib/official-group.js';
 import { int, text, username } from '../lib/validate.js';
+import {
+  chatFileDisplayName,
+  consumeQuota,
+  findOwnChatFile,
+  sanitizeFileName,
+  weeklyUsage,
+} from '../lib/chat-files.js';
+import { config } from '../config.js';
 
 export default function register(router) {
   // ---------------- 好友 ----------------
@@ -24,10 +34,13 @@ export default function register(router) {
     const user = requireUser(ctx.user);
     // 官方客服是默认好友：老账号补一次关系，玩家删过也会自动恢复
     ensureSupportFriend(user.id);
+    // 官方全用户群是默认群聊：不在群里（或群重建过）就自动回来
+    ensureOfficialGroupMember(user.id);
     return {
       friends: listFriends(user.id),
       incoming: listRequests(user.id, 'incoming'),
       outgoing: listRequests(user.id, 'outgoing'),
+      groups: listGroups(user.id),
       total_unread: unreadTotal(user.id),
     };
   });
@@ -126,6 +139,8 @@ export default function register(router) {
     enforce(`dm-poll:${user.id}`, 240, 60 * 1000, '刷新太频繁');
     const peerId = int(ctx.url.searchParams.get('peer_id'), { field: 'peer_id', fallback: 0 });
     const afterId = int(ctx.url.searchParams.get('after_id'), { field: 'after_id', fallback: 0 });
+    const groupId = int(ctx.url.searchParams.get('group_id'), { field: 'group_id', fallback: 0 });
+    const groupAfterId = int(ctx.url.searchParams.get('group_after_id'), { field: 'group_after_id', fallback: 0 });
 
     let messages = [];
     if (peerId > 0 && afterId >= 0 && acceptedBetween(user.id, peerId)) {
@@ -140,11 +155,22 @@ export default function register(router) {
       messages = rows.map((row) => dmOut(row, user.id));
     }
 
+    // 当前打开的群会话的新消息（是成员才拉；群解散后 isGroupMember 自然为 false）
+    let groupMessages = [];
+    if (groupId > 0 && groupAfterId >= 0 && isGroupMember(groupId, user.id)) {
+      const rows = db
+        .prepare(`${GM_SELECT} WHERE m.group_id = ? AND m.id > ? ORDER BY m.id ASC LIMIT 50`)
+        .all(groupId, groupAfterId);
+      groupMessages = rows.map((row) => groupMessageOut(row, user.id));
+    }
+
     return {
       total_unread: unreadTotal(user.id),
       incoming_requests: incomingRequestCount(user.id),
       friends: listFriends(user.id),
+      groups: listGroups(user.id),
       messages,
+      group_messages: groupMessages,
     };
   });
 
@@ -199,15 +225,28 @@ export default function register(router) {
     requireFriend(user, peerId);
 
     const body = await ctx.json();
-    const kind = body.kind === 'image' ? 'image' : 'text';
+    const kind = body.kind === 'image' ? 'image' : body.kind === 'file' ? 'file' : 'text';
     let content = '';
     let image = '';
+    let fileUrl = '';
+    let fileName = '';
+    let fileSize = 0;
     if (kind === 'image') {
       // 图片走 /api/upload 拿到的站内地址
       image = String(body.image || '');
       if (!image.startsWith('/uploads/') || image.length > 200 || image.includes('..')) {
         throw badRequest('图片地址无效');
       }
+      if (body.body !== undefined && body.body !== null && body.body !== '') {
+        content = text(body.body, { field: '附言', max: 200 });
+      }
+    } else if (kind === 'file') {
+      // 文件走 /api/upload/chat 拿到的站内地址；大小以服务端登记的为准
+      const uploaded = findOwnChatFile(String(body.file_url || ''), user.id);
+      if (!uploaded) throw badRequest('文件还没上传成功，请重新发送');
+      fileUrl = uploaded.url;
+      fileSize = uploaded.size;
+      fileName = sanitizeFileName(body.file_name) || chatFileDisplayName(uploaded) || '文件';
       if (body.body !== undefined && body.body !== null && body.body !== '') {
         content = text(body.body, { field: '附言', max: 200 });
       }
@@ -230,10 +269,10 @@ export default function register(router) {
     const timestamp = now();
     const result = db
       .prepare(
-        `INSERT INTO direct_messages (sender_id, peer_id, body, kind, image, reply_to, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO direct_messages (sender_id, peer_id, body, kind, image, file_url, file_name, file_size, reply_to, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(user.id, peerId, content, kind, image, replyTo, timestamp);
+      .run(user.id, peerId, content, kind, image, fileUrl, fileName, fileSize, replyTo, timestamp);
     const row = db.prepare(`${DM_SELECT} WHERE m.id = ?`).get(Number(result.lastInsertRowid));
     return { message: dmOut(row, user.id) };
   });
@@ -247,7 +286,37 @@ export default function register(router) {
     if (row.sender_id !== user.id) throw forbidden('只能撤回自己发的消息');
     if (row.kind === 'withdrawn') throw badRequest('这条消息已经撤回过了');
     if (now() - row.created_at > 10 * 60) throw badRequest('超过 10 分钟的消息不能撤回了');
-    db.prepare(`UPDATE direct_messages SET kind = 'withdrawn', body = '', image = '', reply_to = 0 WHERE id = ?`).run(id);
+    db.prepare(
+      `UPDATE direct_messages SET kind = 'withdrawn', body = '', image = '', file_url = '', file_name = '', file_size = 0, reply_to = 0 WHERE id = ?`,
+    ).run(id);
     return { ok: true };
+  });
+
+  // ---------------- 聊天文件提取与流量 ----------------
+
+  /**
+   * 提取（下载）一条私聊文件：校验会话双方 → 扣本周流量（下载自己发的不扣）→
+   * 返回站内下载地址。私聊永远不走 CDN，客户端直接向论坛服务器取文件。
+   */
+  router.post('/api/messages/file/:id/extract', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const id = int(ctx.params.id, { field: '消息' });
+    const row = db.prepare('SELECT * FROM direct_messages WHERE id = ?').get(id);
+    if (!row || row.kind !== 'file' || !row.file_url) throw notFound('文件不存在或已被撤回');
+    if (row.sender_id !== user.id && row.peer_id !== user.id) throw forbidden('只能提取你们会话里的文件');
+
+    const result = consumeQuota(user.id, row.file_size, { isOwn: row.sender_id === user.id });
+    if (!result.ok) {
+      throw forbidden('本周 30MB 下载流量已用完，下周一自动重置', 'chat_quota_exhausted');
+    }
+    return { url: row.file_url, name: row.file_name, size: row.file_size, remaining: result.remaining };
+  });
+
+  /** 我本周的聊天文件下载流量（客户端在界面上提示剩余额度用） */
+  router.get('/api/chat/quota', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const used = weeklyUsage(user.id);
+    const limit = config.chatWeeklyQuotaBytes;
+    return { used, limit, remaining: Math.max(0, limit - used) };
   });
 }

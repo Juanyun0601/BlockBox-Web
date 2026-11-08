@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的方块 · 方块盒子论坛</title>
+<meta name="description" content="方块盒子论坛积分「方块」：每日签到领取，连续签到奖励更多，每周天还有神秘礼包。">
+<link rel="icon" href="/assets/img/icon.ico">
+<script src="/assets/i18n.js?v=20261118c"></script>
+<link rel="stylesheet" href="/assets/forum.css?v=20261118d">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body data-page="points">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap points-wrap">
+    <section class="card points-hero">
+      <div class="points-hero-main">
+        <span class="points-eyebrow">我的方块</span>
+        <div class="points-balance"><b id="pointsBalance">0</b><span>方块</span></div>
+        <div class="points-sub" id="pointsStreak">正在加载签到进度…</div>
+        <div class="points-actions">
+          <button class="btn btn-primary" id="checkinBtn" disabled>签到</button>
+          <a class="btn btn-ghost" id="profileLink" href="/user.html">个人主页</a>
+        </div>
+      </div>
+      <div class="points-hero-side">
+        <div class="points-gift-card" id="pointsGiftCard">
+          <span class="points-gift-icon">🎁</span>
+          <div>
+            <b>每周天神秘礼包</b>
+            <p>每周天签到都会收到一份神秘礼包，内容正在准备中。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card points-week-card">
+      <div class="points-card-head">
+        <h3>7 天签到</h3>
+        <span class="small muted" id="pointsWeekHint"></span>
+      </div>
+      <div class="checkin-week" id="checkinWeek">
+        <div class="skeleton">正在加载签到进度…</div>
+      </div>
+      <p class="points-rule">第 1～7 天分别领 10 / 12 / 14 / 16 / 18 / 20 / 20 方块，第 8 天起每天 20 方块；断签会从第 1 天重新开始。</p>
+    </section>
+
+    <section class="card points-makeup-card">
+      <div class="points-card-head">
+        <h3>补签卡</h3>
+        <span class="small muted" id="makeupHint"></span>
+      </div>
+      <div class="points-makeup-body">
+        <div class="points-makeup-count">
+          <span class="points-makeup-icon">🎫</span>
+          <div class="points-makeup-number"><b id="makeupCount">0</b><span>张</span></div>
+          <p id="makeupDesc">昨天漏签时用一张补上，连续签到接着算；每张 20 方块。</p>
+        </div>
+        <div class="points-makeup-actions">
+          <button class="btn btn-ghost" id="buyMakeupBtn" type="button">购买补签卡（20 方块）</button>
+          <button class="btn btn-primary" id="useMakeupBtn" type="button">补签昨天</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card points-history-card">
+      <div class="points-card-head">
+        <h3>签到记录</h3>
+        <span class="small muted" id="pointsHistoryHint"></span>
+      </div>
+      <div id="pointsHistory">
+        <div class="skeleton">正在加载…</div>
+      </div>
+    </section>
+
+    <p class="points-foot muted small">方块会记在论坛账号上，用启动器登录同一个账号也能看到；以后会开放更多获取和消费方式。</p>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261118b"></script>
+<script src="/assets/page-points.js?v=20261118c"></script>
+</body>
+</html>

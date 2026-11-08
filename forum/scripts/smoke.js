@@ -835,7 +835,86 @@ async function main() {
   await request('POST', '/api/auth/login', { username: '路人甲', password: 'test123456' });
   const announceForbidden = await request('POST', '/api/admin/announcements', { text: '普通用户公告' });
   check('普通用户不能发布公告', announceForbidden.status === 403, announceForbidden.text);
+
+  // ---------- 好友与群聊 ----------
+
   await request('POST', '/api/auth/login', { username: '测试管理员', password: 'test123456' });
+  const friendReq = await request('POST', '/api/friends/requests', { username: '普通玩家' });
+  check('发好友申请', friendReq.json?.status === 'pending', friendReq.text);
+
+  await request('POST', '/api/auth/login', { username: '普通玩家', password: 'test123456' });
+  const friendSnapshot = await request('GET', '/api/friends');
+  const incomingId = friendSnapshot.json?.incoming?.[0]?.id;
+  check('好友页能看到收到的申请', friendSnapshot.json?.incoming?.length >= 1 && incomingId > 0, friendSnapshot.text);
+  const acceptReq = await request('POST', `/api/friends/requests/${incomingId}/accept`);
+  check('通过好友申请', acceptReq.json?.status === 'friends', acceptReq.text);
+  const playerFriends = await request('GET', '/api/friends');
+  check(
+    '成为好友后列表里有对方和官方客服，群字段就绪',
+    (playerFriends.json?.friends || []).some((item) => item.official) &&
+      (playerFriends.json?.friends || []).length >= 2 &&
+      Array.isArray(playerFriends.json?.groups),
+    playerFriends.text,
+  );
+
+  // 建群：不是好友的路人甲会被自动跳过
+  await request('POST', '/api/auth/login', { username: '测试管理员', password: 'test123456' });
+  const createGroup = await request('POST', '/api/groups', {
+    name: '冒烟测试群',
+    member_ids: [second?.json?.user?.id, thirdId],
+  });
+  const groupId = createGroup.json?.group?.id;
+  check(
+    '建群成功且只拉了好友进群',
+    createGroup.status === 200 && groupId > 0 && createGroup.json?.group?.member_count === 2,
+    createGroup.text,
+  );
+
+  const groupOpen = await request('GET', `/api/groups/${groupId}/messages`);
+  check(
+    '打开群会话带成员列表和群主标记',
+    groupOpen.json?.members?.length === 2 && groupOpen.json?.members?.some((item) => item.owner),
+    groupOpen.text,
+  );
+  const groupMsg = await request('POST', `/api/groups/${groupId}/messages`, { body: '大家晚上好' });
+  check('发群消息', groupMsg.json?.message?.id > 0 && groupMsg.json?.message?.mine === true, groupMsg.text);
+  const groupReply = await request('POST', `/api/groups/${groupId}/messages`, {
+    body: '引用一下',
+    reply_to: groupMsg.json?.message?.id,
+  });
+  check('群消息带回复引用摘要', groupReply.json?.message?.reply_body === '大家晚上好', groupReply.text);
+  check('群消息带发送者信息', groupReply.json?.message?.sender?.id === adminId, groupReply.text);
+
+  await request('POST', '/api/auth/login', { username: '路人甲', password: 'test123456' });
+  const groupDenied = await request('GET', `/api/groups/${groupId}/messages`);
+  check('不是成员看不到群会话', groupDenied.status === 403, groupDenied.text);
+  const strangerGroup = await request('POST', '/api/groups', { name: '拉不进来', member_ids: [adminId] });
+  check('邀请的人里没有好友时建群被拒', strangerGroup.status === 400, strangerGroup.text);
+
+  await request('POST', '/api/auth/login', { username: '普通玩家', password: 'test123456' });
+  const groupPoll = await request('GET', `/api/messages/poll?group_id=${groupId}&group_after_id=0`);
+  check(
+    '轮询能看到群列表、未读与新群消息',
+    (groupPoll.json?.groups || []).some((item) => item.id === groupId && item.unread >= 2) &&
+      (groupPoll.json?.group_messages || []).length >= 2,
+    groupPoll.text,
+  );
+  const groupOpenPlayer = await request('GET', `/api/groups/${groupId}/messages`);
+  check('成员打开群会话后未读清零', groupOpenPlayer.json?.group?.unread === 0, groupOpenPlayer.text);
+  const playerGroupMsg = await request('POST', `/api/groups/${groupId}/messages`, { body: '晚上好啊' });
+  check('普通成员发群消息', playerGroupMsg.status === 200, playerGroupMsg.text);
+  const leaveGroup = await request('DELETE', `/api/groups/${groupId}`);
+  check('普通成员退出群聊', leaveGroup.json?.dissolved === false, leaveGroup.text);
+  const groupAfterLeave = await request('GET', `/api/groups/${groupId}/messages`);
+  check('退出后看不到群会话', groupAfterLeave.status === 403, groupAfterLeave.text);
+
+  await request('POST', '/api/auth/login', { username: '测试管理员', password: 'test123456' });
+  const withdrawGroupMsg = await request('DELETE', `/api/group-messages/${groupMsg.json?.message?.id}`);
+  check('撤回自己的群消息', withdrawGroupMsg.status === 200, withdrawGroupMsg.text);
+  const dissolveGroup = await request('DELETE', `/api/groups/${groupId}`);
+  check('群主退出即解散群聊', dissolveGroup.json?.dissolved === true, dissolveGroup.text);
+  const groupGone = await request('GET', `/api/groups/${groupId}/messages`);
+  check('解散后群会话返回 404', groupGone.status === 404, groupGone.text);
 
   // ---------- 访问统计 ----------
 

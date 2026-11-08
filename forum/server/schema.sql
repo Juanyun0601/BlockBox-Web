@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS users (
   mute_by       TEXT    NOT NULL DEFAULT '',
   thread_count  INTEGER NOT NULL DEFAULT 0,
   post_count    INTEGER NOT NULL DEFAULT 0,
+  points        INTEGER NOT NULL DEFAULT 0,   -- 论坛积分「方块」，目前来自每日签到
+  makeup_cards  INTEGER NOT NULL DEFAULT 0,   -- 补签卡数量，可补昨天漏签
   quiz_passed_at  INTEGER NOT NULL DEFAULT 0,
   quiz_best_score INTEGER NOT NULL DEFAULT -1,
   email_verified_at INTEGER NOT NULL DEFAULT 0,
@@ -45,6 +47,49 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+-- 每日签到（论坛积分「方块」）----------------------------------------
+-- day 是论坛时区（Asia/Shanghai）的日期 YYYY-MM-DD，一人一天只有一条；
+-- streak_day 是连续签到的第几天（1 起），奖励看第几天发，第 8 天起固定 20。
+CREATE TABLE IF NOT EXISTS point_checkins (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day         TEXT    NOT NULL,
+  streak_day  INTEGER NOT NULL DEFAULT 1,
+  points      INTEGER NOT NULL DEFAULT 0,
+  sunday_gift INTEGER NOT NULL DEFAULT 0,   -- 当天是周日并领到了神秘礼包
+  created_at  INTEGER NOT NULL,
+  UNIQUE (user_id, day)
+);
+
+CREATE INDEX IF NOT EXISTS idx_point_checkins_user ON point_checkins(user_id, day DESC);
+
+-- 方块收支流水：目前只有签到，后面加兑换 / 神秘礼包也记这里
+CREATE TABLE IF NOT EXISTS point_transactions (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount     INTEGER NOT NULL,
+  kind       TEXT    NOT NULL DEFAULT 'checkin' CHECK (kind IN ('checkin', 'gift', 'admin', 'spend')),
+  note       TEXT    NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_point_transactions_user ON point_transactions(user_id, created_at DESC);
+
+-- 每周天的神秘礼包（占位：先记下「本周已领」，内容以后再补发放逻辑）
+CREATE TABLE IF NOT EXISTS point_gifts (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week       TEXT    NOT NULL,              -- 当周周日的日期 YYYY-MM-DD
+  status     TEXT    NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'claimed')),
+  prize      TEXT    NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  claimed_at INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (user_id, week)
+);
+
+CREATE INDEX IF NOT EXISTS idx_point_gifts_user ON point_gifts(user_id, status);
+
 
 -- 邮箱验证码（一封邮箱同时只有一份有效码，重发即覆盖；只存哈希不存明文）
 CREATE TABLE IF NOT EXISTS email_codes (
@@ -263,6 +308,9 @@ CREATE TABLE IF NOT EXISTS direct_messages (
   body       TEXT    NOT NULL,
   kind       TEXT    NOT NULL DEFAULT 'text',
   image      TEXT    NOT NULL DEFAULT '',
+  file_url   TEXT    NOT NULL DEFAULT '',
+  file_name  TEXT    NOT NULL DEFAULT '',
+  file_size  INTEGER NOT NULL DEFAULT 0,
   reply_to   INTEGER NOT NULL DEFAULT 0,
   read_at    INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
@@ -270,6 +318,50 @@ CREATE TABLE IF NOT EXISTS direct_messages (
 
 CREATE INDEX IF NOT EXISTS idx_dm_pair ON direct_messages(sender_id, peer_id, id);
 CREATE INDEX IF NOT EXISTS idx_dm_inbox ON direct_messages(peer_id, read_at);
+
+-- 群聊（基础版：建群 / 群消息 / 退群，没有群头像与进群申请）--------------
+CREATE TABLE IF NOT EXISTS chat_groups (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT    NOT NULL,
+  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL
+);
+
+-- 成员已读指针：last_read_id 之前的群消息视为已读
+CREATE TABLE IF NOT EXISTS chat_group_members (
+  group_id     INTEGER NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  last_read_id INTEGER NOT NULL DEFAULT 0,
+  joined_at    INTEGER NOT NULL,
+  PRIMARY KEY (group_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_group_members_user ON chat_group_members(user_id);
+
+-- 群消息（无全局已读：未读数按各成员的 last_read_id 算）
+CREATE TABLE IF NOT EXISTS group_messages (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id   INTEGER NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
+  sender_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body       TEXT    NOT NULL,
+  kind       TEXT    NOT NULL DEFAULT 'text',
+  image      TEXT    NOT NULL DEFAULT '',
+  file_url   TEXT    NOT NULL DEFAULT '',
+  file_name  TEXT    NOT NULL DEFAULT '',
+  file_size  INTEGER NOT NULL DEFAULT 0,
+  reply_to   INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_gm_group ON group_messages(group_id, id);
+
+-- 聊天文件每周下载提取流量（week_start = 周一 0 点的 unix 秒）----------
+CREATE TABLE IF NOT EXISTS chat_download_usage (
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week_start INTEGER NOT NULL,
+  bytes      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, week_start)
+);
 
 -- 用户反馈（官网/论坛页脚和启动器提交的问题反馈，管理后台处理）-----------
 CREATE TABLE IF NOT EXISTS feedbacks (
