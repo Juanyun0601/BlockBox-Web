@@ -1,0 +1,7 @@
+User-agent: *
+# 论坛的页面要先过滑块人机验证、正文又是由前端脚本渲染的，
+# 搜索引擎爬进来只能拿到验证页，暂时整站禁止抓取，避免这些空页面占收录。
+# 将来若改成服务端渲染，把下面这行删掉即可；官网的收录在 https://mcblockbox.top/sitemap.xml。
+Disallow: /
+
+Sitemap: https://mcblockbox.top/sitemap.xml

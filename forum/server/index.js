@@ -239,10 +239,12 @@ async function handle(req, res) {
   }
 
   // 人机验证：页面先过验证再给看，静态资源不拦，免得验证页自己也打不开
+  // （robots.txt 也不拦：爬虫拿不到它就没法知道论坛暂时不参与收录）
   if (
     config.humanCheck.enabled &&
     !pathname.startsWith('/assets/') &&
     pathname !== '/verify.html' &&
+    pathname !== '/robots.txt' &&
     !isVerified(cookies, req.headers)
   ) {
     // 带上 ?lang=：从外文分享链接进来的访客，验证页也要保持同一语言
