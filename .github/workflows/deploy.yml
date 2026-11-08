@@ -59,10 +59,16 @@ jobs:
         run: |
           ok=1
           for i in 1 2 3 4 5; do
-            code1=$(curl -s -o /dev/null -w '%{http_code}' https://mcblockbox.top/)
-            code2=$(curl -s -o /dev/null -w '%{http_code}' https://forum.mcblockbox.top/)
+            # 失败时把 curl 的退出码一起记下来：6=域名解析不了，7=连不上，28=超时，35=SSL 握手失败
+            code1=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://mcblockbox.top/ 2>/dev/null) || code1="ERR$?"
+            code2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://forum.mcblockbox.top/ 2>/dev/null) || code2="ERR$?"
             echo "官网:$code1 论坛:$code2 (第${i}次)"
             if [ "$code1" = 200 ] && [ "$code2" = 200 ]; then ok=0; break; fi
             sleep 5
           done
+          if [ $ok != 0 ]; then
+            # 用注解把结果贴到 Actions 的 Annotations 面板，否则日志要登录才能看
+            echo "::warning::部署后外部访问校验：官网=$code1 论坛=$code2，解析=$(getent hosts mcblockbox.top | tr '\n' ' ')"
+            echo "::error::部署文件已同步完成，但从 GitHub 机房访问站点没有返回 200"
+          fi
           test $ok = 0
