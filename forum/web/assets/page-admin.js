@@ -23,6 +23,7 @@ BB.boot(async () => {
   // ------- 各子页面各自的数据，互不干扰 -------
   let overview = null; // /api/admin/overview：统计卡片 + 板块 + 最近主题
   let reports = null;
+  let bannedWordData = null; // /api/admin/banned-words：违禁词 + 违禁原因 + 封禁时长
   let tagData = null;
   let userQuery = '';
   let adminUsers = [];
@@ -163,7 +164,7 @@ BB.boot(async () => {
       ['🚀', '版本发布', '发新版本、传安装包、写更新日志', '/admin-releases.html', ''],
       ['📈', '访问数据', '浏览趋势、访客与热门页面', '/admin-visits.html', ''],
       ['🗃️', '内容管理', '板块、标签与最近主题', '/admin-content.html', ''],
-      ['🚩', '举报审核', '处理玩家举报的帖子', '/admin-reports.html', reportBadge],
+      ['🚩', '举报审核', '处理玩家举报的帖子、维护违禁词', '/admin-reports.html', reportBadge],
       ['📝', '反馈管理', '查看和回复用户反馈', '/admin-feedback.html', feedbackBadge],
       ['🎧', '客服消息', '回复玩家给官方客服的提问', '/admin-support.html', supportBadge],
       ['👥', '用户管理', '搜索用户、禁言、授予管理员', '/admin-users.html', ''],
@@ -1222,11 +1223,44 @@ BB.boot(async () => {
   // ---------------- 举报审核 ----------------
 
   async function bootReports() {
-    reports = await BB.api('/api/admin/reports?status=open');
+    [reports, bannedWordData] = await Promise.all([
+      BB.api('/api/admin/reports?status=open'),
+      // 违禁词单独容错：老服务端没有这个接口时给提示，不影响审核队列
+      BB.api('/api/admin/banned-words').catch(() => null),
+    ]);
 
     host.innerHTML = `
       <section class="card admin-section">
-        <h2>审核队列 ${reports.counts.open > 0 ? `<span class="chip chip-danger">待处理 ${reports.counts.open}</span>` : '<span class="chip chip-grey">没有待处理的举报</span>'}</h2>
+        <div class="visit-head">
+          <h2>违禁词设置</h2>
+          <span class="small muted" id="badWordState" style="margin-left: auto"></span>
+        </div>
+        <p class="small muted" style="margin-bottom: 12px">
+          命中的内容会被直接拦下，发布人按这里设的时长自动禁言（禁止发帖、回复、私信、群聊），到时间自动恢复；只检查发帖和回复，含修改后的内容。
+        </p>
+        <div class="badword-form">
+          <input class="input" id="badWordInput" maxlength="30" placeholder="违禁词（如：代练广告）" autocomplete="off">
+          <input class="input" id="badWordReason" maxlength="100" placeholder="违禁原因（会显示给被禁言的人）" autocomplete="off">
+          <select class="select" id="badWordHours" aria-label="封禁时长">
+            ${MUTE_HOURS.map(
+              ([value, label]) => `<option value="${value}"${value === 24 ? ' selected' : ''}>${label}</option>`,
+            ).join('')}
+          </select>
+          <button class="btn btn-primary btn-sm" id="badWordAddBtn">添加违禁词</button>
+        </div>
+        <div id="badWordError"></div>
+        <table class="table">
+          <thead><tr><th>违禁词</th><th>违禁原因</th><th>封禁时长</th><th>命中</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="badWordRows"></tbody>
+        </table>
+      </section>
+
+      <section class="card admin-section">
+        <h2 id="reportHead">审核队列 ${
+          reports.counts.open > 0
+            ? `<span class="chip chip-danger">待处理 ${reports.counts.open}</span>`
+            : '<span class="chip chip-grey">没有待处理的举报</span>'
+        }</h2>
         <table class="table">
           <thead><tr><th>楼层</th><th>所属主题</th><th>作者</th><th>举报人</th><th>理由</th><th>时间</th><th>操作</th></tr></thead>
           <tbody id="reportRows"></tbody>
@@ -1234,13 +1268,139 @@ BB.boot(async () => {
         <div id="reportError"></div>
       </section>`;
 
+    renderBannedWords();
     renderReports();
+
+    document.getElementById('badWordAddBtn').addEventListener('click', addBannedWord);
+    for (const id of ['badWordInput', 'badWordReason']) {
+      document.getElementById(id).addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          addBannedWord();
+        }
+      });
+    }
+  }
+
+  /** 封禁时长的说法：固定几档用人话，其他小时数直接带单位 */
+  function bannedHoursLabel(hours) {
+    if (!hours) return '永久';
+    const found = MUTE_HOURS.find(([value]) => value === hours);
+    return found ? found[1] : `${hours} 小时`;
+  }
+
+  function renderBannedWords() {
+    const body = document.getElementById('badWordRows');
+    const state = document.getElementById('badWordState');
+    if (!body) return;
+
+    if (!bannedWordData) {
+      if (state) state.textContent = '';
+      body.innerHTML = '<tr><td colspan="6" class="muted">违禁词接口没有响应，刷新页面再试试。</td></tr>';
+      return;
+    }
+
+    const words = bannedWordData.words || [];
+    const active = words.filter((item) => item.enabled).length;
+    if (state) {
+      state.textContent = words.length
+        ? `共 ${words.length} 个，其中 ${active} 个生效（上限 ${bannedWordData.limit || 200} 个）`
+        : '';
+    }
+    if (words.length === 0) {
+      body.innerHTML =
+        '<tr><td colspan="6" class="muted">还没有设置违禁词。填好上面三项点「添加违禁词」，命中后会自动拦下并发禁言。</td></tr>';
+      return;
+    }
+
+    body.innerHTML = words
+      .map(
+        (item) => `
+      <tr>
+        <td><span class="tag">${BB.esc(item.word)}</span></td>
+        <td class="small">${item.reason ? BB.esc(item.reason) : '<span class="muted">—</span>'}</td>
+        <td class="small nowrap">${item.ban_hours ? BB.esc(bannedHoursLabel(item.ban_hours)) : '<span class="muted">永久</span>'}</td>
+        <td class="small">${
+          item.hits
+            ? `${BB.num(item.hits)} 次${item.last_hit_at ? `<div class="small muted">最近 ${BB.time(item.last_hit_at)}</div>` : ''}`
+            : '<span class="muted">—</span>'
+        }</td>
+        <td>${
+          item.enabled
+            ? '<span class="chip chip-warn">生效中</span>'
+            : '<span class="chip chip-grey">已停用</span>'
+        }</td>
+        <td class="row-actions">
+          <button class="btn btn-ghost btn-sm" data-word="${item.id}" data-act="toggle">${
+            item.enabled ? '停用' : '启用'
+          }</button>
+          <button class="btn btn-danger btn-sm" data-word="${item.id}" data-act="delete">删除</button>
+        </td>
+      </tr>`,
+      )
+      .join('');
+
+    body.querySelectorAll('[data-word]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const wordId = Number(button.dataset.word);
+        const item = (bannedWordData.words || []).find((entry) => entry.id === wordId);
+        if (!item) return;
+        try {
+          if (button.dataset.act === 'toggle') {
+            await BB.api(`/api/admin/banned-words/${wordId}`, {
+              method: 'PATCH',
+              body: { enabled: !item.enabled },
+            });
+            BB.toast(item.enabled ? '已停用这个违禁词' : '已启用这个违禁词', 'ok');
+          } else {
+            if (!confirm(`删除违禁词「${item.word}」？删除后这个说法不再被拦。`)) return;
+            await BB.api(`/api/admin/banned-words/${wordId}`, { method: 'DELETE' });
+            BB.toast('违禁词已删除', 'ok');
+          }
+          bannedWordData = await BB.api('/api/admin/banned-words');
+          renderBannedWords();
+        } catch (error) {
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+  }
+
+  async function addBannedWord() {
+    const errorHost = document.getElementById('badWordError');
+    const wordInput = document.getElementById('badWordInput');
+    const reasonInput = document.getElementById('badWordReason');
+    const hoursInput = document.getElementById('badWordHours');
+    if (!wordInput || !reasonInput || !hoursInput) return;
+
+    const word = wordInput.value.trim();
+    if (!word) {
+      BB.showError(errorHost, '先填上要拦的违禁词');
+      wordInput.focus();
+      return;
+    }
+
+    try {
+      await BB.api('/api/admin/banned-words', {
+        method: 'POST',
+        body: { word, reason: reasonInput.value.trim(), hours: Number(hoursInput.value) },
+      });
+      BB.showError(errorHost, '');
+      wordInput.value = '';
+      reasonInput.value = '';
+      wordInput.focus();
+      BB.toast(`已添加违禁词「${word}」`, 'ok');
+      bannedWordData = await BB.api('/api/admin/banned-words');
+      renderBannedWords();
+    } catch (error) {
+      BB.showError(errorHost, error.message);
+    }
   }
 
   /** 处理完一条举报后重新拉队列 */
   async function refreshReports() {
     reports = await BB.api('/api/admin/reports?status=open');
-    const head = host.querySelector('.admin-section h2');
+    const head = document.getElementById('reportHead');
     if (head) {
       head.innerHTML = `审核队列 ${
         reports.counts.open > 0

@@ -916,6 +916,108 @@ async function main() {
   const groupGone = await request('GET', `/api/groups/${groupId}/messages`);
   check('解散后群会话返回 404', groupGone.status === 404, groupGone.text);
 
+  // ---------- 违禁词 ----------
+  // 切账号用「换回原来的 cookie」而不是反复登录：登录接口有频率限制，
+  // 测试里每多登一次都会挤占后面「访问统计」那段的额度。
+
+  const adminCookie = cookie; // 上一节结束时是管理员身份
+  const emptyWord = await request('POST', '/api/admin/banned-words', { word: '   ', hours: 24 });
+  check('违禁词不能为空', emptyWord.status === 400, emptyWord.text);
+
+  const addWord = await request('POST', '/api/admin/banned-words', {
+    word: '违禁词甲',
+    reason: '发帖带违禁词',
+    hours: 7,
+  });
+  check('后台添加违禁词', addWord.status === 200 && addWord.json?.word?.id > 0, addWord.text);
+  const wordId = addWord.json?.word?.id;
+
+  const dupWord = await request('POST', '/api/admin/banned-words', { word: '违禁词甲', hours: 24 });
+  check('重复违禁词被拒绝', dupWord.status === 400, dupWord.text);
+
+  const wordList = await request('GET', '/api/admin/banned-words');
+  check(
+    '违禁词列表带原因与封禁时长',
+    (wordList.json?.words || []).some(
+      (item) => item.id === wordId && item.reason === '发帖带违禁词' && item.ban_hours === 7,
+    ),
+    wordList.text,
+  );
+
+  const wordPlayer = await request('POST', '/api/auth/register', { username: '违禁测试员', password: 'test123456' });
+  check('违禁词测试账号注册成功', wordPlayer.status === 200 && wordPlayer.json?.user?.role === 'user', wordPlayer.text);
+  const wordQuiz = await request('POST', '/api/quiz/complete', { score: 96 });
+  check('违禁词测试账号通过答题', wordQuiz.json?.quiz_passed === true, wordQuiz.text);
+
+  const cleanThread = await request('POST', '/api/threads', { board: 'general', title: '正常标题', content: '正常正文' });
+  check('没命中违禁词时正常发帖', cleanThread.status === 200, cleanThread.text);
+
+  const hitThread = await request('POST', '/api/threads', {
+    board: 'general',
+    title: '带违禁词的主题',
+    content: '这里写了违禁词甲',
+  });
+  check(
+    '命中违禁词的发帖被拦下',
+    hitThread.status === 403 && hitThread.json?.code === 'banned_word',
+    hitThread.text,
+  );
+  check('拦截提示带违禁原因', /发帖带违禁词/.test(hitThread.json?.error || ''), hitThread.text);
+
+  const mutedMe = await request('GET', '/api/me');
+  const mutedUser = mutedMe.json?.user;
+  check('命中后账号自动禁言', mutedUser?.status === 'muted' && mutedUser?.mute_scope === 'all', mutedMe.text);
+  check('禁言理由沿用违禁原因', mutedUser?.mute_reason === '发帖带违禁词', mutedMe.text);
+  check(
+    '禁言到期时间按设置的 7 小时',
+    Math.abs(Number(mutedUser?.muted_until || 0) - (Math.floor(Date.now() / 1000) + 7 * 3600)) < 120,
+    `muted_until=${mutedUser?.muted_until}`,
+  );
+
+  const blockedReply = await request('POST', `/api/threads/${threadId}/posts`, { content: '正常回复' });
+  check('禁言期间正常回复也被拒', blockedReply.status === 403 && blockedReply.json?.code === 'muted', blockedReply.text);
+
+  // 修改内容也要拦：换成永久禁言的规则再测一遍，同时验证时长填 0 的写法
+  cookie = adminCookie;
+  const permWord = await request('POST', '/api/admin/banned-words', {
+    word: '违禁词乙',
+    reason: '编辑时带违禁词',
+    hours: 0,
+  });
+  check('添加永久禁言的违禁词', permWord.status === 200 && permWord.json?.word?.ban_hours === 0, permWord.text);
+  const permWordId = permWord.json?.word?.id;
+
+  // 注册即登录，直接换到新账号
+  await request('POST', '/api/auth/register', { username: '违禁测试员乙', password: 'test123456' });
+  await request('POST', '/api/quiz/complete', { score: 96 });
+  const editThread = await request('POST', '/api/threads', { board: 'general', title: '编辑测试主题', content: '正文没问题' });
+  const editDetail = editThread.json?.id ? await request('GET', `/api/threads/${editThread.json.id}`) : null;
+  const editPostId = editDetail?.json?.posts?.[0]?.id;
+  const badEdit = await request('PATCH', `/api/posts/${editPostId}`, { content: '改成带违禁词乙' });
+  check('修改回复时命中违禁词被拦下', badEdit.status === 403 && badEdit.json?.code === 'banned_word', badEdit.text);
+  const permMuted = await request('GET', '/api/me');
+  check(
+    '永久规则命中后禁言不到期',
+    permMuted.json?.user?.status === 'muted' && Number(permMuted.json?.user?.muted_until) === 0,
+    permMuted.text,
+  );
+
+  // 普通账号看不到违禁词设置（这时正好是普通玩家的身份）
+  const wordForbidden = await request('GET', '/api/admin/banned-words');
+  check('普通玩家看不到违禁词设置', wordForbidden.status === 403, wordForbidden.text);
+
+  cookie = adminCookie;
+  const disableWord = await request('PATCH', `/api/admin/banned-words/${permWordId}`, { enabled: false });
+  check('停用违禁词', disableWord.status === 200 && disableWord.json?.word?.enabled === false, disableWord.text);
+  const deleteWord = await request('DELETE', `/api/admin/banned-words/${permWordId}`);
+  check('删除违禁词', deleteWord.status === 200, deleteWord.text);
+  const wordsAfterDelete = await request('GET', '/api/admin/banned-words');
+  check(
+    '删除后列表里不再有这条规则',
+    !(wordsAfterDelete.json?.words || []).some((item) => item.id === permWordId),
+    wordsAfterDelete.text,
+  );
+
   // ---------- 访问统计 ----------
 
   await request('GET', '/');

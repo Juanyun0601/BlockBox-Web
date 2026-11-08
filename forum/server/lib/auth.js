@@ -161,7 +161,7 @@ export function muteActive(user) {
 }
 
 /** 服务器本地时间：2026-11-01 20:42（禁言提示里给人看的时间） */
-function localTime(seconds) {
+export function localTime(seconds) {
   const d = new Date(Number(seconds) * 1000);
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;

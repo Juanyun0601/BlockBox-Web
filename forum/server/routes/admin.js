@@ -7,6 +7,14 @@ import { siteStats } from '../lib/queries.js';
 import { text } from '../lib/validate.js';
 import { visitStats } from '../lib/visits.js';
 import {
+  MAX_BAN_HOURS,
+  MAX_BANNED_WORDS,
+  addBannedWord,
+  listBannedWords,
+  removeBannedWord,
+  updateBannedWord,
+} from '../lib/banned-words.js';
+import {
   MAX_ENTRIES,
   MAX_IMPORTANT_ENTRIES,
   announcementStatus,
@@ -351,5 +359,34 @@ export default function register(router) {
     const removed = db.prepare('DELETE FROM thread_tags WHERE tag = ?').run(tag).changes;
     db.prepare('DELETE FROM tag_features WHERE tag = ?').run(tag);
     return { ok: true, tag, removed };
+  });
+
+  // ---------------- 违禁词（审核页的设置） ----------------
+
+  router.get('/api/admin/banned-words', async (ctx) => {
+    requireAdmin(ctx.user);
+    return { words: listBannedWords(), limit: MAX_BANNED_WORDS, max_hours: MAX_BAN_HOURS };
+  });
+
+  /** 新增一条：违禁词 + 违禁原因 + 封禁时长（小时，0 表示永久） */
+  router.post('/api/admin/banned-words', async (ctx) => {
+    const admin = requireAdmin(ctx.user);
+    const body = await ctx.json();
+    return {
+      word: addBannedWord({ word: body.word, reason: body.reason, hours: body.hours, admin }),
+      limit: MAX_BANNED_WORDS,
+    };
+  });
+
+  /** 改词 / 改理由 / 改时长 / 停用启用，任选一项 */
+  router.patch('/api/admin/banned-words/:id', async (ctx) => {
+    requireAdmin(ctx.user);
+    const body = await ctx.json();
+    return { word: updateBannedWord(ctx.params.id, body) };
+  });
+
+  router.delete('/api/admin/banned-words/:id', async (ctx) => {
+    requireAdmin(ctx.user);
+    return { ok: true, word: removeBannedWord(ctx.params.id) };
   });
 }

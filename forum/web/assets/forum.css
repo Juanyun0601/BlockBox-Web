@@ -902,6 +902,9 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
 .table .nowrap { white-space: nowrap; }
 .admin-form { display: grid; grid-template-columns: 1fr 1fr 2fr auto auto; gap: 8px; align-items: end; }
 .admin-form .input { height: 36px; padding: 0 10px; }
+/* 违禁词设置：违禁词 + 违禁原因 + 封禁时长一行填完，按钮跟在后面 */
+.badword-form { display: grid; grid-template-columns: 1.1fr 1.7fr 1fr auto; gap: 8px; align-items: end; }
+.badword-form .input, .badword-form .select { height: 36px; padding: 0 10px; font-size: 14px; }
 /* 首页公告：正文 + 链接 + 发布按钮；窄屏沿用下面 .admin-form 的两列 / 单列规则 */
 .announce-form { grid-template-columns: 2.2fr 1.4fr auto; }
 /* 启动重要公告：标题 + 链接一行，Markdown 正文独占整行，发布按钮放在正文下方 */
@@ -964,6 +967,7 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
   .admin-grid { grid-template-columns: repeat(2, 1fr); }
   .admin-entry-grid { grid-template-columns: 1fr 1fr; }
   .admin-form { grid-template-columns: 1fr 1fr; }
+  .badword-form { grid-template-columns: 1fr 1fr; }
   .important-form { grid-template-columns: 1fr 1fr; }
   .thread-layout { grid-template-columns: 1fr; }
   .thread-rail { position: static; }
@@ -1019,6 +1023,7 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
   .admin-grid { grid-template-columns: 1fr 1fr; }
   .admin-entry-grid { grid-template-columns: 1fr; }
   .admin-form { grid-template-columns: 1fr; }
+  .badword-form { grid-template-columns: 1fr; }
   .important-form { grid-template-columns: 1fr; }
   .table { display: block; overflow-x: auto; }
 }

@@ -1138,6 +1138,53 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 标记为 `resolved` / `ignored` 时自动给举报人发一条系统通知回告处理结果（删帖 / 已处理 / 已忽略对应不同文案）；重新打开不通知。举报人已注销时不发。
 
+### GET /api/admin/banned-words · 违禁词列表
+
+```json
+{
+  "words": [
+    {
+      "id": 3, "word": "代练广告", "reason": "宣传代练 / 卖号",
+      "ban_hours": 24, "enabled": true,
+      "hits": 5, "last_hit_at": 1793428700,
+      "created_by": "红石工程师", "created_at": 1793420000
+    }
+  ],
+  "limit": 200,
+  "max_hours": 8760
+}
+```
+
+`ban_hours` 是命中后自动禁言的时长，`0` 表示永久（需要管理员手动解除）。
+
+### POST /api/admin/banned-words · 新增违禁词
+
+```json
+{ "word": "代练广告", "reason": "宣传代练 / 卖号", "hours": 24 }
+```
+
+违禁词 1–30 字且不能重复，原因最多 100 字（会显示给被禁言的人），`hours` 取 0–8760。返回 `{ "word": { … } }`。
+
+### PATCH /api/admin/banned-words/:id · 改词 / 改理由 / 改时长 / 停用启用
+
+`word`、`reason`、`hours`、`enabled` 任选其一，例如 `{ "enabled": false }` 表示暂时不生效。
+
+### DELETE /api/admin/banned-words/:id · 删除违禁词
+
+只删规则，不会解除已经因为这条规则被禁言的账号。
+
+### 违禁词是怎么生效的
+
+发主题（`POST /api/threads`，标题与正文一起查）、改标题、回复、改回复时都会比对生效中的违禁词（不分大小写，忽略零宽字符）。命中后：
+
+- 内容不写入库，接口返回 `403`，`code` 为 `banned_word`，`error` 里带违禁词与违禁原因，客户端直接展示即可；
+- 普通玩家按该规则的 `ban_hours` 自动禁言：`status` 变 `muted`、`mute_scope` 为 `all`、`mute_reason` 就是违禁原因、`mute_by` 为「自动审核（违禁词）」，到期由后台自动恢复（`ban_hours` 为 0 时不会自动恢复）；命中计数累加到 `hits`，并给本人发一条系统通知；
+- 管理员 / 次级管理员照样拦内容，但不会被自动禁言；
+- 已经在禁言或封禁中的账号只拦内容，不重复处罚，也不会缩短原来的处罚；
+- 修改标题 / 修改回复时如果内容没变（只改标签之类），不会重新比对。
+
+违禁词只查公开的帖子内容，私信和群聊不拦。
+
 ### PATCH /api/admin/threads/:id
 
 ```json

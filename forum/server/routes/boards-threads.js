@@ -5,6 +5,7 @@ import { enforce } from '../lib/rate-limit.js';
 import { bool, text } from '../lib/validate.js';
 import { boardOut, postOut, threadOut, snippetOf } from '../lib/serialize.js';
 import { notifyThreadActivity } from '../lib/notify.js';
+import { guardBannedWords } from '../lib/banned-words.js';
 import { cdnBase } from '../lib/cdn.js';
 import { config } from '../config.js';
 
@@ -470,6 +471,8 @@ export default function register(router) {
 
     const title = text(body.title, { field: '标题', min: 2, max: 80 });
     const content = text(body.content, { field: '正文', min: 2, max: 20000 });
+    // 违禁词：标题和正文一起查，命中就拦下这帖，普通玩家还会被自动禁言
+    guardBannedWords(user, `${title}\n${content}`, { action: '发帖' });
     const tags = parseTags(body.tags);
     const timestamp = now();
 
@@ -676,6 +679,8 @@ export default function register(router) {
 
     const body = await ctx.json();
     const title = body.title === undefined ? thread.title : text(body.title, { field: '标题', min: 2, max: 80 });
+    // 改标题也要过违禁词；只改标签、标题没动时不再查一遍
+    if (title !== thread.title) guardBannedWords(user, title, { action: '修改标题' });
     db.prepare('UPDATE threads SET title = ? WHERE id = ?').run(title, thread.id);
     if (body.tags !== undefined) saveTags(thread.id, parseTags(body.tags));
     indexThread(thread.id);
@@ -714,6 +719,7 @@ export default function register(router) {
 
     const body = await ctx.json();
     const content = text(body.content, { field: '回复内容', min: 1, max: 20000 });
+    guardBannedWords(user, content, { action: '回复' });
 
     // 楼中楼：指定回复哪一层；如果回复的是别人的楼中楼，挂到同一个父楼层下（保持两层结构）
     let parentPostId = null;
@@ -777,6 +783,8 @@ export default function register(router) {
 
     const body = await ctx.json();
     const content = text(body.content, { field: '内容', min: 1, max: 20000 });
+    // 编辑后的内容也要过违禁词；内容没变就不再查一遍
+    if (content !== post.content) guardBannedWords(user, content, { action: '修改回复' });
     db.prepare('UPDATE posts SET content = ?, updated_at = ?, edit_count = edit_count + 1 WHERE id = ?').run(
       content,
       now(),

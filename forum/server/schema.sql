@@ -286,6 +286,23 @@ CREATE TABLE IF NOT EXISTS reports (
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_dedupe ON reports(post_id, reporter_id);
 
+-- 违禁词（管理后台「审核」页维护，命中的内容直接拦下）-------------------
+-- ban_hours 是命中后自动禁言的时长，0 表示永久（需要管理员手动解除）；
+-- 只检查发帖 / 回复（含修改后的内容），私信与群聊不拦。
+CREATE TABLE IF NOT EXISTS banned_words (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  word        TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+  reason      TEXT    NOT NULL DEFAULT '',
+  ban_hours   INTEGER NOT NULL DEFAULT 24,
+  enabled     INTEGER NOT NULL DEFAULT 1,
+  hits        INTEGER NOT NULL DEFAULT 0,
+  last_hit_at INTEGER NOT NULL DEFAULT 0,
+  created_by  TEXT    NOT NULL DEFAULT '',
+  created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_banned_words_enabled ON banned_words(enabled);
+
 -- 好友关系（requester 向 addressee 发申请，通过后 status = accepted）-----------------
 CREATE TABLE IF NOT EXISTS friendships (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,

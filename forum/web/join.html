@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>房间邀请 · 方块盒子论坛</title>
+<meta name="description" content="方块盒子联机房间邀请：查看邀请码，通过方块盒子客户端一键加入房间。">
+<link rel="icon" href="/assets/img/icon.ico">
+<script src="/assets/i18n.js?v=20261119a"></script>
+<link rel="stylesheet" href="/assets/forum.css?v=20261119a">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('bbf-theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch (e) {}
+  })();
+</script>
+<style>
+  .join-hero { text-align: center; padding: 34px 20px 26px; }
+  .join-hero h1 { margin: 0 0 10px; }
+  .join-hero p { margin: 0 auto; max-width: 620px; }
+  .join-panel { max-width: 560px; margin: 0 auto; padding: 26px 26px 22px; }
+  .join-title { font-size: 19px; font-weight: 800; color: var(--ink); margin: 0 0 6px; word-break: break-all; }
+  .join-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .join-chip { font-size: 12px; font-weight: 700; color: var(--brand); background: var(--brand-soft, rgba(46,125,50,.1)); border: 1px solid var(--brand-line, rgba(46,125,50,.35)); border-radius: 999px; padding: 3px 10px; }
+  .join-chip.plain { color: var(--ink-2); background: var(--bg-tint, rgba(127,127,127,.08)); border-color: var(--line); }
+  .join-code-label { font-size: 12.5px; color: var(--ink-2); margin-bottom: 6px; }
+  .join-code-box { display: flex; align-items: center; gap: 10px; border: 1px dashed var(--line-2, rgba(127,127,127,.4)); border-radius: 12px; padding: 14px 16px; background: var(--card-2, rgba(127,127,127,.05)); }
+  .join-code { flex: 1; min-width: 0; font-family: var(--mono, monospace); font-size: 18px; font-weight: 800; color: var(--brand); word-break: break-all; user-select: all; }
+  .join-joinbtn { display: block; width: 100%; margin: 18px 0 10px; text-align: center; font-size: 15px; padding: 12px 18px; }
+  .join-fallback { display: none; margin: 0 0 10px; font-size: 13px; color: var(--ink-2); text-align: center; }
+  .join-fallback.show { display: block; }
+  .join-dl { text-align: center; font-size: 13px; color: var(--ink-2); margin: 0; }
+  .join-dl a { color: var(--brand); font-weight: 700; }
+  .join-note { font-size: 12.5px; color: var(--ink-3); margin: 14px 0 0; line-height: 1.7; }
+  .join-error { text-align: center; padding: 30px 10px; }
+  .join-error h2 { margin: 0 0 10px; }
+  .join-error p { margin: 0 0 18px; }
+</style>
+</head>
+<body data-page="join">
+<div id="siteNav"></div>
+
+<main class="page">
+  <div class="wrap">
+    <section class="hero join-hero">
+      <h1>联机房间邀请</h1>
+      <p>有人邀请你一起玩 Minecraft！查看房间邀请码，装上方块盒子客户端后可以一键加入。</p>
+    </section>
+
+    <div class="card join-panel" id="joinPanel">
+      <div class="skeleton">正在解析邀请链接…</div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer" id="siteFooter"></footer>
+<script src="/assets/core.js?v=20261118b"></script>
+<script>
+(function () {
+  'use strict';
+
+  var panel = document.getElementById('joinPanel');
+
+  // 与客户端 ForumLobbyService::coreDisplayName 保持一致
+  var CORE_LABELS = {
+    terracotta: '陶瓦联机',
+    hongshi: '红石联机',
+    frp: '内网穿透',
+    custom: '直连'
+  };
+
+  function payloadParam() {
+    var match = /[?&]d=([^&]+)/.exec(location.search);
+    return match ? match[1] : '';
+  }
+
+  // 解客户端 qCompress 载荷：base64url → 字节 → 去掉 4 字节大端长度头 → zlib inflate
+  function decodePayload(param) {
+    var broken = new Error('邀请内容不完整或已损坏，请让房主重新创建分享链接。');
+    if (typeof DecompressionStream === 'undefined') {
+      return Promise.reject(new Error('浏览器版本过旧，暂时打不开邀请链接，请升级浏览器。'));
+    }
+    var b64 = param.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var bytes;
+    try {
+      var bin = atob(b64);
+      bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      if (bytes.length <= 4) throw broken;
+    } catch (e) {
+      return Promise.reject(broken);
+    }
+    var stream;
+    try {
+      stream = new Blob([bytes.slice(4)]).stream().pipeThrough(new DecompressionStream('deflate'));
+    } catch (e) {
+      return Promise.reject(broken);
+    }
+    return new Response(stream).text().then(function (text) {
+      var data = JSON.parse(text);
+      if (!data || !data.c || (!data.ic && !data.ad)) throw broken;
+      return data;
+    }).catch(function (e) {
+      throw (e && e.message && e.message.indexOf('邀请内容') === 0) ? e : broken;
+    });
+  }
+
+  function copyText(text, button) {
+    var done = function () { if (window.BB && BB.toast) BB.toast('已复制', 'ok'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text, done); });
+    } else {
+      legacyCopy(text, done);
+    }
+  }
+
+  function legacyCopy(text, done) {
+    var input = document.createElement('textarea');
+    input.value = text;
+    document.body.appendChild(input);
+    input.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* 忽略 */ }
+    document.body.removeChild(input);
+  }
+
+  function render(data, param) {
+    var isTerracotta = data.c === 'terracotta';
+    var code = isTerracotta ? (data.ic || '') : (data.ad || '');
+    var codeLabel = isTerracotta ? '房间邀请码' : '连接地址';
+    var coreLabel = CORE_LABELS[data.c] || '联机房间';
+
+    var metaHtml = '<span class="join-chip">' + (BB.esc(coreLabel)) + '</span>';
+    var infoBits = [];
+    if (data.v) infoBits.push('版本 ' + BB.esc(data.v));
+    if (data.ld) infoBits.push(BB.esc(data.ld));
+    if (data.md && data.md.length) infoBits.push('房主带了 ' + data.md.length + ' 个模组');
+    if (infoBits.length) {
+      metaHtml += '<span class="join-chip plain">' + infoBits.join(' · ') + '</span>';
+    }
+
+    panel.innerHTML =
+      '<h2 class="join-title">' + BB.esc(data.t || '朋友的联机房间') + '</h2>' +
+      '<div class="join-meta">' + metaHtml + '</div>' +
+      '<div class="join-code-label">' + codeLabel + '（在 Minecraft 多人游戏中连接它，或用客户端一键加入）</div>' +
+      '<div class="join-code-box">' +
+        '<code class="join-code" id="joinCode">' + BB.esc(code) + '</code>' +
+        '<button type="button" class="btn btn-ghost btn-sm" id="joinCopyBtn">复制</button>' +
+      '</div>' +
+      '<a class="btn btn-primary join-joinbtn" id="joinLaunchBtn" href="blockbox://join?d=' + encodeURIComponent(param) + '">通过方块盒子一键加入</a>' +
+      '<p class="join-fallback" id="joinFallback">没有反应？可能还没装方块盒子——<a href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">点此下载安装</a>后再试。</p>' +
+      '<p class="join-dl">没有安装方块盒子？<a href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">前往下载</a></p>' +
+      '<p class="join-note">「一键加入」会自动挑选一个版本、加载器和模组都合适的本地实例，启动游戏并连进房间；进入前请先确保房主的房间还开着。</p>';
+
+    document.getElementById('joinCopyBtn').addEventListener('click', function () {
+      copyText(code);
+    });
+
+    document.getElementById('joinLaunchBtn').addEventListener('click', function () {
+      // 2 秒后页面仍在前台，多半是协议没被接管（没装方块盒子），给个下载兜底
+      setTimeout(function () {
+        if (document.visibilityState === 'visible' && document.hasFocus()) {
+          document.getElementById('joinFallback').classList.add('show');
+        }
+      }, 2000);
+    });
+  }
+
+  function renderError(message) {
+    panel.innerHTML =
+      '<div class="join-error">' +
+        '<h2>邀请链接打不开</h2>' +
+        '<p>' + BB.esc(message || '链接可能不完整或已过期，请让房主重新创建分享链接。') + '</p>' +
+        '<a class="btn btn-primary" href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">下载方块盒子</a>' +
+      '</div>';
+  }
+
+  var param = payloadParam();
+  if (!param) {
+    renderError('链接里没有房间信息，请让房主重新创建分享链接。');
+    return;
+  }
+
+  decodePayload(param).then(function (data) {
+    render(data, param);
+  }, function (error) {
+    renderError(error && error.message ? error.message : '邀请内容解析失败。');
+  });
+})();
+</script>
+</body>
+</html>
