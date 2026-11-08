@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 拉取代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 配置 SSH
         run: |
@@ -27,7 +27,9 @@ jobs:
         run: |
           # announcement.json / latest.json 必须排除：服务器上属于论坛服务用户（www-data），
           # rsync 的「临时文件+改名」会把它们改成 deploy 属主，服务就写不了公告和版本文件了
-          rsync -az --delete --exclude '.git' --exclude '.github' --exclude 'forum' --exclude 'announcement.json' --exclude 'latest.json' ./ deploy@202.181.26.190:/var/www/blockbox/ -e "ssh -p 48407"
+          # .well-known 必须排除：证书验证目录属于 root，仓库里没有它，
+          # --delete 删不掉就会让整个 rsync 以退出码 23（部分传输失败）收场，后面的步骤全部不执行
+          rsync -az --delete --exclude '.git' --exclude '.github' --exclude 'forum' --exclude 'announcement.json' --exclude 'latest.json' --exclude '.well-known' ./ deploy@202.181.26.190:/var/www/blockbox/ -e "ssh -p 48407"
 
       - name: 让论坛服务能写公告与版本文件
         run: |
@@ -39,7 +41,9 @@ jobs:
       - name: 同步论坛代码
         run: |
           # node_modules 排除：服务器上单独装的 sharp 等依赖不能被 --delete 清掉
-          rsync -az --delete --exclude 'data' --exclude '.env' --exclude '.git' --exclude 'node_modules' --exclude 'logs' forum/ deploy@202.181.26.190:/opt/blockbox-forum/ -e "ssh -p 48407"
+          # server.bak-* 排除：服务器上的 root 备份目录 deploy 删不动，留着不让 rsync 以退出码 23 失败
+          # .env.bak* 排除：服务器上的配置备份不要被 --delete 清掉；_crawl.db* 是本机抓取缓存，不往线上传
+          rsync -az --delete --exclude 'data' --exclude '.env' --exclude '.git' --exclude 'node_modules' --exclude 'logs' --exclude 'server.bak-*' --exclude '.env.bak*' --exclude '_crawl.db*' forum/ deploy@202.181.26.190:/opt/blockbox-forum/ -e "ssh -p 48407"
 
       - name: 允许论坛服务写官网目录
         run: |
