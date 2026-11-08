@@ -57,11 +57,13 @@ jobs:
 
       - name: 验证部署
         run: |
+          # 论坛首页对没通过人机验证的访客本来就会 302 到 /verify.html，不能拿它当健康检查；
+          # /api/health 不参与人机验证，返回 200 才说明论坛服务真的活着
           ok=1
           for i in 1 2 3 4 5; do
             # 失败时把 curl 的退出码一起记下来：6=域名解析不了，7=连不上，28=超时，35=SSL 握手失败
             code1=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://mcblockbox.top/ 2>/dev/null) || code1="ERR$?"
-            code2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://forum.mcblockbox.top/ 2>/dev/null) || code2="ERR$?"
+            code2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://forum.mcblockbox.top/api/health 2>/dev/null) || code2="ERR$?"
             echo "官网:$code1 论坛:$code2 (第${i}次)"
             if [ "$code1" = 200 ] && [ "$code2" = 200 ]; then ok=0; break; fi
             sleep 5
