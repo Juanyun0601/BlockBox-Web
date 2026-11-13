@@ -43,6 +43,17 @@
 `robots.txt`、`sitemap.xml`、四页的 canonical / Open Graph / JSON-LD 结构化数据、首页常见问题区块都已内置；
 具体做了什么、还需要在百度 / 必应 / 谷歌后台做哪些一次性操作、IndexNow 怎么用，见 [SEO.md](SEO.md)。
 
+## 部署与服务器
+
+- 线上地址：https://mcblockbox.top/，服务器 202.181.26.188，**SSH 端口 3220**
+- 自动部署：push 到 main 触发 GitHub Actions（.github/workflows/deploy.yml），用 deploy 账号的密钥把官网同步到 /var/www/blockbox、论坛同步到 /opt/blockbox-forum，最后重启论坛服务并做一次外部访问校验
+- SSH **只允许密钥登录**，密码登录已关闭：
+  - 自动部署用 deploy，私钥放在仓库 Secrets 的 DEPLOY_SSH_KEY
+  - 人工运维用 
+oot，公钥已写入服务器的 /root/.ssh/authorized_keys（本机 ~/.ssh/blockbox_admin_ed25519）
+- 应急入口：华为云控制台 VNC 登录（root 密码仍然有效，只走控制台，不走 SSH）
+- **换 IP、换端口、换密钥时，deploy.yml 与本节要一起改**；改完 sshd -t 再 systemctl reload ssh，别把自己关在外面
+
 ## 多语言
 
 默认简体中文，支持繁體中文 / English / Español / 日本語 / Русский。
