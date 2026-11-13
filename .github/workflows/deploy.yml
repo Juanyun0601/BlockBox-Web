@@ -21,7 +21,22 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p 48407 202.181.26.188 >> ~/.ssh/known_hosts 2>/dev/null
+          # 先自检端口：连不上时把原因直接写进 Annotations，而不是只看到「配置 SSH 失败」
+          ok=0
+          for i in 1 2 3; do
+            if timeout 8 bash -c 'cat < /dev/null > /dev/tcp/202.181.26.188/48407' 2>/dev/null; then
+              echo "202.181.26.188:48407 可连接（第 ${i} 次）"
+              ok=1
+              break
+            fi
+            echo "第 ${i} 次连不上 202.181.26.188:48407"
+            sleep 3
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::202.181.26.188:48407 连不上：检查华为云安全组是否放行该端口、sshd 是否监听 48407、以及 IP 是否又变了"
+            exit 1
+          fi
+          ssh-keyscan -p 48407 202.181.26.188 >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: 同步官网文件
         run: |
@@ -29,31 +44,31 @@ jobs:
           # rsync 的「临时文件+改名」会把它们改成 deploy 属主，服务就写不了公告和版本文件了
           # .well-known 必须排除：证书验证目录属于 root，仓库里没有它，
           # --delete 删不掉就会让整个 rsync 以退出码 23（部分传输失败）收场，后面的步骤全部不执行
-          rsync -az --delete --exclude '.git' --exclude '.github' --exclude 'forum' --exclude 'announcement.json' --exclude 'latest.json' --exclude '.well-known' ./ deploy@202.181.26.188:/var/www/blockbox/ -e "ssh -p 48407"
+          rsync -az --delete --exclude '.git' --exclude '.github' --exclude 'forum' --exclude 'announcement.json' --exclude 'latest.json' --exclude '.well-known' ./ deploy@202.181.26.188:/var/www/blockbox/ -e "ssh -p 48407 -o StrictHostKeyChecking=accept-new"
 
       - name: 让论坛服务能写公告与版本文件
         run: |
           # 保险自愈：万一属主被别的途径改掉，部署时修回来（sudoers 已放开这两条 chown）。
           # 失败只提示、不拦住部署，后台会显示「公告文件不可写」，按部署文档修一下即可。
-          ssh -p 48407 deploy@202.181.26.188 "sudo -n chown www-data:www-data /var/www/blockbox/announcement.json || echo '警告：公告文件属主没改成功，管理后台可能无法发布公告'"
-          ssh -p 48407 deploy@202.181.26.188 "sudo -n chown www-data:www-data /var/www/blockbox/latest.json || echo '警告：版本文件属主没改成功，发布版本会提示不可写'"
+          ssh -p 48407 -o StrictHostKeyChecking=accept-new deploy@202.181.26.188 "sudo -n chown www-data:www-data /var/www/blockbox/announcement.json || echo '警告：公告文件属主没改成功，管理后台可能无法发布公告'"
+          ssh -p 48407 -o StrictHostKeyChecking=accept-new deploy@202.181.26.188 "sudo -n chown www-data:www-data /var/www/blockbox/latest.json || echo '警告：版本文件属主没改成功，发布版本会提示不可写'"
 
       - name: 同步论坛代码
         run: |
           # node_modules 排除：服务器上单独装的 sharp 等依赖不能被 --delete 清掉
           # server.bak-* 排除：服务器上的 root 备份目录 deploy 删不动，留着不让 rsync 以退出码 23 失败
           # .env.bak* 排除：服务器上的配置备份不要被 --delete 清掉；_crawl.db* 是本机抓取缓存，不往线上传
-          rsync -az --delete --exclude 'data' --exclude '.env' --exclude '.git' --exclude 'node_modules' --exclude 'logs' --exclude 'server.bak-*' --exclude '.env.bak*' --exclude '_crawl.db*' forum/ deploy@202.181.26.188:/opt/blockbox-forum/ -e "ssh -p 48407"
+          rsync -az --delete --exclude 'data' --exclude '.env' --exclude '.git' --exclude 'node_modules' --exclude 'logs' --exclude 'server.bak-*' --exclude '.env.bak*' --exclude '_crawl.db*' forum/ deploy@202.181.26.188:/opt/blockbox-forum/ -e "ssh -p 48407 -o StrictHostKeyChecking=accept-new"
 
       - name: 允许论坛服务写官网目录
         run: |
           # systemd 的 ProtectSystem=strict 默认不让写官网目录；用 drop-in 把公告目录加进白名单
           # （与 deploy/blockbox-forum-announcement.conf 内容一致）。失败只提示，不拦部署。
-          ssh -p 48407 deploy@202.181.26.188 "sudo -n mkdir -p /etc/systemd/system/blockbox-forum.service.d && printf '%s\n' '[Service]' 'ReadWritePaths=/opt/blockbox-forum/data /var/www/blockbox' | sudo -n tee /etc/systemd/system/blockbox-forum.service.d/announcement.conf >/dev/null && sudo -n systemctl daemon-reload" || echo '警告：公告目录可写配置没装上，管理后台可能无法发布公告'
+          ssh -p 48407 -o StrictHostKeyChecking=accept-new deploy@202.181.26.188 "sudo -n mkdir -p /etc/systemd/system/blockbox-forum.service.d && printf '%s\n' '[Service]' 'ReadWritePaths=/opt/blockbox-forum/data /var/www/blockbox' | sudo -n tee /etc/systemd/system/blockbox-forum.service.d/announcement.conf >/dev/null && sudo -n systemctl daemon-reload" || echo '警告：公告目录可写配置没装上，管理后台可能无法发布公告'
 
       - name: 重启论坛服务
         run: |
-          ssh -p 48407 deploy@202.181.26.188 "sudo /usr/bin/systemctl restart blockbox-forum && sleep 2 && systemctl is-active blockbox-forum"
+          ssh -p 48407 -o StrictHostKeyChecking=accept-new deploy@202.181.26.188 "sudo /usr/bin/systemctl restart blockbox-forum && sleep 2 && systemctl is-active blockbox-forum"
 
       - name: 验证部署
         run: |
