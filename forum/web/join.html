@@ -2,9 +2,24 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>房间邀请 · 方块盒子论坛</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>联机房间邀请 · 方块盒子</title>
 <meta name="description" content="方块盒子联机房间邀请：查看邀请码，通过方块盒子客户端一键加入房间。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="方块盒子 BlockBox">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="有人邀请你一起玩 Minecraft">
+<meta property="og:description" content="打开邀请链接查看房间邀请码，装上方块盒子客户端就能一键进房。">
+<meta property="og:image" content="https://mcblockbox.top/assets/img/og-cover.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="有人邀请你一起玩 Minecraft">
+<meta name="twitter:description" content="打开邀请链接查看房间邀请码，装上方块盒子客户端就能一键进房。">
+<meta name="twitter:image" content="https://mcblockbox.top/assets/img/og-cover.png">
+<meta name="theme-color" content="#2e7d32" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1411" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/assets/img/icon.ico">
 <script src="/assets/i18n.js?v=20261119a"></script>
 <link rel="stylesheet" href="/assets/forum.css?v=20261119a">
@@ -19,51 +34,631 @@
   })();
 </script>
 <style>
-  .join-hero { text-align: center; padding: 34px 20px 26px; }
-  .join-hero h1 { margin: 0 0 10px; }
-  .join-hero p { margin: 0 auto; max-width: 620px; }
-  .join-panel { max-width: 560px; margin: 0 auto; padding: 26px 26px 22px; }
-  .join-title { font-size: 19px; font-weight: 800; color: var(--ink); margin: 0 0 6px; word-break: break-all; }
-  .join-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-  .join-chip { font-size: 12px; font-weight: 700; color: var(--brand); background: var(--brand-soft, rgba(46,125,50,.1)); border: 1px solid var(--brand-line, rgba(46,125,50,.35)); border-radius: 999px; padding: 3px 10px; }
-  .join-chip.plain { color: var(--ink-2); background: var(--bg-tint, rgba(127,127,127,.08)); border-color: var(--line); }
-  .join-code-label { font-size: 12.5px; color: var(--ink-2); margin-bottom: 6px; }
-  .join-code-box { display: flex; align-items: center; gap: 10px; border: 1px dashed var(--line-2, rgba(127,127,127,.4)); border-radius: 12px; padding: 14px 16px; background: var(--card-2, rgba(127,127,127,.05)); }
-  .join-code { flex: 1; min-width: 0; font-family: var(--mono, monospace); font-size: 18px; font-weight: 800; color: var(--brand); word-break: break-all; user-select: all; }
-  .join-joinbtn { display: block; width: 100%; margin: 18px 0 10px; text-align: center; font-size: 15px; padding: 12px 18px; }
-  .join-fallback { display: none; margin: 0 0 10px; font-size: 13px; color: var(--ink-2); text-align: center; }
-  .join-fallback.show { display: block; }
-  .join-dl { text-align: center; font-size: 13px; color: var(--ink-2); margin: 0; }
-  .join-dl a { color: var(--brand); font-weight: 700; }
-  .join-note { font-size: 12.5px; color: var(--ink-3); margin: 14px 0 0; line-height: 1.7; }
-  .join-error { text-align: center; padding: 30px 10px; }
-  .join-error h2 { margin: 0 0 10px; }
-  .join-error p { margin: 0 0 18px; }
+  /* ---------------- 联机分享链接页 ---------------- */
+
+  .join-page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 34px 0 38px;
+    background:
+      radial-gradient(46% 42% at 50% -4%, rgba(76, 175, 80, 0.18), transparent 72%),
+      radial-gradient(24% 26% at 88% 4%, rgba(124, 194, 66, 0.13), transparent 70%);
+    background-repeat: no-repeat;
+  }
+
+  [data-theme="dark"] .join-page {
+    background:
+      radial-gradient(46% 42% at 50% -4%, rgba(102, 187, 106, 0.14), transparent 72%),
+      radial-gradient(24% 26% at 88% 4%, rgba(102, 187, 106, 0.07), transparent 70%);
+    background-repeat: no-repeat;
+  }
+
+  .join-wrap {
+    width: 100%;
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  /* 页面自己的小品牌头：分享页不挂全站导航，给一张「我是谁」的条 */
+  .join-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 2px 14px;
+  }
+
+  .join-mark {
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: linear-gradient(145deg, var(--g500), var(--g800));
+    box-shadow: 0 6px 14px rgba(46, 125, 50, 0.28);
+  }
+
+  .join-brand-name {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+  }
+
+  .join-brand-name em {
+    font-style: normal;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-3);
+    margin-left: 6px;
+    letter-spacing: 0;
+  }
+
+  .join-brand-link {
+    margin-left: auto;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-3);
+    transition: background 0.18s, color 0.18s;
+    white-space: nowrap;
+  }
+
+  .join-brand-link:hover { color: var(--brand); background: var(--brand-soft); }
+
+  /* 邀请卡：上绿下白，整页的主角 */
+  .invite-card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 24px 48px -28px rgba(23, 37, 26, 0.34), 0 2px 6px rgba(23, 37, 26, 0.05);
+  }
+
+  [data-theme="dark"] .invite-card {
+    border-color: var(--line-2);
+    box-shadow: 0 24px 48px -22px rgba(0, 0, 0, 0.6);
+  }
+
+  .invite-banner {
+    position: relative;
+    padding: 22px 24px 20px;
+    color: #fff;
+    overflow: hidden;
+    background:
+      radial-gradient(110% 140% at 92% -32%, rgba(255, 255, 255, 0.26), transparent 60%),
+      linear-gradient(135deg, #296b2e 0%, #337d36 52%, #3a8837 100%);
+  }
+
+  /* 底部压一层暗角，白色小字不会被渐变最亮处吃掉 */
+  .invite-banner::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.14) 100%);
+  }
+
+  /* 淡淡的方块网格，呼应方块盒子，别抢文字 */
+  .invite-banner::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(130% 120% at 100% 0%, #000 0%, transparent 68%);
+    mask-image: radial-gradient(130% 120% at 100% 0%, #000 0%, transparent 68%);
+  }
+
+  .invite-eyebrow {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 3px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.16);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+
+  .invite-eyebrow::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #d8ffa6;
+    box-shadow: 0 0 0 3px rgba(216, 255, 166, 0.26);
+  }
+
+  .invite-room {
+    position: relative;
+    z-index: 1;
+    font-size: 21px;
+    line-height: 1.4;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    word-break: break-word;
+  }
+
+  .invite-sub {
+    position: relative;
+    z-index: 1;
+    margin-top: 6px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .invite-body {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    padding: 16px 24px 20px;
+  }
+
+  /* 版本 / 加载器 / 模组这类小标签 */
+  .invite-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .invite-chip {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line-2);
+    background: var(--card-2);
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .invite-chip-core {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: var(--brand-line);
+    font-weight: 700;
+  }
+
+  .invite-code-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    margin-bottom: 7px;
+  }
+
+  .invite-code-label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-2);
+  }
+
+  .invite-code-hint {
+    font-size: 11.5px;
+    color: var(--ink-3);
+  }
+
+  .invite-code-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 11px 11px 11px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--brand-line);
+    background: var(--bg-tint);
+  }
+
+  .invite-code {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--mono);
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: 0.06em;
+    color: var(--brand);
+    word-break: break-all;
+    user-select: all;
+    cursor: pointer;
+  }
+
+  /* 陶瓦邀请码（U/XXXX-XXXX-…）和常见域名端口都不算短，压一档刚好一行放下 */
+  .invite-code.is-mid {
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    line-height: 1.5;
+  }
+
+  /* 特别长的地址允许折行，不再撑破卡片 */
+  .invite-code.is-long {
+    font-size: 13px;
+    letter-spacing: 0;
+    line-height: 1.6;
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .invite-copy {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 34px;
+    padding: 0 11px;
+    border-radius: 10px;
+    border: 1px solid var(--line-2);
+    background: var(--card);
+    color: var(--ink-2);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, color 0.18s;
+  }
+
+  .invite-copy:hover { border-color: var(--brand-line); color: var(--brand); }
+
+  /* 复制成功后把图标换成对勾，比只改文字更好认 */
+  .invite-copy-check { display: none; }
+  .invite-copy.is-done .invite-copy-icon { display: none; }
+  .invite-copy.is-done .invite-copy-check { display: block; }
+
+  .invite-copy.is-done {
+    color: #fff;
+    border-color: var(--g800);
+    background: var(--g800);
+  }
+
+  [data-theme="dark"] .invite-copy.is-done {
+    color: #08210b;
+    border-color: var(--g600);
+    background: var(--g600);
+  }
+
+  .invite-mods {
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--ink-3);
+    word-break: break-word;
+  }
+
+  .invite-mods b {
+    margin-right: 2px;
+    color: var(--ink-2);
+    font-weight: 700;
+  }
+
+  .invite-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 50px;
+    margin-top: 2px;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 15.5px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    background: linear-gradient(180deg, #388d3c 0%, #2e7d32 55%, #296f2d 100%);
+    box-shadow: 0 12px 24px -12px rgba(46, 125, 50, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: filter 0.18s, transform 0.15s, box-shadow 0.2s;
+  }
+
+  .invite-cta:hover { filter: brightness(1.05); }
+
+  .invite-cta:active {
+    transform: translateY(1px);
+    box-shadow: 0 6px 14px -10px rgba(46, 125, 50, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  [data-theme="dark"] .invite-cta {
+    color: #08210b;
+    background: linear-gradient(180deg, #6ac46e 0%, #4caf50 55%, #3f9a43 100%);
+    box-shadow: 0 14px 26px -14px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  .invite-cta svg { flex: none; }
+
+  .invite-alt {
+    font-size: 12.5px;
+    text-align: center;
+    color: var(--ink-2);
+  }
+
+  .invite-alt a,
+  .invite-fallback a {
+    color: var(--brand);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-color: var(--brand-line);
+    text-underline-offset: 2px;
+  }
+
+  .invite-fallback {
+    display: none;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--warn-soft);
+    color: var(--warn);
+    font-size: 12.5px;
+    line-height: 1.7;
+  }
+
+  .invite-fallback.show { display: block; }
+
+  .invite-fallback a { color: inherit; text-decoration-color: currentColor; }
+
+  .invite-note {
+    display: flex;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--ink-3);
+  }
+
+  .invite-note svg { flex: none; margin-top: 3px; }
+
+  /* 打不开链接时的样子 */
+  .invite-error {
+    padding: 38px 26px 32px;
+    text-align: center;
+  }
+
+  .invite-error-icon {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 14px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+
+  .invite-error h2 {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+  }
+
+  .invite-error p {
+    margin: 8px 0 20px;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--ink-2);
+    word-break: break-word;
+  }
+
+  .invite-error-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* 卡片下面的三步说明与页脚 */
+  .join-steps {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 12px;
+    list-style: none;
+    margin-top: 16px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  .join-steps li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .join-steps li + li::before {
+    content: "";
+    width: 12px;
+    height: 1px;
+    margin-right: 2px;
+    background: var(--line-2);
+  }
+
+  .join-step-num {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--brand-line);
+    background: var(--brand-soft);
+    color: var(--brand);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .join-footer {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 11.5px;
+    line-height: 1.9;
+    color: var(--ink-3);
+  }
+
+  .join-footer a { color: var(--ink-3); }
+  .join-footer a:hover { color: var(--brand); }
+  .join-footer .dot { margin: 0 6px; opacity: 0.6; }
+
+  .join-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* 解析中的骨架屏 */
+  .sk {
+    display: block;
+    border-radius: 8px;
+    background-image: linear-gradient(90deg, rgba(127, 127, 127, 0.1) 25%, rgba(127, 127, 127, 0.19) 37%, rgba(127, 127, 127, 0.1) 63%);
+    background-size: 400% 100%;
+    animation: join-sk 1.4s ease-in-out infinite;
+  }
+
+  .invite-banner .sk {
+    background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.18) 25%, rgba(255, 255, 255, 0.4) 37%, rgba(255, 255, 255, 0.18) 63%);
+  }
+
+  .sk-eyebrow { width: 104px; height: 20px; border-radius: 999px; }
+  .sk-title { width: 62%; height: 22px; margin-top: 12px; }
+  .sk-sub { width: 82%; height: 12px; margin-top: 10px; border-radius: 6px; }
+  .sk-chip { width: 88px; height: 24px; border-radius: 999px; }
+  .sk-chip-sm { width: 64px; }
+  .sk-head { width: 132px; height: 12px; border-radius: 6px; margin-top: 3px; }
+  .sk-code { width: 100%; height: 58px; border-radius: 14px; }
+  .sk-cta { width: 100%; height: 50px; border-radius: 14px; }
+
+  @keyframes join-sk {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+  }
+
+  .invite-cta:focus-visible,
+  .invite-copy:focus-visible,
+  .join-brand-link:focus-visible,
+  .join-steps a:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 560px) {
+    .join-page { padding: 22px 0 26px; }
+    .join-wrap { padding: 0 12px; }
+    .join-brand { margin-bottom: 12px; }
+    .join-brand-name em { display: none; }
+    .invite-banner { padding: 20px 18px 18px; }
+    .invite-body { padding: 15px 18px 18px; gap: 12px; }
+    .invite-room { font-size: 18px; }
+    .invite-sub { font-size: 13px; }
+    .invite-code-box { padding: 10px 10px 10px 13px; }
+    .invite-code { font-size: 20px; }
+    .invite-code.is-mid { font-size: 15px; }
+    .invite-code.is-long { font-size: 12.5px; }
+    .invite-cta { height: 48px; font-size: 15px; }
+    .invite-copy { height: 32px; padding: 0 10px; }
+    .invite-error { padding: 32px 20px 26px; }
+    .join-steps { font-size: 12px; gap: 6px 14px; }
+    /* 窄屏换行时别把分隔线甩到行首，靠编号区分三步就够 */
+    .join-steps li + li::before { display: none; }
+  }
+
+  @media (max-width: 380px) {
+    .invite-code { font-size: 18px; letter-spacing: 0.04em; }
+    .invite-code.is-mid { font-size: 14px; }
+    .invite-code.is-long { font-size: 12px; }
+    .invite-copy-text { display: none; }
+    .invite-copy { width: 34px; padding: 0; justify-content: center; }
+    .join-steps li { font-size: 11.5px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sk { animation: none; }
+    .invite-card, .invite-cta, .invite-copy, .join-brand-link { transition: none; }
+  }
 </style>
+<noscript><style>#joinPanel .invite-banner, #joinPanel .invite-body { display: none; }</style></noscript>
 </head>
 <body data-page="join">
-<div id="siteNav"></div>
 
-<main class="page">
-  <div class="wrap">
-    <section class="hero join-hero">
-      <h1>联机房间邀请</h1>
-      <p>有人邀请你一起玩 Minecraft！查看房间邀请码，装上方块盒子客户端后可以一键加入。</p>
+<main class="page join-page">
+  <div class="wrap join-wrap">
+    <header class="join-brand">
+      <span class="join-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 2.6 21 7.4v9.2L12 21.4 3 16.6V7.4z"/><path d="m3 7.4 9 4.8 9-4.8"/><path d="M12 12.2v9.2"/></svg>
+      </span>
+      <span class="join-brand-name">方块盒子<em>联机邀请</em></span>
+      <a class="join-brand-link" href="/lobby.html">联机大厅</a>
+    </header>
+
+    <section class="invite-card" id="joinPanel" aria-busy="true">
+      <div class="invite-banner">
+        <div class="sk sk-eyebrow"></div>
+        <div class="sk sk-title"></div>
+        <div class="sk sk-sub"></div>
+      </div>
+      <div class="invite-body">
+        <div class="invite-chips">
+          <span class="sk sk-chip"></span>
+          <span class="sk sk-chip sk-chip-sm"></span>
+        </div>
+        <div class="sk sk-head"></div>
+        <div class="sk sk-code"></div>
+        <div class="sk sk-cta"></div>
+      </div>
+      <noscript>
+        <div class="invite-error">
+          <h2>邀请链接需要开启 JavaScript</h2>
+          <p>邀请信息是压缩在链接里的，要靠浏览器脚本解开。换一个浏览器打开，或让房主把邀请码直接发给你。</p>
+          <div class="invite-error-actions">
+            <a class="btn btn-primary" href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">下载方块盒子</a>
+            <a class="btn btn-ghost" href="/lobby.html">去联机大厅看看</a>
+          </div>
+        </div>
+      </noscript>
     </section>
 
-    <div class="card join-panel" id="joinPanel">
-      <div class="skeleton">正在解析邀请链接…</div>
-    </div>
+    <ol class="join-steps" id="joinSteps">
+      <li><span class="join-step-num">1</span>装好方块盒子</li>
+      <li><span class="join-step-num">2</span>点「一键加入」</li>
+      <li><span class="join-step-num">3</span>自动启动进房</li>
+    </ol>
+
+    <p class="join-footer">
+      方块盒子 · 免费开源的 Minecraft 启动器
+      <span class="dot">·</span><a href="https://mcblockbox.top/" target="_blank" rel="noopener">官网</a>
+      <span class="dot">·</span><a href="/lobby.html">联机大厅</a>
+    </p>
   </div>
+  <p class="join-sr" id="joinStatus" role="status" aria-live="polite"></p>
 </main>
 
-<footer class="footer" id="siteFooter"></footer>
 <script src="/assets/core.js?v=20261118b"></script>
 <script>
 (function () {
   'use strict';
 
+  var DOWNLOAD_URL = 'https://mcblockbox.top/download.html';
   var panel = document.getElementById('joinPanel');
+  var steps = document.getElementById('joinSteps');
+  var status = document.getElementById('joinStatus');
 
   // 与客户端 ForumLobbyService::coreDisplayName 保持一致
   var CORE_LABELS = {
@@ -73,7 +668,24 @@
     custom: '直连'
   };
 
+  /** core.js 没加载成功时也要能转义，页面不至于整页空着 */
+  function esc(value) {
+    var text = String(value == null ? '' : value);
+    if (window.BB && BB.esc) return BB.esc(text);
+    return text.replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+
+  function announce(message) {
+    if (status) status.textContent = message || '';
+  }
+
   function payloadParam() {
+    try {
+      var value = new URLSearchParams(location.search).get('d');
+      if (value) return value;
+    } catch (e) { /* 老浏览器走下面的正则 */ }
     var match = /[?&]d=([^&]+)/.exec(location.search);
     return match ? match[1] : '';
   }
@@ -82,7 +694,7 @@
   function decodePayload(param) {
     var broken = new Error('邀请内容不完整或已损坏，请让房主重新创建分享链接。');
     if (typeof DecompressionStream === 'undefined') {
-      return Promise.reject(new Error('浏览器版本过旧，暂时打不开邀请链接，请升级浏览器。'));
+      return Promise.reject(new Error('当前浏览器版本过旧，暂时打不开邀请链接，升级浏览器或换一个再试。'));
     }
     var b64 = param.replace(/-/g, '+').replace(/_/g, '/');
     while (b64.length % 4) b64 += '=';
@@ -110,8 +722,12 @@
     });
   }
 
-  function copyText(text, button) {
-    var done = function () { if (window.BB && BB.toast) BB.toast('已复制', 'ok'); };
+  function copyText(text, onDone) {
+    function done() {
+      announce('已复制到剪贴板');
+      if (window.BB && BB.toast) BB.toast('已复制', 'ok');
+      if (onDone) onDone();
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text, done); });
     } else {
@@ -122,61 +738,155 @@
   function legacyCopy(text, done) {
     var input = document.createElement('textarea');
     input.value = text;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
     document.body.appendChild(input);
     input.select();
     try { document.execCommand('copy'); done(); } catch (e) { /* 忽略 */ }
     document.body.removeChild(input);
   }
 
+  /** 复制按钮的「已复制 ✓」态，1.8 秒后自己退回 */
+  function flashCopied(button) {
+    var label = button.querySelector('.invite-copy-text');
+    button.classList.add('is-done');
+    if (label) label.textContent = '已复制';
+    clearTimeout(button._joinTimer);
+    button._joinTimer = setTimeout(function () {
+      button.classList.remove('is-done');
+      if (label) label.textContent = '复制';
+      announce('');
+    }, 1800);
+  }
+
+  /** 邀请码按长度挑字号：短的放大，长的压一档，超长地址再压一档并允许折行 */
+  function codeSizeClass(code) {
+    if (code.length > 26) return ' is-long';
+    if (code.length > 12) return ' is-mid';
+    return '';
+  }
+
+  /** 长地址在自己身上的 . : / - 处分行，别把域名拦腰截断 */
+  function codeMarkup(code) {
+    var safe = esc(code);
+    if (code.length <= 26) return safe;
+    return safe.replace(/([.:\-/])/g, '$1<wbr>');
+  }
+
   function render(data, param) {
     var isTerracotta = data.c === 'terracotta';
-    var code = isTerracotta ? (data.ic || '') : (data.ad || '');
+    var code = String((isTerracotta ? (data.ic || data.ad) : (data.ad || data.ic)) || '');
     var codeLabel = isTerracotta ? '房间邀请码' : '连接地址';
+    var codeHint = isTerracotta
+      ? '在方块盒子「联机」页填邀请码就能进房'
+      : '在 Minecraft「多人游戏 → 直接连接」里输入';
     var coreLabel = CORE_LABELS[data.c] || '联机房间';
+    var title = data.t || '朋友的联机房间';
+    var mods = Array.isArray(data.md) ? data.md.filter(Boolean) : [];
 
-    var metaHtml = '<span class="join-chip">' + (BB.esc(coreLabel)) + '</span>';
-    var infoBits = [];
-    if (data.v) infoBits.push('版本 ' + BB.esc(data.v));
-    if (data.ld) infoBits.push(BB.esc(data.ld));
-    if (data.md && data.md.length) infoBits.push('房主带了 ' + data.md.length + ' 个模组');
-    if (infoBits.length) {
-      metaHtml += '<span class="join-chip plain">' + infoBits.join(' · ') + '</span>';
+    document.title = title + ' · 方块盒子';
+
+    var chips = '<span class="invite-chip invite-chip-core">' + esc(coreLabel) + '</span>';
+    if (data.v) chips += '<span class="invite-chip">版本 ' + esc(data.v) + '</span>';
+    if (data.ld) chips += '<span class="invite-chip">' + esc(data.ld) + '</span>';
+    if (mods.length) chips += '<span class="invite-chip">' + mods.length + ' 个模组</span>';
+
+    var modsLine = '';
+    if (mods.length) {
+      var names = mods.slice(0, 3).join('、') + (mods.length > 3 ? ' 等 ' + mods.length + ' 个' : '');
+      modsLine = '<p class="invite-mods"><b>模组</b>' + esc(names) + '</p>';
     }
 
-    panel.innerHTML =
-      '<h2 class="join-title">' + BB.esc(data.t || '朋友的联机房间') + '</h2>' +
-      '<div class="join-meta">' + metaHtml + '</div>' +
-      '<div class="join-code-label">' + codeLabel + '（在 Minecraft 多人游戏中连接它，或用客户端一键加入）</div>' +
-      '<div class="join-code-box">' +
-        '<code class="join-code" id="joinCode">' + BB.esc(code) + '</code>' +
-        '<button type="button" class="btn btn-ghost btn-sm" id="joinCopyBtn">复制</button>' +
-      '</div>' +
-      '<a class="btn btn-primary join-joinbtn" id="joinLaunchBtn" href="blockbox://join?d=' + encodeURIComponent(param) + '">通过方块盒子一键加入</a>' +
-      '<p class="join-fallback" id="joinFallback">没有反应？可能还没装方块盒子——<a href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">点此下载安装</a>后再试。</p>' +
-      '<p class="join-dl">没有安装方块盒子？<a href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">前往下载</a></p>' +
-      '<p class="join-note">「一键加入」会自动挑选一个版本、加载器和模组都合适的本地实例，启动游戏并连进房间；进入前请先确保房主的房间还开着。</p>';
+    var deepLink = 'blockbox://join?d=' + encodeURIComponent(param);
 
-    document.getElementById('joinCopyBtn').addEventListener('click', function () {
-      copyText(code);
+    panel.innerHTML =
+      '<div class="invite-banner">' +
+        '<span class="invite-eyebrow">联机房间邀请</span>' +
+        '<h1 class="invite-room">' + esc(title) + '</h1>' +
+        '<p class="invite-sub">一起玩 Minecraft 吧，装好方块盒子就能一键进房</p>' +
+      '</div>' +
+      '<div class="invite-body">' +
+        '<div class="invite-chips">' + chips + '</div>' +
+        '<div class="invite-code-wrap">' +
+          '<div class="invite-code-head">' +
+            '<span class="invite-code-label">' + codeLabel + '</span>' +
+            '<span class="invite-code-hint">' + codeHint + '</span>' +
+          '</div>' +
+          '<div class="invite-code-box">' +
+            '<code class="invite-code' + codeSizeClass(code) + '" id="joinCode" title="点击复制">' + codeMarkup(code) + '</code>' +
+            '<button type="button" class="invite-copy" id="joinCopyBtn" aria-label="复制' + codeLabel + '">' +
+              '<svg class="invite-copy-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M15 5.5A2.5 2.5 0 0 0 12.5 3h-7A2.5 2.5 0 0 0 3 5.5v7A2.5 2.5 0 0 0 5.5 15"/></svg>' +
+              '<svg class="invite-copy-check" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>' +
+              '<span class="invite-copy-text">复制</span>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        modsLine +
+        '<a class="invite-cta" id="joinLaunchBtn" href="' + esc(deepLink) + '">' +
+          '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="m10.2 8.4 5.2 3.6-5.2 3.6z" fill="currentColor" stroke="none"/></svg>' +
+          '<span>通过方块盒子一键加入</span>' +
+        '</a>' +
+        '<p class="invite-alt">还没装方块盒子？<a href="' + DOWNLOAD_URL + '" target="_blank" rel="noopener">下载安装</a>后再点一次就行</p>' +
+        '<p class="invite-fallback" id="joinFallback">点了没反应？可能是浏览器拦下了协议跳转。先<a href="' + DOWNLOAD_URL + '" target="_blank" rel="noopener">下载方块盒子</a>，装好回来再点一次。</p>' +
+        '<div class="invite-note">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6h.01"/></svg>' +
+          '<span>「一键加入」会自动挑一个版本、加载器和模组都合适的实例，启动游戏并直接连进房间；房主关掉房间后这个邀请就失效了。</span>' +
+        '</div>' +
+      '</div>';
+
+    panel.setAttribute('aria-busy', 'false');
+
+    var codeEl = document.getElementById('joinCode');
+    var copyBtn = document.getElementById('joinCopyBtn');
+
+    copyBtn.addEventListener('click', function () {
+      copyText(code, function () { flashCopied(copyBtn); });
     });
 
-    document.getElementById('joinLaunchBtn').addEventListener('click', function () {
-      // 2 秒后页面仍在前台，多半是协议没被接管（没装方块盒子），给个下载兜底
+    codeEl.addEventListener('click', function () {
+      copyText(code, function () {
+        announce('已复制' + codeLabel);
+        if (copyBtn) flashCopied(copyBtn);
+      });
+    });
+
+    var launched = false;
+    var launchBtn = document.getElementById('joinLaunchBtn');
+    launchBtn.addEventListener('click', function () {
+      var fallback = document.getElementById('joinFallback');
+      if (fallback) fallback.classList.remove('show');
+      // 2.2 秒内页面失焦 = 协议被接管了；仍在前台多半是没装方块盒子，给个下载兜底
+      window.addEventListener('blur', function () { launched = true; }, { once: true });
       setTimeout(function () {
+        var hint = document.getElementById('joinFallback');
+        if (!hint || launched) return;
         if (document.visibilityState === 'visible' && document.hasFocus()) {
-          document.getElementById('joinFallback').classList.add('show');
+          var alt = panel.querySelector('.invite-alt');
+          // 兜底提示自己就说清楚了，原来那句「没装？下载」就别重复出现
+          if (alt) alt.setAttribute('hidden', '');
+          hint.classList.add('show');
         }
-      }, 2000);
+      }, 2200);
     });
   }
 
   function renderError(message) {
+    document.title = '邀请链接打不开 · 方块盒子';
+    panel.setAttribute('aria-busy', 'false');
     panel.innerHTML =
-      '<div class="join-error">' +
+      '<div class="invite-error">' +
+        '<span class="invite-error-icon" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16.4h.01"/></svg>' +
+        '</span>' +
         '<h2>邀请链接打不开</h2>' +
-        '<p>' + BB.esc(message || '链接可能不完整或已过期，请让房主重新创建分享链接。') + '</p>' +
-        '<a class="btn btn-primary" href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">下载方块盒子</a>' +
+        '<p>' + esc(message || '链接可能不完整或已过期，请让房主重新创建分享链接。') + '</p>' +
+        '<div class="invite-error-actions">' +
+          '<a class="btn btn-primary" href="' + DOWNLOAD_URL + '" target="_blank" rel="noopener">下载方块盒子</a>' +
+          '<a class="btn btn-ghost" href="/lobby.html">去联机大厅看看</a>' +
+        '</div>' +
       '</div>';
+    if (steps) steps.setAttribute('hidden', '');
   }
 
   var param = payloadParam();
