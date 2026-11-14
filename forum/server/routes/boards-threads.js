@@ -641,7 +641,7 @@ export default function register(router) {
 
     const plugin = db
       .prepare(
-        `SELECT tp.id, tp.downloads, u.url, u.size
+        `SELECT tp.id, tp.upload_id, tp.downloads, u.url, u.size
            FROM thread_plugins tp
            JOIN uploads u ON u.id = tp.upload_id AND u.deleted = 0
           WHERE tp.thread_id = ?`,
@@ -655,6 +655,10 @@ export default function register(router) {
     if (Date.now() - lastSeen > 10 * 60 * 1000) {
       pluginDownloadSeen.set(key, Date.now());
       db.prepare('UPDATE thread_plugins SET downloads = downloads + 1 WHERE id = ?').run(plugin.id);
+      // 当前版本的计数也 +1（历史版本只在它当初是最新版时才累计）
+      db.prepare('UPDATE plugin_versions SET downloads = downloads + 1 WHERE upload_id = ?').run(
+        plugin.upload_id,
+      );
       if (pluginDownloadSeen.size > 5000) pluginDownloadSeen.clear();
     }
 
@@ -667,6 +671,126 @@ export default function register(router) {
       filename: pathname || 'plugin.BlockBox',
       downloads: plugin.downloads,
     };
+  });
+
+  // ---------------- 插件帖：版本历史 ----------------
+  // thread_plugins 始终是「当前版」，旧包上传新版本时挪进 plugin_versions 留档。
+
+  router.get('/api/threads/:id/plugin/versions', async (ctx) => {
+    const threadId = Number(ctx.params.id);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+    const thread = db.prepare('SELECT id, deleted FROM threads WHERE id = ?').get(threadId);
+    if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
+
+    const current = db.prepare('SELECT upload_id FROM thread_plugins WHERE thread_id = ?').get(threadId);
+    const rows = db
+      .prepare(
+        `SELECT id, upload_id, version, file_size, downloads, created_at
+           FROM plugin_versions
+          WHERE thread_id = ?
+          ORDER BY id DESC`,
+      )
+      .all(threadId);
+    return {
+      versions: rows.map((row) => ({
+        id: row.id,
+        upload_id: row.upload_id,
+        version: row.version || '',
+        file_size: row.file_size || 0,
+        downloads: row.downloads || 0,
+        created_at: row.created_at,
+        current: current ? row.upload_id === current.upload_id : false,
+      })),
+    };
+  });
+
+  // ---------------- 插件帖：上传新版本 ----------------
+  // 作者（或管理员）给已发布的插件作品传新包：旧包挪进历史留档，thread_plugins
+  // 换成新包继续当「当前版」，卡片与下载不用改地址。
+
+  router.post('/api/threads/:id/plugin/versions', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const threadId = Number(ctx.params.id);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+    const thread = db.prepare('SELECT id, deleted, author_id FROM threads WHERE id = ?').get(threadId);
+    if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
+    if (thread.author_id !== user.id && !isAdminRole(user.role))
+      throw badRequest('只能给自己的作品上传新版本');
+
+    const current = db.prepare('SELECT * FROM thread_plugins WHERE thread_id = ?').get(threadId);
+    if (!current) throw notFound('这条主题没有挂插件');
+
+    const uploadId = Number((await ctx.json()).upload_id);
+    if (!Number.isInteger(uploadId) || uploadId <= 0) throw badRequest('插件上传记录不正确');
+    const upload = db.prepare('SELECT * FROM uploads WHERE id = ? AND user_id = ?').get(uploadId, user.id);
+    if (!upload || upload.deleted) throw notFound('插件上传不存在，请重新上传');
+    if (upload.kind !== 'plugin') throw badRequest('该上传不是插件包', 'not_plugin_upload');
+    if (db.prepare('SELECT 1 FROM thread_plugins WHERE upload_id = ?').get(uploadId))
+      throw badRequest('这个插件包已经绑定在一条主题上了', 'plugin_upload_taken');
+    if (db.prepare('SELECT 1 FROM plugin_versions WHERE upload_id = ?').get(uploadId))
+      throw badRequest('这个插件包已经上传过一版了', 'plugin_upload_taken');
+
+    let meta = {};
+    try {
+      meta = JSON.parse(upload.meta || '{}');
+    } catch {
+      meta = {};
+    }
+    if (!meta.plugin_id || !meta.plugin_name)
+      throw badRequest('插件上传缺少清单信息，请重新上传', 'plugin_meta_missing');
+    // 新包必须是同一个插件：换作品的请另外发帖
+    if (meta.plugin_id !== current.plugin_id)
+      throw badRequest('这个包的插件 ID 和当前作品不一样，不是同一个插件的新版本', 'plugin_mismatch');
+    if (meta.file_hash && current.file_hash && meta.file_hash === current.file_hash)
+      throw badRequest('这个包和当前版本一模一样，不用重复上传', 'plugin_same_version');
+
+    const timestamp = now();
+    transaction(() => {
+      // 当前包还没进过历史就先挪进去（带着它自己的下载计数）
+      const recorded = db
+        .prepare('SELECT 1 FROM plugin_versions WHERE upload_id = ?')
+        .get(current.upload_id);
+      if (!recorded) {
+        db.prepare(
+          `INSERT INTO plugin_versions
+             (thread_id, upload_id, uploader_id, plugin_id, name, version, author, description,
+              icon, file_size, file_hash, downloads, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          threadId,
+          current.upload_id,
+          thread.author_id,
+          current.plugin_id,
+          current.name,
+          current.version,
+          current.author,
+          current.description,
+          current.icon,
+          current.file_size,
+          current.file_hash,
+          current.downloads,
+          current.created_at,
+        );
+      }
+      db.prepare(
+        `UPDATE thread_plugins
+            SET upload_id = ?, plugin_id = ?, name = ?, version = ?, author = ?,
+                description = ?, icon = ?, file_size = ?, file_hash = ?
+          WHERE id = ?`,
+      ).run(
+        uploadId,
+        meta.plugin_id,
+        meta.plugin_name,
+        meta.plugin_version || '',
+        meta.plugin_author || '',
+        meta.plugin_description || '',
+        meta.plugin_icon || '',
+        upload.size || 0,
+        meta.file_hash || '',
+        current.id,
+      );
+    });
+    return { ok: true };
   });
 
   // ---------------- 修改主题 ----------------
@@ -693,12 +817,13 @@ export default function register(router) {
     if (!thread || thread.deleted) throw notFound('主题不存在');
     if (thread.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能删除自己的主题');
     db.prepare('UPDATE threads SET deleted = 1 WHERE id = ?').run(thread.id);
-    // 插件帖删了,包也别再让人下(同步软删 uploads 记录,下载接口会查它)
+    // 插件帖删了,包也别再让人下(同步软删 uploads 记录,下载接口会查它;历史版本一起下架)
     db.prepare(
       `UPDATE uploads SET deleted = 1
         WHERE deleted = 0 AND kind = 'plugin'
-          AND id IN (SELECT upload_id FROM thread_plugins WHERE thread_id = ?)`,
-    ).run(thread.id);
+          AND (id IN (SELECT upload_id FROM thread_plugins WHERE thread_id = ?)
+            OR id IN (SELECT upload_id FROM plugin_versions WHERE thread_id = ?))`,
+    ).run(thread.id, thread.id);
     db.prepare('DELETE FROM thread_search WHERE thread_id = ?').run(thread.id);
     db.prepare('DELETE FROM notifications WHERE thread_id = ?').run(thread.id);
     db.prepare("UPDATE reports SET status = 'ignored' WHERE thread_id = ? AND status = 'open'").run(thread.id);

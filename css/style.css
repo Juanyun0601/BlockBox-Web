@@ -1293,3 +1293,9 @@ body {
 @media (max-width: 860px) {
     .theme-switch { margin-left: auto; margin-right: 2px; }
 }
+
+/* 文档页页脚的站内快捷链接（官网首页 / 下载 / 更新日志 / 网站地图） */
+.footer-links { margin-top: 0.75rem; }
+.footer-links a { color: #94a3b8; text-decoration: underline; text-underline-offset: 3px; transition: color .2s; }
+.footer-links a:hover { color: #e2e8f0; }
+.footer-links span { margin: 0 0.45em; opacity: .6; }

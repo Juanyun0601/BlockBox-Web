@@ -2,6 +2,7 @@ import { db } from '../db.js';
 
 const THREAD_SELECT = `
   SELECT t.id, t.title, t.pinned, t.locked, t.views, t.reply_count, t.created_at, t.last_post_at,
+         t.deleted AS deleted,
          b.id AS board_id, b.slug AS board_slug, b.name AS board_name, b.icon AS board_icon,
          u.id AS author_id, u.username AS author_username,
          u.display_name AS author_display_name, u.avatar AS author_avatar,

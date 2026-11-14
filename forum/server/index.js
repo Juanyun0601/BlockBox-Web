@@ -36,6 +36,8 @@ import registerReleases from './routes/releases.js';
 import registerNotice from './routes/notice.js';
 import registerPoints from './routes/points.js';
 import { isVerified } from './lib/human-check.js';
+import { isCrawlerUA } from './lib/crawler.js';
+import { renderCrawlerPage, renderSitemapXml } from './lib/ssr.js';
 import { initAnnouncements } from './lib/announcements.js';
 import { handleReleaseFileRequest, initReleases } from './lib/releases.js';
 import { ensureAllSupportFriends, supportUserId } from './lib/support.js';
@@ -238,8 +240,34 @@ async function handle(req, res) {
     throw notFound('文件不存在');
   }
 
+  // 论坛自己的 sitemap.xml：谁来都给（robots.txt 登记过，站长平台也会直接来拉）
+  if (pathname === '/sitemap.xml') {
+    res.writeHead(200, {
+      'content-type': 'application/xml; charset=utf-8',
+      'cache-control': 'public, max-age=600',
+    });
+    res.end(renderSitemapXml());
+    return;
+  }
+
+  // 搜索引擎与链接预览机器人：直接回服务端渲染的只读页（ssr.js），不进滑块门禁。
+  // robots.txt 只放行了首页 / 板块 / 帖子这三个只读地址，后台、发帖、账号等
+  // 路径仍然照旧被引去验证页，不会因为识别出爬虫就多放行任何东西。
+  if (isCrawlerUA(req.headers['user-agent'])) {
+    const rendered = renderCrawlerPage(pathname, url.searchParams);
+    if (rendered) {
+      res.writeHead(rendered.status, {
+        'content-type': rendered.type,
+        'cache-control': 'public, max-age=300',
+      });
+      if (req.method === 'HEAD') res.end();
+      else res.end(rendered.body);
+      return;
+    }
+  }
+
   // 人机验证：页面先过验证再给看，静态资源不拦，免得验证页自己也打不开
-  // （robots.txt 也不拦：爬虫拿不到它就没法知道论坛暂时不参与收录）
+  // （robots.txt 也不拦：搜索引擎要先读它才知道论坛哪些页面能抓）
   if (
     config.humanCheck.enabled &&
     !pathname.startsWith('/assets/') &&

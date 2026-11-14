@@ -241,6 +241,28 @@ CREATE TABLE IF NOT EXISTS thread_plugins (
 CREATE INDEX IF NOT EXISTS idx_thread_plugins_thread ON thread_plugins(thread_id);
 CREATE INDEX IF NOT EXISTS idx_thread_plugins_plugin ON thread_plugins(plugin_id);
 
+-- 插件作品的历史版本（上传新版本留档）--------------------------------------
+-- 展示与下载的始终是 thread_plugins 里那一行（最新版）；
+-- 上传新版本时，旧包先原样挪进这张表留档，下载计数按版本各自累计。
+CREATE TABLE IF NOT EXISTS plugin_versions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  thread_id   INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+  upload_id   INTEGER NOT NULL UNIQUE REFERENCES uploads(id) ON DELETE CASCADE,
+  uploader_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plugin_id   TEXT    NOT NULL,
+  name        TEXT    NOT NULL,
+  version     TEXT    NOT NULL DEFAULT '',
+  author      TEXT    NOT NULL DEFAULT '',
+  description TEXT    NOT NULL DEFAULT '',
+  icon        TEXT    NOT NULL DEFAULT '',
+  file_size   INTEGER NOT NULL DEFAULT 0,
+  file_hash   TEXT    NOT NULL DEFAULT '',
+  downloads   INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_plugin_versions_thread ON plugin_versions(thread_id, id DESC);
+
 -- 搜索用索引表（主题标题 + 正文摘要，避免搜索时全表扫楼层）
 CREATE TABLE IF NOT EXISTS thread_search (
   thread_id  INTEGER PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
@@ -412,6 +434,9 @@ CREATE TABLE IF NOT EXISTS lobby_rooms (
   game_version TEXT    NOT NULL DEFAULT '',
   loader       TEXT    NOT NULL DEFAULT '',
   mods         TEXT    NOT NULL DEFAULT '[]',
+  mods_aux     TEXT    NOT NULL DEFAULT '[]',
+  resource_packs TEXT  NOT NULL DEFAULT '[]',
+  shader_packs TEXT    NOT NULL DEFAULT '[]',
   max_players  INTEGER NOT NULL DEFAULT 8,
   cover        TEXT    NOT NULL DEFAULT '',
   md           TEXT    NOT NULL DEFAULT '',

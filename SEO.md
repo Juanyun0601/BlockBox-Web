@@ -12,7 +12,8 @@
 | 项目 | 文件 | 作用 |
 | --- | --- | --- |
 | 抓取入口 | `robots.txt` | 全站允许抓取，并声明 sitemap 地址 |
-| 站点地图 | `sitemap.xml` | 首页 / 下载页 / 开发文档 / 更新日志四个地址，带 lastmod 与权重 |
+| 站点地图 | `sitemap.xml` | 首页 / 下载页 / 开发文档 / 更新日志 / 网站地图五个地址，带 lastmod 与权重 |
+| 网站地图页 | `sitemap.html` | 给访客看的「网站地图」页面：全站页面与栏目一页列全，四个页面页脚都能点进来，也帮搜索引擎顺内链 |
 | 规范网址 | 四个页面的 `rel="canonical"` | 避免 `?lang=`、www、别的域名造成重复页面分散权重 |
 | 标题与描述 | 四个页面的 `<title>` / `description` | 标题里带上「Minecraft（我的世界）启动器」「免费开源」等搜索词；描述写清平台与卖点 |
 | 分享卡片 | Open Graph + Twitter Card + `assets/img/og-cover.png` | 在 QQ / 微信 / 微博 / B 站 / Discord 里分享时显示统一封面 |
@@ -122,13 +123,13 @@ server {
 - B 站视频简介、抖音主页、爱发电主页都放官网链接（已有部分，检查一遍是否带 `https://mcblockbox.top/`）。
 - GitHub 仓库（`Juanyun0601/BlockBox`）的 About 里填官网地址，README 顶部放一行「官网：https://mcblockbox.top」。
 - MineBBS、bbsmc、MC 相关贴吧 / 知乎回答里，用「工具名 + 官网」的方式自然提及，别刷屏发链接。
-- 论坛内容目前**搜索引擎抓不到**：进站要过滑块验证，页面又是前端渲染。已经在论坛子域放了 `robots.txt`（`Disallow: /`），明确告诉爬虫别来，免得「人机验证」页被当成论坛首页收录；等以后给 `Bingbot` / `Baiduspider` 放行只读页、并把主题页做成服务端渲染，再把那一行删掉即可——这是一项独立工程，建议先把官网和下载量做起来再说。
+- 论坛的帖子和资源已经对搜索引擎开放（2026/11 起）：论坛首页、板块页和帖子页做了**服务端渲染**（`forum/server/lib/ssr.js`），爬虫识别（`forum/server/lib/crawler.js`）命中 Baidu / Bing / Google / 搜狗 / 360 / Yandex 以及微信、Discord、Twitter 等链接预览机器人时，不再弹滑块，直接回一份带标题、描述、正文和面包屑结构化数据的完整 HTML；论坛子域的 `robots.txt` 已放行这三个只读地址、挡住后台和账号页，并提供论坛自己的 `sitemap.xml`（首页 + 全部板块 + 最近 1000 条主题，主题带 lastmod）。主站 `robots.txt` 也登记了论坛 sitemap。后续要在各家站长平台把 `https://forum.mcblockbox.top/sitemap.xml` 也提交一遍（见第二节）。联机大厅、意见反馈、个人主页等纯前端或账号页暂不参与收录，要放开时在论坛 robots.txt 里删掉对应 Disallow、再补对应的渲染页即可。
 
 ---
 
 ## 六、怎么判断有没有效果
 
-- 收录：百度 / 必应搜 `site:mcblockbox.top`，能搜到首页 + 下载页就说明进去了（新站一般 3–7 天，慢的两三周）。
+- 收录：百度 / 必应搜 `site:mcblockbox.top`，能搜到首页 + 下载页就说明进去了（新站一般 3–7 天，慢的两三周）；论坛同理搜 `site:forum.mcblockbox.top`，帖子被收录后搜「帖子标题 + 方块盒子」应该能直接命中帖子页。
 - 品牌词：搜「方块盒子」「BlockBox 启动器」看有没有自己的官网。
 - 排名变化：百度搜索资源平台「流量与关键词」、必应后台「搜索性能」里能看到曝光 / 点击 / 平均排名，按周看趋势，别看单日。
 - 结构化数据：<https://validator.schema.org/> 贴首页地址，确认没有报错。

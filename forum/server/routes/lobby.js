@@ -37,6 +37,27 @@ function parseMods(raw) {
   }
 }
 
+/**
+ * 把发布 body 里的字符串数组收成干净的列表：去空白、去重、限长限数。
+ * 大厅的模组 / 资源包 / 光影包都用它，避免个别超长文件名撑爆房间数据。
+ */
+function readNameList(raw, max, maxLength) {
+  const list = [];
+  if (!Array.isArray(raw)) return list;
+  for (const item of raw.slice(0, max)) {
+    const name = String(item == null ? '' : item).trim().slice(0, maxLength);
+    if (name && !list.includes(name)) list.push(name);
+  }
+  return list;
+}
+
+/** 辅助模组只保留 mods 里真实存在的项，防止两边对不上 */
+function cleanAuxMods(aux, mods) {
+  if (!aux.length) return [];
+  const known = new Set(mods);
+  return aux.filter((name) => known.has(name));
+}
+
 function parsePackMeta(raw) {
   try {
     const meta = JSON.parse(raw || '{}');
@@ -77,6 +98,9 @@ function roomJson(row, viewer) {
     game_version: row.game_version || '',
     loader: row.loader || '',
     mods: parseMods(row.mods),
+    mods_aux: parseMods(row.mods_aux),
+    resource_packs: parseMods(row.resource_packs),
+    shader_packs: parseMods(row.shader_packs),
     max_players: row.max_players,
     cover: row.cover || '',
     md: row.md || '',
@@ -125,6 +149,10 @@ function readPublishBody(body) {
       if (name && !mods.includes(name)) mods.push(name);
     }
   }
+  // 辅助模组（客户端可选）只是 mods 的子集标注；资源包 / 光影包各自独立列表
+  const modsAux = cleanAuxMods(readNameList(body.mods_aux, 80, 120), mods);
+  const resourcePacks = readNameList(body.resource_packs, 40, 160);
+  const shaderPacks = readNameList(body.shader_packs, 40, 160);
 
   const maxPlayers = int(body.max_players, { field: '人数上限', min: 1, max: 64, fallback: 8 });
   const status = STATUS_KEYS.includes(String(body.status)) ? String(body.status) : 'waiting';
@@ -158,7 +186,8 @@ function readPublishBody(body) {
   }
 
   return {
-    title, description, core, inviteCode, address, gameVersion, loader, mods, maxPlayers, status,
+    title, description, core, inviteCode, address, gameVersion, loader, mods, modsAux,
+    resourcePacks, shaderPacks, maxPlayers, status,
     cover, md, modpackMode, modpackName, modpackUrl, modpackMetaJson,
   };
 }
@@ -224,7 +253,8 @@ export default function register(router) {
       db.prepare(
         `UPDATE lobby_rooms
             SET title = ?, description = ?, core = ?, invite_code = ?, address = ?,
-                game_version = ?, loader = ?, mods = ?, max_players = ?,
+                game_version = ?, loader = ?, mods = ?, mods_aux = ?,
+                resource_packs = ?, shader_packs = ?, max_players = ?,
                 cover = ?, md = ?, modpack_mode = ?, modpack_name = ?, modpack_url = ?, modpack_meta = ?,
                 status = ?, heartbeat_at = ?, updated_at = ?
           WHERE id = ?`,
@@ -237,6 +267,9 @@ export default function register(router) {
         room.gameVersion,
         room.loader,
         JSON.stringify(room.mods),
+        JSON.stringify(room.modsAux),
+        JSON.stringify(room.resourcePacks),
+        JSON.stringify(room.shaderPacks),
         room.maxPlayers,
         room.cover,
         room.md,
@@ -255,9 +288,10 @@ export default function register(router) {
         .prepare(
           `INSERT INTO lobby_rooms
              (owner_id, title, description, core, invite_code, address, game_version, loader,
-              mods, max_players, cover, md, modpack_mode, modpack_name, modpack_url, modpack_meta,
+              mods, mods_aux, resource_packs, shader_packs, max_players,
+              cover, md, modpack_mode, modpack_name, modpack_url, modpack_meta,
               status, join_count, heartbeat_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
         )
         .run(
           user.id,
@@ -269,6 +303,9 @@ export default function register(router) {
           room.gameVersion,
           room.loader,
           JSON.stringify(room.mods),
+          JSON.stringify(room.modsAux),
+          JSON.stringify(room.resourcePacks),
+          JSON.stringify(room.shaderPacks),
           room.maxPlayers,
           room.cover,
           room.md,

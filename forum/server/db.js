@@ -82,6 +82,16 @@ export function migrate() {
   const addedLobbyPackMeta = ensureColumn('lobby_rooms', 'modpack_meta', "TEXT NOT NULL DEFAULT '{}'");
   if (addedLobbyPackMeta) console.log('[论坛] 数据库已升级：lobby_rooms 增加 modpack_meta（前置整合包信息快照）');
 
+  // 联机大厅：辅助模组标签 / 资源包 / 光影包（一键加入前按需下载）
+  // mods 仍是房主模组的完整列表，mods_aux 只是其中带「辅助」标签的子集，
+  // 老版本客户端忽略新字段也能照旧按完整列表匹配。
+  const addedLobbyModsAux = ensureColumn('lobby_rooms', 'mods_aux', "TEXT NOT NULL DEFAULT '[]'");
+  if (addedLobbyModsAux) console.log('[论坛] 数据库已升级：lobby_rooms 增加 mods_aux（辅助模组）');
+  const addedLobbyResourcePacks = ensureColumn('lobby_rooms', 'resource_packs', "TEXT NOT NULL DEFAULT '[]'");
+  if (addedLobbyResourcePacks) console.log('[论坛] 数据库已升级：lobby_rooms 增加 resource_packs（资源包）');
+  const addedLobbyShaderPacks = ensureColumn('lobby_rooms', 'shader_packs', "TEXT NOT NULL DEFAULT '[]'");
+  if (addedLobbyShaderPacks) console.log('[论坛] 数据库已升级：lobby_rooms 增加 shader_packs（光影包）');
+
   // 用户角色新增「次级管理员」：老库的 CHECK 约束没这一档，需要重建 users 表
   const usersSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get()?.sql || '';
   if (usersSql && !usersSql.includes('moderator')) {
