@@ -10,6 +10,13 @@ BB.boot(async () => {
   let replyTarget = null;
   const postCache = new Map();
 
+  // 插件帖 / 投影帖是资源详情页：没有楼层、没有楼中楼，只有一个平铺的评论区。
+  // 判断口径与启动器一致：帖子上挂了插件或投影，或者本来就在「插件分享 / 投影分享」板块。
+  const RESOURCE_BOARDS = new Set(['plugin-share', 'schematic-share']);
+  const isResourceThread = (thread) =>
+    !!(thread && (thread.plugin || thread.schematic)) ||
+    !!(thread && thread.board && RESOURCE_BOARDS.has(thread.board.slug));
+
   const canEditPost = (post) => !!me && !post.deleted && (me.id === post.author.id || BB.isAdmin());
 
   // ---------------------------------------------------------------- 渲染
@@ -101,6 +108,209 @@ BB.boot(async () => {
     </article>`;
   }
 
+  // ---------------------------------------------------------------- 评论区
+
+  function commentHtml(comment) {
+    const author = comment.author || {};
+    const mine = me && me.id === author.id;
+    const canDelete = !!me && (mine || BB.isAdmin());
+    const name = author.display_name || author.username || '未知用户';
+    const role = author.role === 'admin' ? '管理员' : author.role === 'moderator' ? '次级管理员' : '';
+    return `<article class="comment card" id="comment-${comment.id}" data-comment-id="${comment.id}">
+      <div class="comment-head">
+        ${BB.avatar(author, 'avatar-sm')}
+        <div class="comment-who">
+          <a class="name" href="/user.html?id=${author.id}">${BB.esc(name)}</a>
+          ${role ? `<span class="chip chip-grey">${role}</span>` : ''}
+          <span class="comment-time" title="${BB.datetime(comment.created_at)}">${BB.time(comment.created_at)}</span>
+        </div>
+        <button type="button" class="comment-like${comment.liked ? ' liked' : ''}" data-act="comment-like" data-comment="${comment.id}" title="给这条评论点个赞">
+          <span class="act-ico">👍</span><span data-like-count>${comment.likes || 0}</span>
+        </button>
+      </div>
+      <div class="comment-content post-content">${BB.md(comment.content)}</div>
+      <div class="comment-actions">
+        <button type="button" class="act" data-act="comment-reply" data-comment="${comment.id}">回复</button>
+        ${canDelete ? `<button type="button" class="act danger" data-act="comment-delete" data-comment="${comment.id}">删除</button>` : ''}
+        ${!mine && me ? `<button type="button" class="act" data-act="comment-report" data-comment="${comment.id}">举报</button>` : ''}
+      </div>
+    </article>`;
+  }
+
+  function bindCommentActions() {
+    document.querySelectorAll('[data-act^="comment-"]').forEach((button) => {
+      const commentId = Number(button.dataset.comment);
+      if (!commentId) return;
+      const action = button.dataset.act;
+
+      if (action === 'comment-like') {
+        button.addEventListener('click', async () => {
+          if (!me) {
+            location.href = BB.loginLink();
+            return;
+          }
+          try {
+            const result = await BB.api(`/api/comments/${commentId}/like`, { method: 'POST', body: {} });
+            button.classList.toggle('liked', result.liked);
+            const count = button.querySelector('[data-like-count]');
+            if (count) count.textContent = result.likes;
+          } catch (error) {
+            BB.toast(error.message, 'error');
+          }
+        });
+        return;
+      }
+
+      if (action === 'comment-reply') {
+        button.addEventListener('click', () => {
+          if (!me) {
+            location.href = BB.loginLink();
+            return;
+          }
+          const box = document.getElementById('commentBox');
+          const card = document.getElementById('commentComposerCard');
+          if (!box) return;
+          // 评论没有楼中楼：回复就是在自己的评论里 @ 对方
+          const name = (button.closest('.comment')?.querySelector('.comment-who .name')?.textContent || '').trim();
+          const prefix = name ? `@${name} ` : '';
+          if (!prefix || !box.value.includes(prefix)) {
+            box.value = `${prefix}${box.value}`;
+            box.focus();
+            box.setSelectionRange(box.value.length, box.value.length);
+            box.dispatchEvent(new Event('input'));
+          }
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        return;
+      }
+
+      if (action === 'comment-delete') {
+        button.addEventListener('click', async () => {
+          if (!confirm('确定删除这条评论吗？')) return;
+          try {
+            await BB.api(`/api/comments/${commentId}`, { method: 'DELETE' });
+            BB.toast('评论已删除', 'ok');
+            location.reload();
+          } catch (error) {
+            BB.toast(error.message, 'error');
+          }
+        });
+        return;
+      }
+
+      if (action === 'comment-report') {
+        button.addEventListener('click', async () => {
+          if (!me) {
+            location.href = BB.loginLink();
+            return;
+          }
+          const reason = prompt('举报理由（例如：广告、人身攻击、刷屏）', '');
+          if (reason === null) return;
+          try {
+            await BB.api(`/api/comments/${commentId}/report`, { method: 'POST', body: { reason } });
+            BB.toast('已提交举报，管理员会尽快处理', 'ok');
+          } catch (error) {
+            BB.toast(error.message, 'error');
+          }
+        });
+      }
+    });
+  }
+
+  /** 评论区的发表框：登录 / 答题 / 锁定三种前置状态和楼层回复框一致 */
+  function renderCommentComposer(thread) {
+    const host = document.getElementById('composerHost');
+    if (!me) {
+      host.innerHTML = `<section class="card composer">
+        <h3>来说两句？</h3>
+        <p class="muted small" style="margin-bottom: 12px">登录后就能评论这个资源，也可以用同一账号在方块盒子论坛发帖。</p>
+        <div class="composer-foot"><a class="btn btn-primary" href="${BB.loginLink()}">登录 / 注册</a></div>
+      </section>`;
+      return;
+    }
+
+    if (!me.quiz_passed) {
+      host.innerHTML = `<section class="card composer">
+        <h3>先通过入站答题，再来评论</h3>
+        <p class="muted small" style="margin-bottom: 12px">答题结果记在你的账号上：随机抽 50 题、80 分通过，答错会立刻给出答案和解析。</p>
+        <div class="composer-foot"><a class="btn btn-primary" href="/quiz.html?next=${encodeURIComponent(
+          `/thread.html?id=${thread.id}`,
+        )}">去答题</a></div>
+      </section>`;
+      return;
+    }
+
+    if (thread.locked && !BB.isAdmin()) {
+      host.innerHTML = `<section class="card composer">
+        <h3>主题已锁定</h3>
+        <p class="muted small">这个主题已由管理员锁定，暂时不能评论。</p>
+      </section>`;
+      return;
+    }
+
+    host.innerHTML = `<section class="card composer" id="commentComposerCard">
+      <div class="composer-head">
+        ${BB.avatar(me, 'avatar-sm')}
+        <h3>发表评论</h3>
+        <span class="composer-hint">支持 Markdown · 可直接粘贴图片</span>
+      </div>
+      <div id="commentComposerError"></div>
+      <textarea class="textarea" id="commentBox" placeholder="看过之后想说点什么…支持 Markdown：**加粗**、\`代码\`，也能直接粘贴或拖入图片" style="min-height:110px"></textarea>
+      <div class="composer-foot">
+        <span class="muted small">以 ${BB.esc(me.display_name || me.username)} 的身份评论 · 草稿自动保存 · Ctrl + Enter 发送</span>
+        <span class="composer-count" id="commentCount">0 字</span>
+        <button class="btn btn-primary" id="commentSubmit">发表评论</button>
+      </div>
+    </section>`;
+
+    const box = document.getElementById('commentBox');
+    const errorHost = document.getElementById('commentComposerError');
+    const submit = document.getElementById('commentSubmit');
+    const counter = document.getElementById('commentCount');
+
+    const updateCount = () => {
+      if (counter) counter.textContent = `${[...box.value.trim()].length} 字`;
+    };
+
+    const sendComment = async () => {
+      const content = box.value.trim();
+      if (!content) {
+        BB.showError(errorHost, '评论内容不能为空');
+        return;
+      }
+      submit.disabled = true;
+      submit.textContent = '发送中…';
+      try {
+        const result = await BB.api(`/api/threads/${thread.id}/comments`, {
+          method: 'POST',
+          body: { content },
+        });
+        BB.draft.clear(`comment:${thread.id}`);
+        const newId = result && result.comment ? result.comment.id : 0;
+        location.href = `/thread.html?id=${thread.id}${newId ? `#comment-${newId}` : ''}`;
+      } catch (error) {
+        BB.showError(errorHost, error.message);
+        submit.disabled = false;
+        submit.textContent = '发表评论';
+      }
+    };
+
+    const insertImageFiles = BB.attachImagePaste(box);
+    BB.attachMentions(box);
+    BB.bindDraft(box, `comment:${thread.id}`);
+    BB.attachMarkdownEditor(box, { imageFiles: insertImageFiles });
+
+    box.addEventListener('input', updateCount);
+    box.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        sendComment();
+      }
+    });
+    submit.addEventListener('click', sendComment);
+    updateCount();
+  }
+
   function renderHead(thread) {
     const flags = `${thread.pinned ? '<span class="chip chip-warn">置顶</span>' : ''}${
       thread.locked ? '<span class="chip chip-grey">已锁定</span>' : ''
@@ -126,6 +336,11 @@ BB.boot(async () => {
          </button>`
       : `<a class="btn btn-ghost btn-sm bookmark-btn" href="${BB.loginLink()}">☆ 收藏</a>`;
 
+    const resource = isResourceThread(thread);
+    const countLine = resource
+      ? `<span>${BB.num(thread.comment_count || 0)} 条评论</span>`
+      : `<span>${BB.num(thread.reply_count || 0)} 条回复</span>`;
+
     document.getElementById('threadHead').innerHTML = `
       ${flags ? `<div class="thread-flags">${flags}</div>` : ''}
       <h1>${BB.esc(thread.title)}</h1>
@@ -140,7 +355,7 @@ BB.boot(async () => {
         <span class="meta-dot">·</span>
         <span>${BB.num(thread.views)} 次浏览</span>
         <span class="meta-dot">·</span>
-        <span>${BB.num(thread.reply_count)} 条回复</span>
+        ${countLine}
         ${bookmark}
       </div>
       ${tags ? `<div class="post-tags">${tags}</div>` : ''}
@@ -182,12 +397,12 @@ BB.boot(async () => {
 
   // ---------------------------------------------------------------- 右侧栏
 
-  async function renderRail(thread) {
+  async function renderRail(thread, { resource = false } = {}) {
     const rail = document.getElementById('threadRail');
     if (!rail) return;
     const board = thread.board || {};
     const lockedNote = thread.locked
-      ? '<div class="rail-note">该主题已锁定，暂不接受新回复</div>'
+      ? `<div class="rail-note">该主题已锁定，暂不接受新${resource ? '评论' : '回复'}</div>`
       : '';
 
     rail.innerHTML = `
@@ -195,7 +410,9 @@ BB.boot(async () => {
         <h3 class="rail-title">主题信息</h3>
         <div class="rail-stats">
           <div><b>${BB.num(thread.views)}</b><span>浏览</span></div>
-          <div><b>${BB.num(thread.reply_count)}</b><span>回复</span></div>
+          <div><b>${BB.num(resource ? thread.comment_count || 0 : thread.reply_count || 0)}</b><span>${
+            resource ? '评论' : '回复'
+          }</span></div>
         </div>
         <div class="rail-info">
           <div class="row"><span class="k">版块</span><span class="v"><a href="/board.html?slug=${encodeURIComponent(
@@ -205,7 +422,7 @@ BB.boot(async () => {
             thread.author.id
           }">${BB.esc(thread.author.display_name)}</a></span></div>
           <div class="row"><span class="k">发布</span><span class="v">${BB.datetime(thread.created_at)}</span></div>
-          <div class="row"><span class="k">最后回复</span><span class="v">${BB.time(thread.last_post_at) || '—'}</span></div>
+          <div class="row"><span class="k">${resource ? '最后活动' : '最后回复'}</span><span class="v">${BB.time(thread.last_post_at) || '—'}</span></div>
         </div>
         ${lockedNote}
         <button type="button" class="rail-share" data-share>复制本页链接</button>
@@ -559,18 +776,39 @@ BB.boot(async () => {
     });
 
     renderHead(thread);
-    document.getElementById('postList').innerHTML = data.posts.map(postHtml).join('');
-    document.getElementById('pager').innerHTML = BB.pagination(
-      data.pagination,
-      (target) => `/thread.html?id=${threadId}&page=${target}`,
-    );
-    renderComposer(thread);
-    bindActions();
-    renderRail(thread);
+
+    // 插件帖 / 投影帖：没有楼层与楼中楼，正文下面是平铺的评论区
+    if (isResourceThread(thread)) {
+      const comments = await BB.api(`/api/threads/${threadId}/comments?page=${page}&per_page=20`);
+      const list = comments.comments || [];
+      document.getElementById('postList').innerHTML = list.length
+        ? list.map((comment) => commentHtml(comment)).join('')
+        : `<div class="card comment-empty">
+             <b>还没有评论</b>
+             <p class="muted small">用过的感受、遇到的问题、想提的建议，都可以写在下面。</p>
+           </div>`;
+      document.getElementById('pager').innerHTML = BB.pagination(
+        comments.pagination,
+        (target) => `/thread.html?id=${threadId}&page=${target}`,
+      );
+      renderCommentComposer(thread);
+      bindCommentActions();
+      renderRail(thread, { resource: true });
+    } else {
+      document.getElementById('postList').innerHTML = data.posts.map(postHtml).join('');
+      document.getElementById('pager').innerHTML = BB.pagination(
+        data.pagination,
+        (target) => `/thread.html?id=${threadId}&page=${target}`,
+      );
+      renderComposer(thread);
+      bindActions();
+      renderRail(thread);
+    }
 
     const hash = location.hash || '';
-    if (hash.startsWith('#post-')) {
-      const target = document.querySelector(hash);
+    const anchor = hash.startsWith('#comment-') ? hash : hash.startsWith('#post-') ? hash : '';
+    if (anchor) {
+      const target = document.querySelector(anchor);
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         target.classList.add('flash');

@@ -708,6 +708,51 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
   15%, 45% { background: var(--brand-soft); }
 }
 
+/* ---------------- 资源帖评论区（插件帖 / 投影帖） ---------------- */
+/* 这两类是资源详情页：没有楼层号、没有楼中楼，只有一条条平铺的评论 */
+
+.comment { padding: 16px 18px; }
+.comment.flash { animation: post-flash 2.4s ease; }
+
+.comment-head { display: flex; align-items: flex-start; gap: 10px; }
+.comment-who { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; flex: 1; }
+.comment-who .name { font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
+.comment-who .name:hover { color: var(--brand); }
+.comment-time { font-size: 11.5px; color: var(--ink-3); }
+
+.comment-like {
+  margin-left: auto; flex: none;
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 11px; border-radius: 999px;
+  border: 1px solid transparent; background: var(--bg-tint); color: var(--ink-3);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background 0.16s, color 0.16s, border-color 0.16s;
+}
+.comment-like:hover { background: var(--brand-soft); color: var(--brand); border-color: var(--brand-line); }
+.comment-like.liked {
+  background: var(--brand-soft); color: var(--brand); border-color: var(--brand-line); font-weight: 800;
+}
+
+.comment-content { margin-top: 8px; font-size: 15px; line-height: 1.85; }
+.comment-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.comment-actions .act {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 28px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid transparent; background: var(--bg-tint); color: var(--ink-3);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background 0.16s, color 0.16s, border-color 0.16s;
+}
+.comment-actions .act:hover {
+  background: var(--brand-soft); color: var(--brand); border-color: var(--brand-line);
+}
+.comment-actions .act.danger:hover {
+  background: var(--danger-soft); color: var(--danger); border-color: var(--danger);
+}
+
+.comment-empty { text-align: center; padding: 26px 18px; }
+.comment-empty b { font-size: 14px; color: var(--ink-2); }
+.comment-empty .muted { margin: 6px 0 0; }
+
 /* ---------------- 主题右侧栏 ---------------- */
 
 .rail-card { padding: 16px 18px; }

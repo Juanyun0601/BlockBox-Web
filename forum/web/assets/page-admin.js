@@ -1423,7 +1423,11 @@ BB.boot(async () => {
         (report) => `
       <tr>
         <td class="small">
-          #${report.floor}
+          ${
+            report.kind === 'comment'
+              ? '<span class="chip chip-grey">评论</span>'
+              : `#${report.floor}`
+          }
           <div class="muted" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
             ${report.post_deleted ? '（内容已删除）' : BB.esc(report.excerpt || '')}
           </div>
@@ -1442,9 +1446,15 @@ BB.boot(async () => {
         }${BB.esc(report.reason || '未填写')}</td>
         <td class="small nowrap">${BB.time(report.created_at)}</td>
         <td class="row-actions">
-          <a class="btn btn-ghost btn-sm" href="/thread.html?id=${report.thread_id}#post-${report.post_id}">查看</a>
-          <button class="btn btn-danger btn-sm" data-report="${report.id}" data-act="delete">删帖并处理</button>
-          <button class="btn btn-ghost btn-sm" data-report="${report.id}" data-act="ignore">忽略</button>
+          <a class="btn btn-ghost btn-sm" href="/thread.html?id=${report.thread_id}${
+            report.kind === 'comment' ? '' : `#post-${report.post_id}`
+          }">查看</a>
+          <button class="btn btn-danger btn-sm" data-report="${report.id}" data-kind="${
+            report.kind || 'post'
+          }" data-act="delete">删${report.kind === 'comment' ? '评论' : '帖'}并处理</button>
+          <button class="btn btn-ghost btn-sm" data-report="${report.id}" data-kind="${
+            report.kind || 'post'
+          }" data-act="ignore">忽略</button>
           ${
             report.reporter
               ? `<button class="btn btn-ghost btn-sm" data-reporter="${report.reporter.id}" data-username="${BB.esc(
@@ -1470,11 +1480,16 @@ BB.boot(async () => {
       button.addEventListener('click', async () => {
         const reportId = Number(button.dataset.report);
         const action = button.dataset.act;
-        if (action === 'delete' && !confirm('删除这条回复，并把举报标记为已处理？')) return;
+        const kind = button.dataset.kind === 'comment' ? 'comment' : 'post';
+        const what = kind === 'comment' ? '评论' : '回复';
+        if (action === 'delete' && !confirm(`删除这条${what}，并把举报标记为已处理？`)) return;
         try {
           await BB.api(`/api/admin/reports/${reportId}`, {
             method: 'PATCH',
-            body: action === 'delete' ? { status: 'resolved', delete_post: true } : { status: 'ignored' },
+            body:
+              action === 'delete'
+                ? { kind, status: 'resolved', delete_post: true }
+                : { kind, status: 'ignored' },
           });
           BB.toast('已处理', 'ok');
           refreshReports();

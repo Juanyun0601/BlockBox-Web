@@ -20,6 +20,7 @@ import {
   countThreads,
   getThread,
   listChildPosts,
+  listComments,
   listPosts,
   listThreads,
 } from './queries.js';
@@ -329,11 +330,17 @@ function renderThreadPage(params) {
   }
 
   const author = thread.author_display_name || thread.author_username || '';
+
+  // 插件帖 / 投影帖是资源详情页：正文下面放评论，不再是楼层与楼中楼
+  const resourceBoard =
+    thread.board_slug === 'plugin-share' || thread.board_slug === 'schematic-share';
+  const resourceMode = !!thread.tp_id || !!thread.ts_id || resourceBoard;
+
   const meta = [
     `<a href="${boardUrl(thread.board_slug)}">${esc(thread.board_name)}</a>`,
     `作者 ${esc(author)}`,
     `发布于 ${timeOf(thread.created_at)}`,
-    `回复 ${thread.reply_count || 0}`,
+    `${resourceMode ? '评论' : '回复'} ${resourceMode ? thread.comment_count || 0 : thread.reply_count || 0}`,
     `浏览 ${thread.views || 0}`,
   ].join(' · ');
 
@@ -347,14 +354,32 @@ function renderThreadPage(params) {
 </div>`;
   }
 
+  if (thread.ts_id) {
+    const sizeMb = ((thread.ts_file_size || 0) / 1024 / 1024).toFixed(2);
+    pluginCard = `<div class="card plugin">
+  <h3>投影：${esc(thread.ts_name || thread.title)}</h3>
+  <div class="small">文件 ${esc(thread.ts_file_name || '—')} · ${sizeMb} MB · 下载 ${thread.ts_downloads || 0} 次</div>
+  <p class="small">在方块盒子启动器打开这条帖子，点「下载投影」即可保存；放进实例的 schematics 文件夹就能用 Litematica 加载。</p>
+</div>`;
+  }
+
   const firstPost = rows.find((row) => row.floor === 1) || rows[0];
   const mainHtml = firstPost ? paragraphsHtml(firstPost.content, MAX_POST_CHARS) : '';
 
-  const replies = rows
-    .filter((row) => row.floor > 1 && !row.deleted)
-    .map((row) => {
-      const kids = (childrenByParent.get(row.id) || []).filter((child) => !child.deleted);
-      return `<div class="reply">
+  const replies = resourceMode
+    ? listComments(id, { limit: 50, offset: 0 })
+        .map(
+          (row) => `<div class="reply">
+  <p class="who">${esc(row.display_name || row.username || '')} · ${timeOf(row.created_at)}</p>
+  <div class="content">${paragraphsHtml(row.content, MAX_POST_CHARS)}</div>
+</div>`,
+        )
+        .join('\n')
+    : rows
+        .filter((row) => row.floor > 1 && !row.deleted)
+        .map((row) => {
+          const kids = (childrenByParent.get(row.id) || []).filter((child) => !child.deleted);
+          return `<div class="reply">
   <p class="who">${row.floor}楼 · ${esc(row.display_name || row.username || '')} · ${timeOf(row.created_at)}</p>
   <div class="content">${paragraphsHtml(row.content, MAX_POST_CHARS)}</div>
   ${kids
@@ -366,11 +391,14 @@ function renderThreadPage(params) {
     )
     .join('\n')}
 </div>`;
-    })
-    .join('\n');
+        })
+        .join('\n');
 
+  const replyTotal = resourceMode ? (thread.comment_count || 0) : thread.reply_count || 0;
   const firstPostText = mdToText(firstPost?.content || '').replace(/\s+/g, ' ').trim().slice(0, 150);
-  const description = `${firstPostText || thread.title}（${thread.board_name}，${author} 发布，回复 ${thread.reply_count || 0}）`;
+  const description = `${firstPostText || thread.title}（${thread.board_name}，${author} 发布，${
+    resourceMode ? '评论' : '回复'
+  } ${replyTotal}）`;
 
   const body = `
 <p class="meta"><a href="${SITE_ORIGIN}/">首页</a> › <a href="${boardUrl(thread.board_slug)}">${esc(thread.board_name)}</a></p>
@@ -380,8 +408,8 @@ ${pluginCard}
 <div class="content">
 ${mainHtml}
 </div>
-<h2>回复（${thread.reply_count || 0}）</h2>
-${replies || '<p class="small">还没有回复。</p>'}`;
+<h2>${resourceMode ? '评论' : '回复'}（${replyTotal}）</h2>
+${replies || `<p class="small">还没有${resourceMode ? '评论' : '回复'}。</p>`}`;
 
   return layout({
     title: `${thread.title} · 方块盒子论坛`,

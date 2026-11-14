@@ -665,6 +665,12 @@
       .map((tag) => `<a class="tag" href="/search.html?q=${encodeURIComponent('#' + tag)}">#${BB.esc(tag)}</a>`)
       .join('');
 
+    // 插件帖 / 投影帖的讨论是评论，列表上别拿楼层回复数显示成 0
+    const resourceThread =
+      !!(thread.plugin || thread.schematic) ||
+      ['plugin-share', 'schematic-share'].includes((thread.board || {}).slug || '');
+    const countValue = resourceThread ? thread.comment_count || 0 : thread.reply_count || 0;
+
     return `<div class="thread-row${showSnippet ? ' with-snippet' : ''}">
       ${BB.avatar(thread.author, 'avatar-sm')}
       <div class="thread-main">
@@ -674,7 +680,7 @@
         <div class="thread-meta">${tags}${tags ? '<span class="dot">·</span>' : ''}${meta}</div>
       </div>
       <div class="thread-counts">
-        <div><b>${BB.num(thread.reply_count)}</b><span>回复</span></div>
+        <div><b>${BB.num(countValue)}</b><span>${resourceThread ? '评论' : '回复'}</span></div>
         <div><b>${BB.num(thread.views)}</b><span>浏览</span></div>
       </div>
     </div>`;

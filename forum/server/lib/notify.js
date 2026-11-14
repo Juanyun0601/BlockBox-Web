@@ -106,8 +106,41 @@ export function notifyThreadActivity({ thread, post, actor, parentPostAuthorId =
   return created;
 }
 
-export function markAllRead(userId) {
-  return db
+/**
+ * 资源帖收到评论后：通知楼主 + 评论里 @ 到的人。
+ *
+ * 评论没有楼层（post_id 为空），所以 target_kind 一律按主题算，
+ * 客户端点开通知直接进主题页就行。
+ */
+export function notifyThreadComment({ thread, comment, actor }) {
+  const targets = new Map();
+
+  if (thread.author_id !== actor.id) targets.set(thread.author_id, 'reply');
+
+  for (const name of parseMentions(comment.content)) {
+    const user = db.prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE').get(name);
+    if (!user || user.id === actor.id) continue;
+    if (!targets.has(user.id)) targets.set(user.id, 'mention');
+  }
+
+  let created = 0;
+  for (const [userId, type] of targets) {
+    const ok = createNotification({
+      userId,
+      type,
+      targetKind: 'thread',
+      actorId: actor.id,
+      threadId: thread.id,
+      postId: null,
+      threadTitle: thread.title,
+      content: comment.content,
+    });
+    if (ok) created += 1;
+  }
+  return created;
+}
+
+export function markAllRead(userId) {  return db
     .prepare('UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at = 0')
     .run(now(), userId).changes;
 }

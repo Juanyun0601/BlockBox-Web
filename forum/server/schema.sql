@@ -152,6 +152,49 @@ CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id, created_at DESC)
 -- 注意：parent_post_id 的索引在 db.js 的 migrate() 里建，
 -- 因为老库要先 ALTER TABLE 补列，这里建会报 no such column。
 
+-- 资源详情页评论（插件帖 / 投影帖专用）-----------------------------------
+-- 资源和讨论分开：帖子楼层记「必读的介绍与答疑」，评论记「看过之后随口说两句」。
+-- 因此这里不设楼层号、不设楼中楼，只有一条条平铺的评论，排序按「最热 + 最新」综合。
+CREATE TABLE IF NOT EXISTS thread_comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  thread_id  INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+  author_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content    TEXT    NOT NULL,
+  deleted    INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_comments_thread ON thread_comments(thread_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_thread_comments_author ON thread_comments(author_id, created_at DESC);
+
+-- 评论点赞 ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS comment_likes (
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  comment_id INTEGER NOT NULL REFERENCES thread_comments(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, comment_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_comment_likes_comment ON comment_likes(comment_id);
+
+-- 评论举报（和楼层举报分开存，管理后台合并成同一个审核队列）-------------
+CREATE TABLE IF NOT EXISTS comment_reports (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  comment_id  INTEGER NOT NULL REFERENCES thread_comments(id) ON DELETE CASCADE,
+  thread_id   INTEGER NOT NULL,
+  reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  category    TEXT    NOT NULL DEFAULT '',
+  reason      TEXT    NOT NULL DEFAULT '',
+  status      TEXT    NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'ignored')),
+  handled_by  INTEGER,
+  handled_at  INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_comment_reports_status ON comment_reports(status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_comment_reports_dedupe ON comment_reports(comment_id, reporter_id);
+
 -- 点赞（按楼层）-------------------------------------------------------
 CREATE TABLE IF NOT EXISTS post_likes (
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -263,6 +306,24 @@ CREATE TABLE IF NOT EXISTS plugin_versions (
 
 CREATE INDEX IF NOT EXISTS idx_plugin_versions_thread ON plugin_versions(thread_id, id DESC);
 
+-- 帖子挂载的投影文件（投影帖）--------------------------------------------
+-- 和插件帖一样一帖一个：发帖人先 POST /api/upload/schematic 拿到 upload_id，
+-- 再随主题一起绑定。服务端不解析投影内容，只记原文件名 / 大小 / 指纹，
+-- 下载时按 uploads 里的路径发文件。
+CREATE TABLE IF NOT EXISTS thread_schematics (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  thread_id  INTEGER NOT NULL UNIQUE REFERENCES threads(id) ON DELETE CASCADE,
+  upload_id  INTEGER NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
+  name       TEXT    NOT NULL DEFAULT '',
+  file_name  TEXT    NOT NULL DEFAULT '',
+  file_size  INTEGER NOT NULL DEFAULT 0,
+  file_hash  TEXT    NOT NULL DEFAULT '',
+  downloads  INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_schematics_thread ON thread_schematics(thread_id);
+
 -- 搜索用索引表（主题标题 + 正文摘要，避免搜索时全表扫楼层）
 CREATE TABLE IF NOT EXISTS thread_search (
   thread_id  INTEGER PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
@@ -358,12 +419,14 @@ CREATE TABLE IF NOT EXISTS direct_messages (
 CREATE INDEX IF NOT EXISTS idx_dm_pair ON direct_messages(sender_id, peer_id, id);
 CREATE INDEX IF NOT EXISTS idx_dm_inbox ON direct_messages(peer_id, read_at);
 
--- 群聊（基础版：建群 / 群消息 / 退群，没有群头像与进群申请）--------------
+-- 群聊（avatar 是群图标，空 = 客户端按群名首字显示；announcement 是群公告）----
 CREATE TABLE IF NOT EXISTS chat_groups (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  name       TEXT    NOT NULL,
-  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at INTEGER NOT NULL
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  name         TEXT    NOT NULL,
+  owner_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  avatar       TEXT    NOT NULL DEFAULT '',
+  announcement TEXT    NOT NULL DEFAULT '',
+  created_at   INTEGER NOT NULL
 );
 
 -- 成员已读指针：last_read_id 之前的群消息视为已读
@@ -454,6 +517,45 @@ CREATE TABLE IF NOT EXISTS lobby_rooms (
 CREATE INDEX IF NOT EXISTS idx_lobby_rooms_owner ON lobby_rooms(owner_id);
 CREATE INDEX IF NOT EXISTS idx_lobby_rooms_active ON lobby_rooms(heartbeat_at DESC);
 
+-- 联机分享短链（「创建分享链接」时把房间信息存进来，链接里只带一段随机房间号）-------
+-- 和 lobby_rooms 一样靠心跳续命：房主联机期间每 40 秒续一次，超过 2 分钟没心跳就
+-- 当作联机已结束，打开链接时网页和客户端都提示「联机可能已经结束」。
+-- secret 只发给房主，续期和删除要带它，别人拿到链接也改不了这条数据。
+CREATE TABLE IF NOT EXISTS lobby_shares (
+  token        TEXT    PRIMARY KEY,
+  secret       TEXT    NOT NULL,
+  payload      TEXT    NOT NULL,
+  owner_id     INTEGER NOT NULL DEFAULT 0,
+  created_at   INTEGER NOT NULL,
+  heartbeat_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lobby_shares_heartbeat ON lobby_shares(heartbeat_at DESC);
+
+-- 联机大厅「正在游玩」：客户端进游戏后每 40 秒上报一次，超过 2 分钟没上报就当作已经离开。
+-- 房主不用落这张表（房间还在就说明房主在房间里），这里只记通过客户端进房的其他玩家。
+CREATE TABLE IF NOT EXISTS lobby_players (
+  room_id      INTEGER NOT NULL REFERENCES lobby_rooms(id) ON DELETE CASCADE,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  joined_at    INTEGER NOT NULL,
+  heartbeat_at INTEGER NOT NULL,
+  PRIMARY KEY (room_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lobby_players_heartbeat ON lobby_players(heartbeat_at DESC);
+
+-- 联机大厅房间评论：详情页里大家对着房间留言，房主和评论者自己可以删。
+-- 评论跟着房间走：房间过期下架时一并清掉（大厅房间本身就是临时的）。
+CREATE TABLE IF NOT EXISTS lobby_comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id    INTEGER NOT NULL REFERENCES lobby_rooms(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content    TEXT    NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lobby_comments_room ON lobby_comments(room_id, created_at DESC);
+
 -- 启动器首页公告（管理后台「首页公告」维护，发布后写进官网 announcement.json）--
 CREATE TABLE IF NOT EXISTS announcements (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -514,6 +616,7 @@ INSERT OR IGNORE INTO boards (slug, name, description, icon, sort_order, created
   ('guide',    '教程与分享', '玩法心得、配置优化、整合包推荐',             '📘', 30, unixepoch()),
   ('plugin',   '插件与开发', '插件使用、开发文档、编码方块相关',           '🛠️', 40, unixepoch()),
   ('plugin-share', '插件分享', '发布和分享方块盒子插件包，下载后可在软件里一键安装', '🔌', 45, unixepoch()),
+  ('schematic-share', '投影分享', '发布和分享 Litematica / WorldEdit 投影文件，下载后放进实例的 schematics 文件夹就能加载', '📐', 46, unixepoch()),
   ('feedback', '意见建议',   '功能建议、缺陷反馈、对官网和论坛的想法',     '💡', 50, unixepoch()),
   ('chat',     '闲聊灌水',   '和方块盒子有关的轻松话题',                   '☕', 60, unixepoch());
 

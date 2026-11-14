@@ -168,6 +168,14 @@ export function migrate() {
   const addedReportCategory = ensureColumn('reports', 'category', "TEXT NOT NULL DEFAULT ''");
   if (addedReportCategory) console.log('[论坛] 数据库已升级：reports 增加 category（举报分类）');
 
+  // 群图标：群主在群设置里选的表情或上传的站内图片地址（空 = 老群仍按群名首字显示）
+  const addedGroupAvatar = ensureColumn('chat_groups', 'avatar', "TEXT NOT NULL DEFAULT ''");
+  if (addedGroupAvatar) console.log('[论坛] 数据库已升级：chat_groups 增加 avatar（群图标）');
+
+  // 群公告：群主在群设置里填写，聊天页顶部展示
+  const addedGroupAnnouncement = ensureColumn('chat_groups', 'announcement', "TEXT NOT NULL DEFAULT ''");
+  if (addedGroupAnnouncement) console.log('[论坛] 数据库已升级：chat_groups 增加 announcement（群公告）');
+
   // 聊天支持发文件：私信 / 群消息各加三个字段（站内文件路径、原始文件名、字节数）
   for (const table of ['direct_messages', 'group_messages']) {
     const addedFileUrl = ensureColumn(table, 'file_url', "TEXT NOT NULL DEFAULT ''");

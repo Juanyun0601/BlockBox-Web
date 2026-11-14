@@ -5,6 +5,7 @@ import { enforce } from '../lib/rate-limit.js';
 import { bool, text } from '../lib/validate.js';
 import { boardOut, postOut, threadOut, snippetOf } from '../lib/serialize.js';
 import { notifyThreadActivity } from '../lib/notify.js';
+import { cleanFileName } from '../lib/schematics.js';
 import { guardBannedWords } from '../lib/banned-words.js';
 import { cdnBase } from '../lib/cdn.js';
 import { config } from '../config.js';
@@ -510,6 +511,39 @@ export default function register(router) {
       }
     }
 
+    // 投影帖：带 schematic_upload_id 就把该上传绑定到这条主题（一帖一个，仅发帖时）。
+    // 校验口径和插件帖一致：必须是本人上传、是投影类别、且还没绑给别的主题。
+    let schematicUpload = null;
+    const rawSchematicId = body.schematic_upload_id;
+    if (rawSchematicId !== undefined && rawSchematicId !== null && rawSchematicId !== '') {
+      const uploadId = Number(rawSchematicId);
+      if (!Number.isInteger(uploadId) || uploadId <= 0) throw badRequest('投影上传记录不正确');
+      const upload = db.prepare('SELECT * FROM uploads WHERE id = ? AND user_id = ?').get(uploadId, user.id);
+      if (!upload || upload.deleted) throw notFound('投影上传不存在，请重新上传');
+      if (upload.kind !== 'schematic') throw badRequest('该上传不是投影文件', 'not_schematic_upload');
+      if (db.prepare('SELECT thread_id FROM thread_schematics WHERE upload_id = ?').get(uploadId)) {
+        throw badRequest('这个投影文件已经绑定在一条主题上了', 'schematic_upload_taken');
+      }
+      let meta = {};
+      try {
+        meta = JSON.parse(upload.meta || '{}');
+      } catch {
+        meta = {};
+      }
+      const fileName = cleanFileName(meta.file_name) || 'projection.litematic';
+      schematicUpload = {
+        id: upload.id,
+        size: upload.size,
+        name: fileName.replace(/\.[A-Za-z0-9]{1,12}$/, '') || fileName,
+        file_name: fileName,
+        file_hash: meta.file_hash || '',
+      };
+    }
+
+    if (pluginUpload && schematicUpload) {
+      throw badRequest('一条帖子只能挂一个资源：插件和投影请分开发布', 'resource_conflict');
+    }
+
     const created = transaction(() => {
       const inserted = db
         .prepare(
@@ -544,6 +578,21 @@ export default function register(router) {
         );
       }
       saveTags(id, tags);
+      if (schematicUpload) {
+        db.prepare(
+          `INSERT INTO thread_schematics
+             (thread_id, upload_id, name, file_name, file_size, file_hash, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          id,
+          schematicUpload.id,
+          schematicUpload.name || '',
+          schematicUpload.file_name || '',
+          schematicUpload.size || 0,
+          schematicUpload.file_hash || '',
+          timestamp,
+        );
+      }
       db.prepare('UPDATE users SET thread_count = thread_count + 1, post_count = post_count + 1 WHERE id = ?').run(
         user.id,
       );
@@ -670,6 +719,45 @@ export default function register(router) {
       content_type: 'application/octet-stream',
       filename: pathname || 'plugin.BlockBox',
       downloads: plugin.downloads,
+    };
+  });
+
+  // ---------------- 投影帖：下载地址 ----------------
+  // 和插件下载同一套做法：返回真实文件地址（配了 CDN 就是 CDN 域名），
+  // 下载计数按 IP 去抖，同一人 10 分钟内反复拿地址只算一次。
+
+  router.get('/api/threads/:id/schematic/download', async (ctx) => {
+    const threadId = Number(ctx.params.id);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+    const thread = db.prepare('SELECT id, deleted FROM threads WHERE id = ?').get(threadId);
+    if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
+
+    const schematic = db
+      .prepare(
+        `SELECT ts.id, ts.downloads, ts.file_name, u.url, u.size
+           FROM thread_schematics ts
+           JOIN uploads u ON u.id = ts.upload_id AND u.deleted = 0
+          WHERE ts.thread_id = ?`,
+      )
+      .get(threadId);
+    if (!schematic) throw notFound('这条主题没有挂投影');
+
+    const key = `${ctx.ip}:sch:${schematic.id}`;
+    const lastSeen = pluginDownloadSeen.get(key) || 0;
+    if (Date.now() - lastSeen > 10 * 60 * 1000) {
+      pluginDownloadSeen.set(key, Date.now());
+      db.prepare('UPDATE thread_schematics SET downloads = downloads + 1 WHERE id = ?').run(schematic.id);
+      if (pluginDownloadSeen.size > 5000) pluginDownloadSeen.clear();
+    }
+
+    const [, pathname] = schematic.url.match(/^\/uploads\/(.+)$/) || [];
+    const url = pathname ? `${cdnBase || config.publicOrigin || ''}/uploads/${pathname}` : schematic.url;
+    return {
+      url,
+      size: schematic.size || 0,
+      content_type: 'application/octet-stream',
+      filename: cleanFileName(schematic.file_name) || pathname || 'projection.litematic',
+      downloads: schematic.downloads,
     };
   });
 
@@ -824,6 +912,12 @@ export default function register(router) {
           AND (id IN (SELECT upload_id FROM thread_plugins WHERE thread_id = ?)
             OR id IN (SELECT upload_id FROM plugin_versions WHERE thread_id = ?))`,
     ).run(thread.id, thread.id);
+    // 投影帖同理：投影文件跟着下架，地址不再可下载
+    db.prepare(
+      `UPDATE uploads SET deleted = 1
+        WHERE deleted = 0 AND kind = 'schematic'
+          AND id IN (SELECT upload_id FROM thread_schematics WHERE thread_id = ?)`,
+    ).run(thread.id);
     db.prepare('DELETE FROM thread_search WHERE thread_id = ?').run(thread.id);
     db.prepare('DELETE FROM notifications WHERE thread_id = ?').run(thread.id);
     db.prepare("UPDATE reports SET status = 'ignored' WHERE thread_id = ? AND status = 'open'").run(thread.id);

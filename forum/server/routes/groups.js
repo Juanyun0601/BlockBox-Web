@@ -8,6 +8,7 @@ import { chatFileDisplayName, consumeQuota, findOwnChatFile, sanitizeFileName } 
 import { config } from '../config.js';
 import {
   MAX_GROUP_INVITEES,
+  MAX_GROUP_MEMBERS,
   GM_SELECT,
   groupMessageOut,
   groupOut,
@@ -18,6 +19,63 @@ import { isOfficialGroup } from '../lib/official-group.js';
 
 /** 打开群会话时最多返回多少位成员（官方群是全体用户，几万人不能全量下发） */
 const MEMBER_LIST_CAP = 100;
+
+/**
+ * 建群时带的群图标：留空表示用群名首字占位；也可以是一个表情（最多 8 个字符），
+ * 或者先传 /api/upload 再带站内图床地址（/uploads/…，长度上限与聊天图片一致）。
+ */
+function parseGroupAvatar(value) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+  if (raw.startsWith('/uploads/')) {
+    if (raw.length > 200 || raw.includes('..')) throw badRequest('群图标地址无效');
+    return raw;
+  }
+  if (Array.from(raw).length > 8 || /[\u0000-\u001f\u007f\s]/.test(raw)) {
+    throw badRequest('群图标最多 8 个字符，不能带空格');
+  }
+  // 图标只是展示用的短文本，真正的图片走上面的 /uploads/ 地址
+  return raw;
+}
+
+/** 群里没过封禁的成员总数（成员列表被截断时，群卡片上的「N 名成员」仍要准确） */
+function countGroupMembers(groupId) {
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS n
+         FROM chat_group_members r JOIN users u ON u.id = r.user_id
+        WHERE r.group_id = ? AND u.status != 'banned'`,
+    )
+    .get(groupId).n;
+}
+
+/** 系统消息里显示的昵称（没有昵称退回用户名） */
+function displayNameOf(userId) {
+  const row = db.prepare('SELECT username, display_name FROM users WHERE id = ?').get(userId);
+  return (row && row.display_name) || (row && row.username) || `用户${userId}`;
+}
+
+/** 群里的系统提示（邀请 / 移出 / 转让群主 / 改名共用，居中灰字，不可回复） */
+function insertGroupSystemMessage(groupId, senderId, body, timestamp = now()) {
+  db.prepare(
+    `INSERT INTO group_messages (group_id, sender_id, body, kind, image, file_url, file_name, file_size, reply_to, created_at)
+     VALUES (?, ?, ?, 'system', '', '', '', 0, 0, ?)`,
+  ).run(groupId, senderId, body, timestamp);
+}
+
+/** 群成员列表（按入群先后；官方群人数太多时只返回最早的一批） */
+function groupMemberList(group, cap = MEMBER_LIST_CAP) {
+  return db
+    .prepare(
+      `SELECT u.id, u.username, u.display_name, u.avatar, u.last_seen_at, r.joined_at
+         FROM chat_group_members r JOIN users u ON u.id = r.user_id
+        WHERE r.group_id = ? AND u.status != 'banned'
+        ORDER BY r.joined_at, u.id
+        LIMIT ?`,
+    )
+    .all(group.id, cap)
+    .map((row) => ({ ...row, owner: row.id === group.owner_id }));
+}
 
 export default function register(router) {
   // ---------------- 群聊（基础版） ----------------
@@ -36,6 +94,7 @@ export default function register(router) {
     enforce(`group-create:${user.id}`, 10, 60 * 60 * 1000, '建群太频繁');
     const body = await ctx.json();
     const name = text(body.name, { field: '群名称', min: 1, max: 20 });
+    const avatar = parseGroupAvatar(body.avatar);
 
     const rawIds = Array.isArray(body.member_ids) ? body.member_ids : [];
     if (rawIds.length === 0) throw badRequest('至少要邀请一位好友');
@@ -57,8 +116,8 @@ export default function register(router) {
     const timestamp = now();
     const groupId = transaction(() => {
       const result = db
-        .prepare('INSERT INTO chat_groups (name, owner_id, created_at) VALUES (?, ?, ?)')
-        .run(name, user.id, timestamp);
+        .prepare('INSERT INTO chat_groups (name, owner_id, avatar, created_at) VALUES (?, ?, ?, ?)')
+        .run(name, user.id, avatar, timestamp);
       const id = Number(result.lastInsertRowid);
       const insert = db.prepare(
         'INSERT INTO chat_group_members (group_id, user_id, last_read_id, joined_at) VALUES (?, ?, 0, ?)',
@@ -71,6 +130,190 @@ export default function register(router) {
     const group = db.prepare('SELECT * FROM chat_groups WHERE id = ?').get(groupId);
     const memberCount = memberIds.length + 1;
     return { group: groupOut(group, user.id, { memberCount }) };
+  });
+
+  /** 邀请好友进群：群里任何成员都能拉自己的好友进来（群总人数上限 50），入群发一条系统消息 */
+  router.post('/api/groups/:id/members', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`group-invite:${user.id}`, 20, 60 * 60 * 1000, '邀请太频繁，请稍后再试');
+    const groupId = int(ctx.params.id, { field: '群' });
+    const group = requireMember(user, groupId);
+    // 官方全用户群是默认群聊，全体用户都在群里，没有「邀请」一说
+    if (isOfficialGroup(group.id)) throw badRequest('官方群聊所有用户都在，无需邀请');
+
+    const body = await ctx.json();
+    const rawIds = Array.isArray(body.member_ids) ? body.member_ids : [];
+    if (rawIds.length === 0) throw badRequest('至少要邀请一位好友');
+
+    const memberCount = db
+      .prepare(
+        `SELECT COUNT(*) AS n
+           FROM chat_group_members r JOIN users u ON u.id = r.user_id
+          WHERE r.group_id = ? AND u.status != 'banned'`,
+      )
+      .get(group.id).n;
+    if (memberCount >= MAX_GROUP_MEMBERS) throw badRequest(`群成员已满（最多 ${MAX_GROUP_MEMBERS} 人）`);
+
+    // 与建群同款：去重、去掉自己与已在群里的，剩下必须是通过的好友（不是好友的悄悄跳过）
+    const ids = [...new Set(rawIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))].filter(
+      (id) => id !== user.id && !isGroupMember(group.id, id),
+    );
+    const newIds = [];
+    for (const id of ids) {
+      const target = db.prepare('SELECT id, status FROM users WHERE id = ?').get(id);
+      if (!target || target.status === 'banned') continue;
+      if (!acceptedBetween(user.id, id)) continue;
+      newIds.push(id);
+      if (memberCount + newIds.length >= MAX_GROUP_MEMBERS) break;
+    }
+    if (newIds.length === 0) throw badRequest('要邀请的人已在群里，或还不是你的好友');
+
+    /** 系统消息里显示的昵称（没有昵称退回用户名） */
+    const displayName = (id) => {
+      const row = db.prepare('SELECT username, display_name FROM users WHERE id = ?').get(id);
+      return (row && row.display_name) || row.username || `用户${id}`;
+    };
+
+    const timestamp = now();
+    transaction(() => {
+      // 新成员的已读指针推到入群前的最新消息：历史随时能翻，但旧消息不算未读
+      const latestId = db.prepare('SELECT MAX(id) AS n FROM group_messages WHERE group_id = ?').get(group.id).n || 0;
+      const insert = db.prepare(
+        'INSERT INTO chat_group_members (group_id, user_id, last_read_id, joined_at) VALUES (?, ?, ?, ?)',
+      );
+      for (const id of newIds) insert.run(group.id, id, latestId, timestamp);
+      const names = newIds.map((id) => displayName(id)).slice(0, 5).join('、');
+      const suffix = newIds.length > 5 ? ` 等 ${newIds.length} 人` : '';
+      db.prepare(
+        `INSERT INTO group_messages (group_id, sender_id, body, kind, image, file_url, file_name, file_size, reply_to, created_at)
+         VALUES (?, ?, ?, 'system', '', '', '', 0, 0, ?)`,
+      ).run(group.id, user.id, `${displayName(user.id)} 邀请 ${names}${suffix} 加入了群聊`, timestamp);
+    });
+
+    return { ok: true, added: newIds.length, member_count: memberCount + newIds.length };
+  });
+
+  /** 群设置页用：群信息 + 成员列表（不拉消息，也不动已读指针） */
+  router.get('/api/groups/:id', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const groupId = int(ctx.params.id, { field: '群' });
+    const group = requireMember(user, groupId);
+    const memberCount = countGroupMembers(group.id);
+    return {
+      group: groupOut(group, user.id, { memberCount }),
+      members: groupMemberList(group),
+      member_count: memberCount,
+    };
+  });
+
+  /**
+   * 修改群资料（仅群主）：群名称 1–20 字、群公告最多 300 字、群图标是表情或站内图片地址。
+   * 只传要改的字段；改名会往群里发一条系统提示。官方群不允许修改。
+   */
+  router.patch('/api/groups/:id', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`group-edit:${user.id}`, 30, 60 * 60 * 1000, '修改群设置太频繁，请稍后再试');
+    const groupId = int(ctx.params.id, { field: '群' });
+    const group = requireMember(user, groupId);
+    if (isOfficialGroup(group.id)) throw badRequest('官方群不能修改群设置');
+    if (group.owner_id !== user.id) throw forbidden('只有群主才能修改群设置');
+
+    const body = await ctx.json();
+    const sets = [];
+    const params = [];
+    let renamed = '';
+    if (body.name !== undefined) {
+      const name = text(body.name, { field: '群名称', min: 1, max: 20 });
+      if (name !== group.name) {
+        sets.push('name = ?');
+        params.push(name);
+        renamed = name;
+      }
+    }
+    if (body.announcement !== undefined) {
+      const announcement = text(body.announcement, { field: '群公告', max: 300, optional: true });
+      if (announcement !== (group.announcement || '')) {
+        sets.push('announcement = ?');
+        params.push(announcement);
+      }
+    }
+    if (body.avatar !== undefined) {
+      const avatar = parseGroupAvatar(body.avatar);
+      if (avatar !== (group.avatar || '')) {
+        sets.push('avatar = ?');
+        params.push(avatar);
+      }
+    }
+    if (sets.length === 0) {
+      return { group: groupOut(group, user.id, { memberCount: countGroupMembers(group.id) }) };
+    }
+
+    params.push(group.id);
+    transaction(() => {
+      db.prepare(`UPDATE chat_groups SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+      if (renamed) insertGroupSystemMessage(group.id, user.id, `${displayNameOf(user.id)} 把群名改成了「${renamed}」`);
+    });
+    const updated = db.prepare('SELECT * FROM chat_groups WHERE id = ?').get(group.id);
+    return { group: groupOut(updated, user.id, { memberCount: countGroupMembers(group.id) }) };
+  });
+
+  /** 群主移除一位成员（不能移除自己；自己退群走 DELETE /api/groups/:id） */
+  router.delete('/api/groups/:id/members/:userId', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`group-kick:${user.id}`, 60, 60 * 60 * 1000, '移除成员太频繁，请稍后再试');
+    const groupId = int(ctx.params.id, { field: '群' });
+    const group = requireMember(user, groupId);
+    if (isOfficialGroup(group.id)) throw badRequest('官方群不能移除成员');
+    if (group.owner_id !== user.id) throw forbidden('只有群主才能移除成员');
+
+    const targetId = int(ctx.params.userId, { field: '成员' });
+    if (targetId === user.id) throw badRequest('想退出群聊请用「退出群聊」');
+    if (targetId === group.owner_id) throw forbidden('不能移除群主');
+    const target = db
+      .prepare(
+        `SELECT u.id, u.username, u.display_name
+           FROM chat_group_members r JOIN users u ON u.id = r.user_id
+          WHERE r.group_id = ? AND r.user_id = ?`,
+      )
+      .get(group.id, targetId);
+    if (!target) throw notFound('这个人已经不在群里了');
+
+    transaction(() => {
+      db.prepare('DELETE FROM chat_group_members WHERE group_id = ? AND user_id = ?').run(group.id, targetId);
+      insertGroupSystemMessage(group.id, user.id,
+        `${displayNameOf(user.id)} 将 ${(target.display_name || target.username)} 移出了群聊`);
+    });
+    return { ok: true, member_count: countGroupMembers(group.id) };
+  });
+
+  /** 群主把群转让给别人（对方必须还在群里），转让后自己变成普通成员 */
+  router.post('/api/groups/:id/owner', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`group-transfer:${user.id}`, 5, 60 * 60 * 1000, '转让群主太频繁，请稍后再试');
+    const groupId = int(ctx.params.id, { field: '群' });
+    const group = requireMember(user, groupId);
+    if (isOfficialGroup(group.id)) throw badRequest('官方群不能转让群主');
+    if (group.owner_id !== user.id) throw forbidden('只有群主才能转让群主');
+
+    const body = await ctx.json();
+    const targetId = int(body.user_id, { field: '新群主' });
+    if (targetId === user.id) throw badRequest('你已经是群主了');
+    const target = db
+      .prepare(
+        `SELECT u.id, u.username, u.display_name
+           FROM chat_group_members r JOIN users u ON u.id = r.user_id
+          WHERE r.group_id = ? AND r.user_id = ?`,
+      )
+      .get(group.id, targetId);
+    if (!target) throw notFound('这个人已经不在群里了');
+
+    transaction(() => {
+      db.prepare('UPDATE chat_groups SET owner_id = ? WHERE id = ?').run(targetId, group.id);
+      insertGroupSystemMessage(group.id, user.id,
+        `${displayNameOf(user.id)} 把群主转让给了 ${(target.display_name || target.username)}`);
+    });
+    const updated = db.prepare('SELECT * FROM chat_groups WHERE id = ?').get(group.id);
+    return { group: groupOut(updated, user.id, { memberCount: countGroupMembers(group.id) }) };
   });
 
   /** 打开群会话：校验成员 + 群信息 + 全量成员 + 拉一页历史（升序），顺手把已读指针推到最新 */

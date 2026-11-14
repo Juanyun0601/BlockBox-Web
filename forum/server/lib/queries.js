@@ -14,12 +14,18 @@ const THREAD_SELECT = `
          tp.id AS tp_id, tp.upload_id AS tp_upload_id, tp.plugin_id AS tp_plugin_id,
          tp.name AS tp_name, tp.version AS tp_version, tp.author AS tp_author,
          tp.description AS tp_description, tp.icon AS tp_icon,
-         tp.file_size AS tp_file_size, tp.downloads AS tp_downloads
+         tp.file_size AS tp_file_size, tp.downloads AS tp_downloads,
+         ts.id AS ts_id, ts.upload_id AS ts_upload_id, ts.name AS ts_name,
+         ts.file_name AS ts_file_name, ts.file_size AS ts_file_size,
+         ts.downloads AS ts_downloads,
+         (SELECT COUNT(*) FROM thread_comments tc
+           WHERE tc.thread_id = t.id AND tc.deleted = 0) AS comment_count
     FROM threads t
     JOIN boards b ON b.id = t.board_id
     JOIN users u ON u.id = t.author_id
     LEFT JOIN users lu ON lu.id = t.last_post_user_id
-    LEFT JOIN thread_plugins tp ON tp.thread_id = t.id`;
+    LEFT JOIN thread_plugins tp ON tp.thread_id = t.id
+    LEFT JOIN thread_schematics ts ON ts.thread_id = t.id`;
 
 const THREAD_ORDER = {
   latest: 't.pinned DESC, t.last_post_at DESC',
@@ -130,6 +136,60 @@ export function likedPostIds(userId, postIds) {
   return new Set(rows.map((row) => row.post_id));
 }
 
+// ------------------------------------------------------------ 资源帖评论
+
+const COMMENT_SELECT = `
+  SELECT c.id, c.thread_id, c.author_id, c.content, c.deleted, c.created_at, c.updated_at,
+         u.username, u.display_name, u.avatar, u.role, u.status,
+         u.thread_count AS u_thread_count, u.post_count AS u_post_count,
+         u.created_at AS u_created_at,
+         (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id) AS like_count
+    FROM thread_comments c
+    LEFT JOIN users u ON u.id = c.author_id`;
+
+/**
+ * 资源帖的评论列表：不做楼层号、不做楼中楼，按「最热 + 最新」综合排序。
+ *
+ * 热度算法（和网页端、启动器端共用同一份顺序，因为排序在服务端算）：
+ *   score = (点赞数 + 1) * 48 / (2 + 评论年龄/小时)
+ * 刚发出的评论拿满分 24；一小时前发的掉到 16，收到一个赞又能回到 32；
+ * 隔天的评论要靠点赞往上爬，老的热评不会被新评论立刻顶没。
+ */
+export function listComments(threadId, { limit = 20, offset = 0 } = {}) {
+  return db
+    .prepare(
+      `SELECT * FROM (
+         ${COMMENT_SELECT}
+         WHERE c.thread_id = ? AND c.deleted = 0
+       )
+       ORDER BY (like_count + 1.0) * 48.0 / (2.0 + ((? - created_at) / 3600.0)) DESC,
+                created_at DESC, id DESC
+       LIMIT ? OFFSET ?`,
+    )
+    .all(threadId, Math.floor(Date.now() / 1000), limit, offset);
+}
+
+export function countComments(threadId) {
+  return db
+    .prepare('SELECT COUNT(*) AS n FROM thread_comments WHERE thread_id = ? AND deleted = 0')
+    .get(threadId).n;
+}
+
+/** 当前用户在给定评论里点过赞的集合 */
+export function likedCommentIds(userId, commentIds) {
+  if (!userId || commentIds.length === 0) return new Set();
+  const placeholders = commentIds.map(() => '?').join(',');
+  const rows = db
+    .prepare(`SELECT comment_id FROM comment_likes WHERE user_id = ? AND comment_id IN (${placeholders})`)
+    .all(userId, ...commentIds);
+  return new Set(rows.map((row) => row.comment_id));
+}
+
+/** 一条评论（发表后回传给前端用） */
+export function getComment(commentId) {
+  return db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(commentId);
+}
+
 /** 用户收藏的主题 */
 export function listBookmarkedThreads(userId, limit = 20, offset = 0) {
   return db
@@ -153,8 +213,7 @@ export function countBookmarkedThreads(userId) {
     .get(userId).n;
 }
 
-/** 热门标签 */
-export function popularTags(limit = 12) {
+/** 热门标签 */export function popularTags(limit = 12) {
   return db
     .prepare(
       `SELECT tt.tag, COUNT(*) AS n

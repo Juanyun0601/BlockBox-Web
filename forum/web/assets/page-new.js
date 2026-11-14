@@ -26,7 +26,11 @@ BB.boot(async () => {
   }
 
   const boardData = await BB.api('/api/boards');
-  const boards = boardData.boards || [];
+  // 插件分享 / 投影分享是资源板块：必须带文件，只能从启动器「发布 → 资源」发，
+  // 网页普通发帖不列出来，免得发出一个只有标题的资源帖
+  const boards = (boardData.boards || []).filter(
+    (board) => !['plugin-share', 'schematic-share'].includes(board.slug),
+  );
   const wanted = BB.param('board');
   const select = document.getElementById('boardSelect');
   select.innerHTML = boards

@@ -97,6 +97,8 @@ export function groupOut(row, meId, stats = {}) {
   return {
     id: row.id,
     name: row.name,
+    avatar: row.avatar || '',
+    announcement: row.announcement || '',
     owner_id: row.owner_id,
     official: isOfficialGroup(row.id),
     member_count: stats.memberCount ?? 0,
@@ -120,7 +122,7 @@ export function groupOut(row, meId, stats = {}) {
 export function listGroups(meId) {
   const rows = db
     .prepare(
-      `SELECT g.id, g.name, g.owner_id
+      `SELECT g.id, g.name, g.owner_id, g.avatar, g.announcement
          FROM chat_groups g
          JOIN chat_group_members r ON r.group_id = g.id AND r.user_id = ?
         ORDER BY COALESCE((SELECT MAX(id) FROM group_messages WHERE group_id = g.id), 0) DESC, g.id DESC

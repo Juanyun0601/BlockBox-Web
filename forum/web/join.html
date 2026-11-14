@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#0e1411" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/assets/img/icon.ico">
 <script src="/assets/i18n.js?v=20261119a"></script>
-<link rel="stylesheet" href="/assets/forum.css?v=20261119a">
+<link rel="stylesheet" href="/assets/forum.css?v=20261114a">
 <script>
   (function () {
     try {
@@ -202,6 +202,21 @@
     font-size: 13.5px;
     line-height: 1.65;
     color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* 房主写的一句介绍：比副标题更大更亮，进房前先了解这个服怎么玩 */
+  .invite-desc {
+    position: relative;
+    z-index: 1;
+    margin-top: 8px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.96);
+    background: rgba(0, 0, 0, 0.14);
+    border-left: 3px solid rgba(216, 255, 166, 0.75);
+    border-radius: 0 8px 8px 0;
+    padding: 7px 10px;
+    word-break: break-word;
   }
 
   .invite-body {
@@ -767,6 +782,7 @@
     .invite-body { padding: 15px 18px 18px; gap: 12px; }
     .invite-room { font-size: 18px; }
     .invite-sub { font-size: 13px; }
+    .invite-desc { font-size: 13px; }
     .invite-code-box { padding: 10px 10px 10px 13px; }
     .invite-code { font-size: 20px; }
     .invite-code.is-mid { font-size: 15px; }
@@ -825,7 +841,7 @@
       <noscript>
         <div class="invite-error">
           <h2>邀请链接需要开启 JavaScript</h2>
-          <p>邀请信息是压缩在链接里的，要靠浏览器脚本解开。换一个浏览器打开，或让房主把邀请码直接发给你。</p>
+          <p>邀请信息要由浏览器脚本取回来。换一个浏览器打开，或让房主把邀请码直接发给你。</p>
           <div class="invite-error-actions">
             <a class="btn btn-primary" href="https://mcblockbox.top/download.html" target="_blank" rel="noopener">下载方块盒子</a>
             <a class="btn btn-ghost" href="/lobby.html">去联机大厅看看</a>
@@ -849,7 +865,7 @@
   <p class="join-sr" id="joinStatus" role="status" aria-live="polite"></p>
 </main>
 
-<script src="/assets/core.js?v=20261118b"></script>
+<script src="/assets/core.js?v=20261114a"></script>
 <script>
 (function () {
   'use strict';
@@ -887,6 +903,56 @@
     } catch (e) { /* 老浏览器走下面的正则 */ }
     var match = /[?&]d=([^&]+)/.exec(location.search);
     return match ? match[1] : '';
+  }
+
+  /** 新式短链接里的房间号（join.html?r=房间号） */
+  function shareParam() {
+    try {
+      var value = new URLSearchParams(location.search).get('r');
+      if (value) return value.trim();
+    } catch (e) { /* 老浏览器走下面的正则 */ }
+    var match = /[?&]r=([^&]+)/.exec(location.search);
+    return match ? decodeURIComponent(match[1]).trim() : '';
+  }
+
+  /**
+   * 按房间号从论坛服务器取房间信息。
+   * 拿不到（房主已经结束联机 / 放太久失效）就抛出 gone=true，页面显示「联机可能已经结束」。
+   */
+  function fetchShare(token) {
+    var url = '/api/lobby/shares/' + encodeURIComponent(token);
+    return fetch(url, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+      cache: 'no-store'
+    }).then(function (resp) {
+      if (resp.status === 403) {
+        // 人机验证过期了：先去过滑块，回来接着打开这条邀请
+        return resp.json().catch(function () { return {}; }).then(function (body) {
+          if (body && body.code === 'human_required') {
+            location.replace('/verify.html?next=' +
+              encodeURIComponent(location.pathname + location.search));
+            return new Promise(function () { /* 页面马上要跳走 */ });
+          }
+          throw new Error('request_failed');
+        });
+      }
+      if (resp.status === 404) {
+        var gone = new Error('gone');
+        gone.gone = true;
+        throw gone;
+      }
+      if (!resp.ok) throw new Error('request_failed');
+      return resp.json();
+    }).then(function (body) {
+      var share = body && body.share;
+      if (!share || !share.c || (!share.ic && !share.ad)) {
+        var gone = new Error('gone');
+        gone.gone = true;
+        throw gone;
+      }
+      return share;
+    });
   }
 
   // 解客户端 qCompress 载荷：base64url → 字节 → 去掉 4 字节大端长度头 → zlib inflate
@@ -973,7 +1039,11 @@
     return safe.replace(/([.:\-/])/g, '$1<wbr>');
   }
 
-  function render(data, param) {
+  /**
+   * data：房间信息（新式短链接从服务器取，老式链接从 ?d= 载荷解）；
+   * linkQuery：「通过方块盒子一键加入」深链里带的参数（r=房间号 / d=老式载荷）
+   */
+  function render(data, linkQuery) {
     var isTerracotta = data.c === 'terracotta';
     var code = String((isTerracotta ? (data.ic || data.ad) : (data.ad || data.ic)) || '');
     var codeLabel = isTerracotta ? '房间邀请码' : '连接地址';
@@ -982,6 +1052,7 @@
       : '在 Minecraft「多人游戏 → 直接连接」里输入';
     var coreLabel = CORE_LABELS[data.c] || '联机房间';
     var title = data.t || '朋友的联机房间';
+    var description = String(data.ds || '').trim();
     var mods = Array.isArray(data.md) ? data.md.filter(Boolean) : [];
     var auxMods = Array.isArray(data.ma) ? data.ma.filter(Boolean) : [];
     var resourcePacks = Array.isArray(data.rp) ? data.rp.filter(Boolean) : [];
@@ -1028,12 +1099,13 @@
       modsLine += '<p class="invite-mods"><b>可选</b>' + esc(extras.join('、')) + '，加入时可以在客户端里勾选安装</p>';
     }
 
-    var deepLink = 'blockbox://join?d=' + encodeURIComponent(param);
+    var deepLink = 'blockbox://join?' + linkQuery;
 
     panel.innerHTML =
       '<div class="invite-banner">' +
         '<span class="invite-eyebrow">联机房间邀请</span>' +
         '<h1 class="invite-room">' + esc(title) + '</h1>' +
+        (description ? '<p class="invite-desc">' + esc(description) + '</p>' : '') +
         '<p class="invite-sub">一起玩 Minecraft 吧，装好方块盒子就能一键进房</p>' +
       '</div>' +
       '<div class="invite-body">' +
@@ -1304,6 +1376,44 @@
     if (steps) steps.setAttribute('hidden', '');
   }
 
+  /** 房间号在服务器上已经没有了：房主结束联机 / 链接放太久 */
+  function renderGone() {
+    document.title = '联机可能已经结束 · 方块盒子';
+    panel.setAttribute('aria-busy', 'false');
+    panel.innerHTML =
+      '<div class="invite-error">' +
+        '<span class="invite-error-icon" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.5A8 8 0 1 1 11.5 4"/><path d="M12 7.5V12l3 2"/></svg>' +
+        '</span>' +
+        '<h2>联机可能已经结束</h2>' +
+        '<p>这个邀请对应的房间已经不在了：房主可能已经关掉联机，或者链接放太久失效了。请让房主重新创建一条分享链接再发给你。</p>' +
+        '<div class="invite-error-actions">' +
+          '<a class="btn btn-primary" href="/lobby.html">看看联机大厅</a>' +
+          '<a class="btn btn-ghost" href="' + DOWNLOAD_URL + '" target="_blank" rel="noopener">下载方块盒子</a>' +
+        '</div>' +
+      '</div>';
+    if (steps) steps.setAttribute('hidden', '');
+    announce('联机可能已经结束');
+  }
+
+  // 新式短链接：链接里只有一段房间号，房间信息现从论坛服务器取。
+  // 房主结束联机后服务端的数据会删掉，这时给出「联机可能已经结束」而不是一句报错。
+  var token = shareParam();
+  if (token) {
+    panel.setAttribute('aria-busy', 'true');
+    fetchShare(token).then(function (share) {
+      render(share, 'r=' + encodeURIComponent(token));
+    }, function (error) {
+      if (error && error.gone) {
+        renderGone();
+        return;
+      }
+      renderError('暂时连不上论坛服务器，刷新一下再试试。');
+    });
+    return;
+  }
+
+  // 老式链接：房间信息压缩在 ?d= 载荷里，仍然照旧解开
   var param = payloadParam();
   if (!param) {
     renderError('链接里没有房间信息，请让房主重新创建分享链接。');
@@ -1311,7 +1421,7 @@
   }
 
   decodePayload(param).then(function (data) {
-    render(data, param);
+    render(data, 'd=' + encodeURIComponent(param));
   }, function (error) {
     renderError(error && error.message ? error.message : '邀请内容解析失败。');
   });

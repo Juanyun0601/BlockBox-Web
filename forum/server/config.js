@@ -108,10 +108,14 @@ export const config = {
   maxImageBytes: num(env.MAX_IMAGE_BYTES, 5 * 1024 * 1024),
   // 聊天（私聊 / 群聊）发送的文件上限，图片与文件统一 5MB
   maxChatFileBytes: num(env.MAX_CHAT_FILE_BYTES, 5 * 1024 * 1024),
+  // 反馈页一键上传的运行日志上限：启动器单份日志 4MB，加上导出头留些裕量
+  maxLogBytes: num(env.MAX_LOG_BYTES, 5 * 1024 * 1024),
   // 聊天文件每周下载提取流量（按自然周，周一 0 点重置），下载自己发的文件不计
   chatWeeklyQuotaBytes: num(env.CHAT_WEEKLY_QUOTA_BYTES, 30 * 1024 * 1024),
   // 论坛插件帖的插件包（.BlockBox，实为 zip）上限
   maxPluginBytes: num(env.MAX_PLUGIN_BYTES, 20 * 1024 * 1024),
+  // 论坛投影帖的投影文件（.litematic / .schem 等）上限，大建筑投影动辄几十 MB
+  maxSchematicBytes: num(env.MAX_SCHEMATIC_BYTES, 50 * 1024 * 1024),
   // 版本发布的安装包上限（Windows 安装版接近 100MB，留裕量）
   maxReleaseFileBytes: num(env.MAX_RELEASE_FILE_BYTES, 300 * 1024 * 1024),
   // 版本安装包目录：管理后台上传，官网与启动器经 /releases/files/<版本>/<文件名> 下载

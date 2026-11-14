@@ -406,6 +406,136 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ---
 
+## 投影帖
+
+发帖时带 `schematic_upload_id`，主题就成了投影帖：列表和详情都带 `schematic`
+字段，详情页渲染投影卡，读者可以下载原始投影文件。投影内容不在服务端解析，
+材料清单与方块统计由启动器本地算。
+
+### POST /api/upload/schematic · 上传投影文件
+
+请求体是 **投影文件的原始字节**（`Content-Type: application/octet-stream`），
+原始文件名放在 `X-File-Name` 头里（URL 编码）。上限 50 MB（`MAX_SCHEMATIC_BYTES`），
+限流每账号 10 个/小时。
+
+校验：扩展名只收 `.litematic` / `.schem` / `.schematic` / `.nbt`，
+文件头必须是 gzip（`1f 8b`）或裸 NBT（`0x0a`）——挡住改后缀的压缩包。
+
+```json
+{
+  "upload_id": 21,
+  "name": "中世纪小镇",
+  "file_name": "中世纪小镇.litematic",
+  "file_size": 1048576,
+  "file_hash": "c85d09…（sha256）",
+  "url": "/uploads/sch-2-1794668124117-3ba769.litematic"
+}
+```
+
+### POST /api/threads 的投影字段
+
+```json
+{ "board": "schematic-share", "title": "…", "content": "…",
+  "schematic_upload_id": 21 }
+```
+
+- 上传必须是自己的、类别为投影、且**还没绑给别的主题**（一帖一个文件）
+- 一条帖子只能挂一种资源：`plugin_upload_id` 与 `schematic_upload_id` 同时出现返回 400
+- 绑定后主题输出多一个对象：
+
+```json
+"schematic": {
+  "id": 3, "upload_id": 21, "name": "中世纪小镇",
+  "file_name": "中世纪小镇.litematic", "file_size": 1048576, "downloads": 2
+}
+```
+
+- 删主题时对应 `uploads` 记录一起软删，下载接口即 404
+
+### GET /api/threads/:id/schematic/download · 拿下载地址
+
+匿名可访问（人机验证门禁照旧），返回结构与插件下载一致：
+
+```json
+{
+  "url": "https://cdn.blockbox.cc.cd/uploads/sch-2-….litematic",
+  "size": 1048576,
+  "content_type": "application/octet-stream",
+  "filename": "中世纪小镇.litematic",
+  "downloads": 3
+}
+```
+
+`downloads` 同样按「同一 IP 10 分钟只记一次」去抖。
+
+---
+
+## 资源帖评论（插件帖 / 投影帖）
+
+插件帖和投影帖的详情页是资源详情页：**没有楼层号、没有楼中楼**，正文下面是
+一条条平铺的评论（`thread_comments`），和楼层（`posts`）完全分开，不影响主题的
+`reply_count` 与楼层号。主题输出里的 `comment_count` 是评论数。
+
+排序由服务端算，规则是「最热 + 最新」综合：
+
+```
+score = (点赞数 + 1) × 48 / (2 + 评论年龄/小时)
+```
+
+刚发出的评论拿满分 24，一小时前发的掉到 16，收到一个赞又能回到 32——新评论能
+立刻被看到，好评多的评论也会慢慢浮上来。
+
+### GET /api/threads/:id/comments?page=1&per_page=20
+
+公开可读，无需登录（`liked` 只有登录后才有意义）。
+
+```json
+{
+  "comments": [
+    {
+      "id": 9, "thread_id": 88, "content": "看着不错",
+      "deleted": false, "created_at": 1794668124,
+      "likes": 2, "liked": false,
+      "author": { "id": 2, "username": "…", "display_name": "…", "avatar": "",
+                  "role": "user", "status": "active",
+                  "thread_count": 3, "post_count": 12, "joined_at": 1794000000 }
+    }
+  ],
+  "total": 1,
+  "pagination": { "page": 1, "per_page": 20, "total": 1, "pages": 1 }
+}
+```
+
+### POST /api/threads/:id/comments · 发表评论（需登录 + 入站答题）
+
+```json
+{ "content": "说点什么，支持 Markdown（≤ 2000 字）" }
+```
+
+同样过违禁词与频率限制（每账号 20 条 / 5 分钟）；主题被锁定时返回 400
+`thread_locked`。成功返回 `{ comment, thread_id, total }`，并给楼主与评论里
+@ 到的人发站内通知。
+
+### POST /api/comments/:id/like · 点赞 / 取消点赞
+
+请求体 `{}` 表示切换，也可以显式给 `{ "like": true }`。返回 `{ liked, likes }`。
+
+### DELETE /api/comments/:id · 删除（作者本人或管理员，软删除）
+
+返回 `{ ok, total }`；删除是软删，页面上直接消失，评论数按未删的统计。
+
+### POST /api/comments/:id/report · 举报评论
+
+```json
+{ "category": "spam", "reason": "补充说明（≤ 200 字）" }
+```
+
+分类与楼层举报共用同一套白名单（`spam/insult/porn/illegal/ infringe/privacy/flooding/other`）。
+举报进 `comment_reports`，管理后台的 `GET /api/admin/reports` 会把它和楼层举报
+合并成同一份队列，通过 `kind: "comment"` 区分，处理时也带上 `kind`。
+
+---
+
 ## 通知
 
 ### GET /api/notifications?page=1&per_page=20
@@ -603,6 +733,10 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
       "status": "waiting",
       "join_count": 12,
       "host": { "id": 2, "username": "红石工程师", "display_name": "红石工程师", "avatar": "" },
+      "players": [
+        { "id": 2, "username": "红石工程师", "display_name": "红石工程师", "avatar": "", "joined_at": 1793600000, "is_host": true },
+        { "id": 7, "username": "Steve", "display_name": "史蒂夫", "avatar": "/uploads/img-1-x.png", "joined_at": 1793600500, "is_host": false }
+      ],
       "created_at": 1793600000,
       "updated_at": 1793600120,
       "expires_in": 90,
@@ -619,6 +753,8 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
   `frp`（樱花或 OpenFrp 内网穿透，用 `address`）/ `custom`（直连地址）。
 - `status`：`waiting`（等待中）/ `playing`（游戏中）/ `full`（人数已满）。
 - `expires_in`：距离过期还有多少秒，`0` 表示已经过期（列表里不会出现）。
+- `players`：正在游玩的人，房主固定排第一位（`is_host: true`），后面是通过客户端进游戏、
+  还在上报的玩家（见下面的 presence 接口）；老版本客户端忽略这个字段也能正常工作。
 - 登录后请求时 `mine` 表示这条房间是不是自己的；未登录一律 `false`。
 
 ### POST /api/lobby/rooms · 发布 / 更新自己的房间（需登录）
@@ -661,6 +797,55 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 客户端点「一键加入」时调用，给房间的 `join_count` 加一，并返回最新房间信息
 （`{ "room": { … } }`）。房间不存在或已过期返回 `404 lobby_room_gone`。
 限流：同一 IP 每分钟 60 次。
+
+### POST /api/lobby/rooms/:id/presence · 上报「我正在这个房间里玩」（需登录）
+
+客户端进游戏后每 **40 秒**调一次，大厅详情页据此显示「正在游玩」的人。
+同一个房间同一个人只记一条，`joined_at` 不会因为重新上报而变。
+超过 **2 分钟**没上报就当作已经离开，房间被删除时这些记录也一起清掉。
+
+成功返回 `{ "ok": true, "room": { … } }`（带最新的 `players`）。房间不存在或已过期返回
+`404 lobby_room_gone`。限流：同一账号每分钟 40 次。
+
+### DELETE /api/lobby/rooms/:id/presence · 结束游玩（需登录）
+
+游戏退出 / 主动离开房间时调用，大厅里马上少一个人。返回 `{ "ok": true }`，重复调用不报错。
+
+### GET /api/lobby/rooms/:id/comments · 房间评论（公开）
+
+联机大厅房间详情页的评论区，每次返回最近 **50** 条，按时间正序（旧 → 新）。
+房间已过期 / 已下架返回 `404 lobby_room_gone`。
+
+```json
+{
+  "comments": [
+    { "id": 12, "content": "原版就能进，欢迎来玩", "created_at": 1793426400,
+      "is_host": true, "mine": false,
+      "user": { "id": 2, "username": "房主", "display_name": "房主", "avatar": "", "role": "user" } }
+  ],
+  "total": 1,
+  "room_id": 5
+}
+```
+
+`is_host` 表示这条评论是房主自己留的；`mine` 是当前登录用户发的（未登录时恒为 `false`）。
+
+### POST /api/lobby/rooms/:id/comments · 发表评论（需登录 + 入站答题）
+
+```json
+{ "content": "还缺哪个模组？" }
+```
+
+`content` 1–300 字，会过违禁词检查；账号被禁言、没通过入站答题都会被拦下。
+成功返回 `{ "comment": { … } }`，结构同上面的评论项。
+限流：同一账号每分钟 8 条（`429 rate_limited`）。
+
+### DELETE /api/lobby/comments/:id · 删除评论（需登录）
+
+评论者本人、该房间房主和管理员可以删，其他人返回 `404`。
+成功返回 `{ "ok": true, "removed": true }`。
+
+评论跟着房间走：房间过期下架后由数据库级联清理，不会留在大厅里。
 
 ---
 
@@ -786,19 +971,29 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ## 群聊
 
-基础版群聊：从自己的好友里挑人建群（最多 50 人含群主），群里可以发文字 / 图片 / 回复引用，自己 10 分钟内的消息可撤回。没有群头像、进群审批和邀请；群主退出即解散（群和消息一并删除）。
+基础版群聊：从自己的好友里挑人建群（最多 50 人含群主），群里可以发文字 / 图片 / 回复引用，自己 10 分钟内的消息可撤回。建群时可选群图标（内置表情或上传的图片）；没有进群审批，群里任何成员都能邀请自己的好友进来；群主退出即解散（群和消息一并删除）。
 
 群消息的字段与私信一致（`kind` / `body` / `image` / `reply_to` / `mine` / `created_at`），额外多一个 `sender` 对象（`id` / `username` / `display_name` / `avatar`），客户端用来在气泡上方显示发言人。群消息没有已读回执，未读数按「自己入群记录里的 `last_read_id` 指针」计算。
 
 ### POST /api/groups · 建群（需登录）
 
 ```json
-{ "name": "周末开黑群", "member_ids": [2, 3, 5] }
+{ "name": "周末开黑群", "avatar": "🎮", "member_ids": [2, 3, 5] }
 ```
 
-`name` 1–20 字；`member_ids` 1–49 个，必须都是自己的好友（不是好友或已封禁的自动跳过，一个都没有时返回 400）。自己自动进群并成为群主。限流：每小时 10 次。
+`name` 1–20 字；`member_ids` 1–49 个，必须都是自己的好友（不是好友或已封禁的自动跳过，一个都没有时返回 400）。自己自动进群并成为群主。`avatar` 可选：一个表情（最多 8 个字符，不能带空格），或先 `POST /api/upload` 拿到的站内图片地址（`/uploads/…`）；不传或空串表示按群名首字显示。限流：每小时 10 次。
 
-返回 `{ "group": { "id": 1, "name": "周末开黑群", "owner_id": 1, "member_count": 4, "unread": 0, "last_message": null } }`。
+返回 `{ "group": { "id": 1, "name": "周末开黑群", "avatar": "🎮", "owner_id": 1, "member_count": 4, "unread": 0, "last_message": null } }`。
+
+### POST /api/groups/:id/members · 邀请好友进群（需登录，仅成员）
+
+```json
+{ "member_ids": [6, 7] }
+```
+
+群里**任何成员**都能邀请自己的好友：`member_ids` 必须都是自己的好友（不是好友、已封禁或已在群里的自动跳过）；群总人数上限 50，超出部分自动截断。官方全用户群直接返回 400。限流：每小时 20 次。
+
+成功后新成员的已读指针推到入群前的最新消息（历史随时能翻，但旧消息不计未读），并向群里发一条 `kind: "system"` 的系统消息（如 `张三 邀请 李四、王五 加入了群聊`）。返回 `{ "ok": true, "added": 2, "member_count": 6 }`。
 
 ### GET /api/groups/:id/messages · 打开群会话（需登录，仅成员）
 
@@ -886,6 +1081,8 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 - `posts` 只含**顶层楼层**（`parent_post_id: null`），分页按顶层楼层算
 - 楼中楼放在父楼层的 `children` 里；`children_count` 是不含已删除楼层的数量
+- 挂了插件的主题多一个 `plugin` 对象，挂了投影的多一个 `schematic` 对象；
+  资源帖的讨论走评论（`comment_count`），`reply_count` 只记楼层
 - `liked` / `bookmarked` 需要带登录 Cookie，未登录时是 `false`
 - 同一 IP 对同一主题 10 分钟内只计一次浏览量
 
@@ -1108,21 +1305,31 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 ### GET /api/admin/reports?status=open
 
 审核队列。`status` 取 `open`（默认）/ `resolved` / `ignored`。
+楼层举报（`reports`）和资源帖评论举报（`comment_reports`）合并成同一份列表，
+按时间倒序，用 `kind` 区分：`"post"` 是楼层，`"comment"` 是评论。
 
 ```json
 {
   "status": "open",
   "reports": [
     {
-      "id": 3, "post_id": 9, "thread_id": 4, "floor": 2,
+      "kind": "post", "id": 3, "post_id": 9, "comment_id": null, "thread_id": 4, "floor": 2,
       "category": "spam", "reason": "广告", "status": "open", "created_at": 1793428700,
       "thread_title": "…", "post_deleted": false, "thread_deleted": false,
       "excerpt": "被举报楼层的正文摘要",
       "author": { "id": 2, "username": "红石工程师" },
       "reporter": { "id": 3, "username": "整合包爱好者" }
+    },
+    {
+      "kind": "comment", "id": 1, "post_id": null, "comment_id": 2, "thread_id": 9, "floor": null,
+      "category": "", "reason": "刷屏", "status": "open", "created_at": 1794668124,
+      "thread_title": "中世纪小镇投影", "post_deleted": false, "thread_deleted": false,
+      "excerpt": "被举报评论的正文摘要",
+      "author": { "id": 2, "username": "红石工程师" },
+      "reporter": { "id": 5, "username": "…" }
     }
   ],
-  "counts": { "open": 1, "resolved": 0 }
+  "counts": { "open": 2, "resolved": 0 }
 }
 ```
 
@@ -1132,9 +1339,12 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 { "status": "resolved", "delete_post": true }   // 删掉被举报楼层并标记已处理
 { "status": "ignored" }                          // 只是忽略
 { "status": "open" }                             // 重新打开
+{ "kind": "comment", "status": "resolved", "delete_post": true }   // 处理评论举报
 ```
 
-`delete_post` 会软删除该楼层、减掉主题回复数、重算板块计数，并清掉指向它的通知。
+`delete_post` 会软删除该楼层、减掉主题回复数、重算板块计数，并清掉指向它的通知；
+处理评论举报时传 `kind: "comment"`，`delete_post` 会把那条评论软删除。
+`id` 在两套表里各自独立，**必须带 `kind` 才能定位评论举报**。
 
 标记为 `resolved` / `ignored` 时自动给举报人发一条系统通知回告处理结果（删帖 / 已处理 / 已忽略对应不同文案）；重新打开不通知。举报人已注销时不发。
 

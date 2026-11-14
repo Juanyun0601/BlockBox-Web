@@ -651,6 +651,24 @@ async function main() {
   const lobbyJoin = await request('POST', `/api/lobby/rooms/${lobbyRoomId}/join`, {});
   check('记录一次加入', lobbyJoin.json?.room?.join_count === 1, lobbyJoin.text);
 
+  // 「正在游玩」：房主固定排第一位，客户端上报后其他人按进房时间排上
+  const roomPlayers = lobbyJoin.json?.room?.players || [];
+  check(
+    '房间带正在游玩列表（房主在第一位）',
+    roomPlayers.length === 1 && roomPlayers[0].is_host === true,
+    lobbyJoin.text,
+  );
+  const presenceMine = await request('POST', `/api/lobby/rooms/${lobbyRoomId}/presence`, {});
+  check(
+    '房主上报不会重复出现',
+    presenceMine.status === 200
+      && (presenceMine.json?.room?.players || []).filter((player) => player.is_host).length === 1,
+    presenceMine.text,
+  );
+  await request('DELETE', `/api/lobby/rooms/${lobbyRoomId}/presence`);
+  const presenceGone = await request('POST', '/api/lobby/rooms/999999/presence', {});
+  check('给不存在的房间上报会失败', presenceGone.status === 404, presenceGone.text);
+
   const lobbyUpdate = await request('POST', '/api/lobby/rooms', {
     title: '冒烟联机房间（改名）',
     core: 'terracotta',
@@ -671,6 +689,23 @@ async function main() {
   check('未登录可见房间但 mine 为 false', !!anonRoom && anonRoom.mine === false, lobbyAnon.text);
   const lobbyAnonClose = await request('DELETE', `/api/lobby/rooms/${lobbyRoomId}`);
   check('未登录不能关闭房间', lobbyAnonClose.status === 401, lobbyAnonClose.text);
+
+  // 换另一位玩家进房：房主之外的人上报后，大厅列表里就能看到「正在游玩」多了谁
+  await request('POST', '/api/auth/login', { username: '普通玩家', password: 'test123456' });
+  const presenceGuest = await request('POST', `/api/lobby/rooms/${lobbyRoomId}/presence`, {});
+  check(
+    '另一位玩家上报后出现在正在游玩里',
+    (presenceGuest.json?.room?.players || []).filter((player) => !player.is_host).length === 1,
+    presenceGuest.text,
+  );
+  const presenceLeave = await request('DELETE', `/api/lobby/rooms/${lobbyRoomId}/presence`);
+  const lobbyAfterLeave = await request('GET', '/api/lobby/rooms');
+  check(
+    '结束游玩后大厅里不再显示这个人',
+    presenceLeave.status === 200
+      && (lobbyAfterLeave.json?.rooms || []).find((room) => room.id === lobbyRoomId)?.players?.length === 1,
+    presenceLeave.text,
+  );
 
   await request('POST', '/api/auth/login', { username: '测试管理员', password: 'test123456' });
   const lobbyClose = await request('DELETE', `/api/lobby/rooms/${lobbyRoomId}`);
@@ -876,6 +911,46 @@ async function main() {
     groupOpen.json?.members?.length === 2 && groupOpen.json?.members?.some((item) => item.owner),
     groupOpen.text,
   );
+
+  // 建群时的群图标：表情原样返回，打开会话也能拿到
+  const iconGroup = await request('POST', '/api/groups', {
+    name: '带图标的群',
+    avatar: '🎮',
+    member_ids: [second?.json?.user?.id],
+  });
+  const iconGroupId = iconGroup.json?.group?.id;
+  check(
+    '建群时能带表情群图标',
+    iconGroup.status === 200 && iconGroup.json?.group?.avatar === '🎮',
+    iconGroup.text,
+  );
+  const iconGroupOpen = await request('GET', `/api/groups/${iconGroupId}/messages`);
+  check('打开群会话能拿到群图标', iconGroupOpen.json?.group?.avatar === '🎮', iconGroupOpen.text);
+
+  // 群图标也能是上传到图床的站内图片地址
+  const iconUpload = await fetch(`${base}/api/upload`, {
+    method: 'POST',
+    headers: { cookie, 'x-human-token': humanToken, 'content-type': 'image/png' },
+    body: Buffer.from(PNG_BASE64, 'base64'),
+  });
+  const iconUploadJson = await iconUpload.json();
+  const imageGroup = await request('POST', '/api/groups', {
+    name: '图片图标群',
+    avatar: iconUploadJson.url,
+    member_ids: [second?.json?.user?.id],
+  });
+  check(
+    '建群时能用上传的图片当图标',
+    imageGroup.status === 200 && imageGroup.json?.group?.avatar === iconUploadJson.url,
+    imageGroup.text,
+  );
+  const longIconGroup = await request('POST', '/api/groups', {
+    name: '图标太长',
+    avatar: '😀😀😀😀😀😀😀😀😀',
+    member_ids: [second?.json?.user?.id],
+  });
+  check('群图标超过 8 个字符被拒', longIconGroup.status === 400, longIconGroup.text);
+
   const groupMsg = await request('POST', `/api/groups/${groupId}/messages`, { body: '大家晚上好' });
   check('发群消息', groupMsg.json?.message?.id > 0 && groupMsg.json?.message?.mine === true, groupMsg.text);
   const groupReply = await request('POST', `/api/groups/${groupId}/messages`, {

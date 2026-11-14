@@ -35,6 +35,7 @@ import registerHuman from './routes/human.js';
 import registerReleases from './routes/releases.js';
 import registerNotice from './routes/notice.js';
 import registerPoints from './routes/points.js';
+import registerComments from './routes/comments.js';
 import { isVerified } from './lib/human-check.js';
 import { isCrawlerUA } from './lib/crawler.js';
 import { renderCrawlerPage, renderSitemapXml } from './lib/ssr.js';
@@ -82,7 +83,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints, registerComments]) {
   register(router);
 }
 
