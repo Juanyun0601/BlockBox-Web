@@ -116,6 +116,13 @@ export const config = {
   maxPluginBytes: num(env.MAX_PLUGIN_BYTES, 20 * 1024 * 1024),
   // 论坛投影帖的投影文件（.litematic / .schem 等）上限，大建筑投影动辄几十 MB
   maxSchematicBytes: num(env.MAX_SCHEMATIC_BYTES, 50 * 1024 * 1024),
+  // 教程帖的资料附件（pdf / zip 等）单个上限，与投影一致给 50MB
+  maxFileBytes: num(env.MAX_FILE_BYTES, 50 * 1024 * 1024),
+  // 教程帖资料附件的扩展名白名单（小写、不带点；压缩包 + 常用文档）
+  attachmentExts: (env.ATTACHMENT_EXTS || 'pdf,zip,rar,7z,txt,md,json,csv,log,mp3,wav,ogg')
+    .split(',')
+    .map((ext) => ext.trim().toLowerCase().replace(/^\./, ''))
+    .filter(Boolean),
   // 版本发布的安装包上限（Windows 安装版接近 100MB，留裕量）
   maxReleaseFileBytes: num(env.MAX_RELEASE_FILE_BYTES, 300 * 1024 * 1024),
   // 版本安装包目录：管理后台上传，官网与启动器经 /releases/files/<版本>/<文件名> 下载

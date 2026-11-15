@@ -1,9 +1,10 @@
 import { db, now, paginate } from '../db.js';
 import { badRequest, notFound } from '../lib/http.js';
-import { requireAdmin, requireUser } from '../lib/auth.js';
+import { assertCanPost, isAdminRole, requireAdmin, requireUser } from '../lib/auth.js';
 import { notifyAdminMessage } from '../lib/notify.js';
 import { enforce } from '../lib/rate-limit.js';
 import { text } from '../lib/validate.js';
+import { guardBannedWords } from '../lib/banned-words.js';
 
 const FEEDBACK_SOURCES = ['web', 'launcher'];
 const FEEDBACK_TYPES = ['bug', 'feature'];
@@ -136,6 +137,106 @@ export default function register(router) {
       feedbacks: rows,
       pagination: { page, per_page: perPage, total, pages: Math.max(1, Math.ceil(total / perPage)) },
     };
+  });
+
+  // ---------------- 反馈详情页评论：对着某条反馈留言讨论 ----------------
+  //
+  // 与房间评论同一套规矩：看评论公开；发评论要求登录且通过入站答题；
+  // 删除允许评论者本人、反馈提交者（清理自己反馈下的留言）和管理员。
+
+  /** 一条评论最多 300 字，和房间评论 / 帖子评论一致 */
+  const COMMENT_MAX_LENGTH = 300;
+  /** 详情页一次最多回最近 50 条，反馈下面的讨论不会太长 */
+  const COMMENT_LIMIT = 50;
+
+  const COMMENT_SELECT = `
+    SELECT c.id, c.user_id, c.content, c.created_at,
+           u.username, u.display_name, u.avatar, u.role
+      FROM feedback_comments c
+      JOIN users u ON u.id = c.user_id`;
+
+  /** 评论的对外结构（客户端直接拿去画头像、名字和「提交人 / 管理员」标签） */
+  function commentJson(row, viewer, authorId) {
+    return {
+      id: row.id,
+      content: row.content,
+      created_at: row.created_at,
+      // 反馈提交人自己留言时客户端会挂一个「提交人」小标签
+      is_author: row.user_id === authorId,
+      // 管理员 / 次级管理员留言时挂「管理员」标签
+      is_admin: isAdminRole(row.role),
+      mine: !!(viewer && viewer.id === row.user_id),
+      user: {
+        id: row.user_id,
+        username: row.username || '',
+        display_name: row.display_name || row.username || '',
+        avatar: row.avatar || '',
+        role: row.role || 'user',
+      },
+    };
+  }
+
+  router.get('/api/feedbacks/:id/comments', async (ctx) => {
+    const feedback = db
+      .prepare('SELECT id, user_id FROM feedbacks WHERE id = ?')
+      .get(Number(ctx.params.id));
+    if (!feedback) throw notFound('反馈不存在');
+
+    const total = db
+      .prepare('SELECT COUNT(*) AS n FROM feedback_comments WHERE feedback_id = ?')
+      .get(feedback.id).n;
+    // 按时间倒序取最近一批，再翻正成「旧的在上面、新留言接在下面」
+    const rows = db
+      .prepare(`${COMMENT_SELECT} WHERE c.feedback_id = ? ORDER BY c.created_at DESC, c.id DESC LIMIT ?`)
+      .all(feedback.id, COMMENT_LIMIT)
+      .reverse();
+
+    return {
+      comments: rows.map((row) => commentJson(row, ctx.user, feedback.user_id)),
+      total,
+      feedback_id: feedback.id,
+    };
+  });
+
+  router.post('/api/feedbacks/:id/comments', async (ctx) => {
+    // 和发帖 / 回复一致：没登录、被禁言、没通过入站答题都不让发
+    const user = assertCanPost(ctx.user, 'reply');
+    const feedback = db
+      .prepare('SELECT id, user_id FROM feedbacks WHERE id = ?')
+      .get(Number(ctx.params.id));
+    if (!feedback) throw notFound('反馈不存在');
+    enforce(`feedback:comment:${user.id}`, 8, 60 * 1000, '评论太频繁，歇一会儿再发');
+
+    const body = await ctx.json();
+    const content = text(body.content, { field: '评论', min: 1, max: COMMENT_MAX_LENGTH });
+    guardBannedWords(user, content, { action: '评论' });
+
+    const timestamp = now();
+    const result = db
+      .prepare('INSERT INTO feedback_comments (feedback_id, user_id, content, created_at) VALUES (?, ?, ?, ?)')
+      .run(feedback.id, user.id, content, timestamp);
+    const row = db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(Number(result.lastInsertRowid));
+
+    return { comment: commentJson(row, user, feedback.user_id) };
+  });
+
+  router.delete('/api/feedbacks/comments/:id', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const row = db
+      .prepare(
+        `SELECT c.id, c.user_id, f.user_id AS author_id
+           FROM feedback_comments c
+           JOIN feedbacks f ON f.id = c.feedback_id
+          WHERE c.id = ?`,
+      )
+      .get(Number(ctx.params.id));
+    if (!row) return { ok: true, removed: false };
+    // 评论者自己、反馈提交者（清理自己反馈下的留言）、管理员都能删
+    if (row.user_id !== user.id && row.author_id !== user.id && !isAdminRole(user.role)) {
+      throw notFound('评论不存在');
+    }
+    db.prepare('DELETE FROM feedback_comments WHERE id = ?').run(row.id);
+    return { ok: true, removed: true };
   });
 
   // ---------------- 管理：反馈处理 ----------------

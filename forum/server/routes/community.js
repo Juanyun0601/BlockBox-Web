@@ -7,6 +7,7 @@ import { saveChatFile } from '../lib/chat-files.js';
 import { saveLogFile } from '../lib/log-files.js';
 import { savePluginPackage } from '../lib/plugins.js';
 import { saveSchematicFile } from '../lib/schematics.js';
+import { saveAttachmentFile } from '../lib/attachments.js';
 import { config } from '../config.js';
 import { markAllRead, markRead, notifyAdminMessage, unreadNotifications } from '../lib/notify.js';
 import { snippetOf } from '../lib/serialize.js';
@@ -59,6 +60,20 @@ export default function register(router) {
     const fileName = decodeURIComponent((ctx.req.headers['x-file-name'] || '').toString());
     const buffer = await readRawBody(ctx.req, config.maxSchematicBytes);
     return saveSchematicFile(buffer, { userId: user.id, fileName });
+  });
+
+  // ---------------- 教程帖：上传资料附件 ----------------
+  // 原始文件名从 X-File-Name 头带过来（投影上传同款约定），服务端只做白名单校验：
+  // 扩展名（pdf / zip / txt / md 等）、大小。绑定帖子在 POST /api/threads（带
+  // attachment_ids）时完成，一帖最多 10 个。
+
+  router.post('/api/upload/file', async (ctx) => {
+    const user = requireUser(ctx.user);
+    enforce(`upload-file:${user.id}`, 20, 60 * 60 * 1000, '附件上传太频繁');
+
+    const fileName = decodeURIComponent((ctx.req.headers['x-file-name'] || '').toString());
+    const buffer = await readRawBody(ctx.req, config.maxFileBytes);
+    return saveAttachmentFile(buffer, { userId: user.id, fileName });
   });
 
   // ---------------- 聊天附件：私聊 / 群聊发文件 ----------------

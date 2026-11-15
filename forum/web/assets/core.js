@@ -198,7 +198,13 @@
     text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (match, label, url) =>
       safeUrl(url) ? `<a href="${url}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>` : match,
     );
-    text = text.replace(/(^|[\s(])(https?:\/\/[^\s<"']+)/g, (match, pre, url) => {
+    // 中文标点后面直接跟链接也很常见（「链接：https://…」），一并算作链接起点
+    text = text.replace(/(^|[\s(：，。；！？、])(https?:\/\/[^\s<"']+)/g, (match, pre, url) => {
+      // B 站视频链接自动变成内嵌播放卡（iframe 只放行 player.bilibili.com，src 里的 BV 号已校验）
+      const bv = bilibiliBv(url);
+      if (bv) {
+        return `${pre}<span class="video-embed"><iframe src="https://player.bilibili.com/player.html?bvid=${BB.esc(bv)}&amp;autoplay=0&amp;danmaku=0" loading="lazy" allowfullscreen scrolling="no" frameborder="0"></iframe><a class="video-embed-link" href="${url}" target="_blank" rel="noopener noreferrer nofollow">▶ 在 B 站打开</a></span>`;
+      }
       return `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer nofollow">${url}</a>`;
     });
     text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
@@ -212,110 +218,223 @@
     return text;
   }
 
-  BB.md = function (source) {
-    const lines = String(source == null ? '' : source).replace(/\r\n/g, '\n').split('\n');
-    const out = [];
-    let paragraph = [];
-    let listType = null;
+  /**
+   * Markdown → HTML。教学帖等长文需要的增强语法都在这里：
+   * - 标题自动带 id="sec-N" 锚点；传 { toc: [] } 会把 { id, level, text } 目录条目填进数组
+   * - ::: fold 标题 … ::: 折叠块（内容仍按完整 Markdown 渲染）
+   * - ```mindmap 围栏块：缩进列表渲染成树状思维导图
+   * - GFM 管道表格
+   * - 正文里的 B 站视频链接自动渲染成内嵌播放卡
+   */
+  BB.md = function (source, options = {}) {
+    const tocOut = Array.isArray(options.toc) ? options.toc : null;
+    let headingSeq = 0;
 
-    const flushParagraph = () => {
-      if (paragraph.length) {
-        out.push(`<p>${paragraph.join('<br>')}</p>`);
-        paragraph = [];
-      }
-    };
-    const closeList = () => {
-      if (listType) {
-        out.push(`</${listType}>`);
-        listType = null;
-      }
-    };
+    const render = (raw) => {
+      const lines = String(raw == null ? '' : raw).replace(/\r\n/g, '\n').split('\n');
+      const out = [];
+      let paragraph = [];
+      let listType = null;
 
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
-
-      if (/^\s*```/.test(line)) {
-        flushParagraph();
-        closeList();
-        const lang = line.trim().slice(3).trim();
-        const buffer = [];
-        i += 1;
-        while (i < lines.length && !/^\s*```/.test(lines[i])) {
-          buffer.push(lines[i]);
-          i += 1;
+      const flushParagraph = () => {
+        if (paragraph.length) {
+          out.push(`<p>${paragraph.join('<br>')}</p>`);
+          paragraph = [];
         }
-        out.push(
-          `<pre><code${lang ? ` class="lang-${BB.esc(lang)}"` : ''}>${BB.esc(buffer.join('\n'))}</code></pre>`,
-        );
-        continue;
-      }
-
-      if (!line.trim()) {
-        flushParagraph();
-        closeList();
-        continue;
-      }
-
-      if (/^(-{3,}|\*{3,})\s*$/.test(line)) {
-        flushParagraph();
-        closeList();
-        out.push('<hr>');
-        continue;
-      }
-
-      const heading = /^(#{1,3})\s+(.*)$/.exec(line);
-      if (heading) {
-        flushParagraph();
-        closeList();
-        const level = Math.min(6, heading[1].length + 1);
-        out.push(`<h${level}>${inline(heading[2])}</h${level}>`);
-        continue;
-      }
-
-      const quote = /^>\s?(.*)$/.exec(line);
-      if (quote) {
-        flushParagraph();
-        closeList();
-        const buffer = [quote[1]];
-        while (i + 1 < lines.length && /^>\s?/.test(lines[i + 1])) {
-          i += 1;
-          buffer.push(lines[i].replace(/^>\s?/, ''));
+      };
+      const closeList = () => {
+        if (listType) {
+          out.push(`</${listType}>`);
+          listType = null;
         }
-        out.push(`<blockquote>${buffer.map(inline).join('<br>')}</blockquote>`);
-        continue;
-      }
+      };
 
-      const bullet = /^[-*+]\s+(.*)$/.exec(line);
-      if (bullet) {
-        flushParagraph();
-        if (listType !== 'ul') {
+      for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
+
+        if (/^\s*```/.test(line)) {
+          flushParagraph();
           closeList();
-          out.push('<ul>');
-          listType = 'ul';
+          const lang = line.trim().slice(3).trim();
+          const buffer = [];
+          i += 1;
+          while (i < lines.length && !/^\s*```/.test(lines[i])) {
+            buffer.push(lines[i]);
+            i += 1;
+          }
+          // 思维导图：内容是缩进列表，渲染成可折叠的树状图
+          if (lang === 'mindmap') {
+            out.push(mindmapHtml(buffer));
+            continue;
+          }
+          out.push(
+            `<pre><code${lang ? ` class="lang-${BB.esc(lang)}"` : ''}>${BB.esc(buffer.join('\n'))}</code></pre>`,
+          );
+          continue;
         }
-        out.push(`<li>${inline(bullet[1])}</li>`);
-        continue;
-      }
 
-      const ordered = /^\d+[.)]\s+(.*)$/.exec(line);
-      if (ordered) {
-        flushParagraph();
-        if (listType !== 'ol') {
+        // 折叠块 ::: fold 标题 … :::（内容递归走完整 Markdown 渲染）
+        const foldOpen = /^:::\s+fold\s+(\S.*)$/.exec(line.trim());
+        if (foldOpen) {
+          flushParagraph();
           closeList();
-          out.push('<ol>');
-          listType = 'ol';
+          const inner = [];
+          i += 1;
+          while (i < lines.length && !/^\s*:::\s*$/.test(lines[i])) {
+            inner.push(lines[i]);
+            i += 1;
+          }
+          const body = render(inner.join('\n'));
+          out.push(
+            `<details class="md-fold"><summary>${inline(foldOpen[1])}</summary><div class="md-fold-body">${body}</div></details>`,
+          );
+          continue;
         }
-        out.push(`<li>${inline(ordered[1])}</li>`);
-        continue;
+
+        if (!line.trim()) {
+          flushParagraph();
+          closeList();
+          continue;
+        }
+
+        if (/^(-{3,}|\*{3,})\s*$/.test(line)) {
+          flushParagraph();
+          closeList();
+          out.push('<hr>');
+          continue;
+        }
+
+        const heading = /^(#{1,3})\s+(.*)$/.exec(line);
+        if (heading) {
+          flushParagraph();
+          closeList();
+          const level = Math.min(6, heading[1].length + 1);
+          const anchor = `sec-${(headingSeq += 1)}`;
+          if (tocOut) tocOut.push({ id: anchor, level: heading[1].length, text: plainHeading(heading[2]) });
+          out.push(`<h${level} id="${anchor}">${inline(heading[2])}</h${level}>`);
+          continue;
+        }
+
+        // 表格：本行有 | 且下一行是 |---|---| 分隔线，往后连续收表格行
+        if (line.includes('|') && i + 1 < lines.length && /^\s*\|?[\s:|-]{3,}$/.test(lines[i + 1]) && lines[i + 1].includes('-')) {
+          const splitRow = (row) =>
+            row
+              .trim()
+              .replace(/^\|/, '')
+              .replace(/\|$/, '')
+              .split('|')
+              .map((cell) => cell.trim());
+          const header = splitRow(line);
+          i += 2;
+          const bodyRows = [];
+          while (i < lines.length && lines[i].includes('|') && lines[i].trim()) {
+            bodyRows.push(splitRow(lines[i]));
+            i += 1;
+          }
+          i -= 1;
+          flushParagraph();
+          closeList();
+          out.push(
+            `<table class="md-table"><thead><tr>${header
+              .map((cell) => `<th>${inline(cell)}</th>`)
+              .join('')}</tr></thead><tbody>${bodyRows
+              .map((row) => `<tr>${header.map((_, c) => `<td>${inline(row[c] || '')}</td>`).join('')}</tr>`)
+              .join('')}</tbody></table>`,
+          );
+          continue;
+        }
+
+        const quote = /^>\s?(.*)$/.exec(line);
+        if (quote) {
+          flushParagraph();
+          closeList();
+          const buffer = [quote[1]];
+          while (i + 1 < lines.length && /^>\s?/.test(lines[i + 1])) {
+            i += 1;
+            buffer.push(lines[i].replace(/^>\s?/, ''));
+          }
+          out.push(`<blockquote>${buffer.map(inline).join('<br>')}</blockquote>`);
+          continue;
+        }
+
+        const bullet = /^[-*+]\s+(.*)$/.exec(line);
+        if (bullet) {
+          flushParagraph();
+          if (listType !== 'ul') {
+            closeList();
+            out.push('<ul>');
+            listType = 'ul';
+          }
+          out.push(`<li>${inline(bullet[1])}</li>`);
+          continue;
+        }
+
+        const ordered = /^\d+[.)]\s+(.*)$/.exec(line);
+        if (ordered) {
+          flushParagraph();
+          if (listType !== 'ol') {
+            closeList();
+            out.push('<ol>');
+            listType = 'ol';
+          }
+          out.push(`<li>${inline(ordered[1])}</li>`);
+          continue;
+        }
+
+        closeList();
+        paragraph.push(inline(line));
       }
 
+      flushParagraph();
       closeList();
-      paragraph.push(inline(line));
-    }
+      return out.join('\n');
+    };
 
-    flushParagraph();
-    closeList();
-    return out.join('\n');
+    return render(source);
+  };
+
+  /** 目录条目用的纯文本标题：去掉行内记号，不转义（渲染方自行 esc） */
+  function plainHeading(text) {
+    return String(text)
+      .replace(/`([^`]*)`/g, '$1')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/[*_~]/g, '')
+      .trim();
+  }
+
+  /** B 站视频链接 → BV 号（不匹配返回 null） */
+  const bilibiliBv = (url) => {
+    const match = /^https?:\/\/(?:www\.)?bilibili\.com\/video\/(BV[0-9A-Za-z]+)/.exec(url);
+    return match ? match[1] : null;
+  };
+
+  /** ```mindmap 围栏内容（缩进列表）→ 树状图 HTML */
+  function mindmapHtml(lines) {
+    const root = { children: [] };
+    const stack = [{ node: root, indent: -1 }];
+    for (const raw of lines) {
+      if (!raw.trim()) continue;
+      const indent = raw.match(/^\s*/)[0].replace(/\t/g, '  ').length;
+      const node = { label: raw.trim().replace(/^[-*+]\s+/, '').replace(/^\d+[.)]\s+/, ''), children: [] };
+      while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
+      stack[stack.length - 1].node.children.push(node);
+      stack.push({ node, indent });
+    }
+    const treeHtml = (node) =>
+      node.children.length
+        ? `<li>${BB.esc(node.label)}<ul>${node.children.map(treeHtml).join('')}</ul></li>`
+        : `<li>${BB.esc(node.label)}</li>`;
+    const items = root.children.map(treeHtml).join('');
+    if (!items) return '';
+    return `<div class="mindmap"><ul class="mindmap-tree">${items}</ul></div>`;
+  }
+
+  /** 不渲染 Markdown、只要目录（和 BB.md 用同一套标题编号，保证锚点一致） */
+  BB.tocOf = function (source) {
+    const toc = [];
+    BB.md(source, { toc });
+    return toc;
   };
 
   // ------------------------------------------------------------ 分页
@@ -417,6 +536,7 @@
           <nav class="nav-links" aria-label="主导航">
             <a href="/" data-nav="home"${is('home')}>首页</a>
             <a href="/#boards" data-nav="boards"${is('boards')}>板块</a>
+            <a href="/board.html?slug=tutorial-share" data-nav="tutorials"${is('tutorials')}>教程</a>
             <a href="/lobby.html" data-nav="lobby"${is('lobby')}>联机大厅</a>
             <a href="/search.html" data-nav="search"${is('search')}>搜索</a>
             ${me ? `<a href="/friends.html" data-nav="friends" id="navFriendLink"${is('friends')}>好友${friendBadge()}</a>` : ''}
@@ -641,6 +761,7 @@
     const badges = [
       thread.pinned ? '<span class="chip chip-warn">置顶</span>' : '',
       thread.locked ? '<span class="chip chip-grey">已锁定</span>' : '',
+      thread.tutorial ? '<span class="chip chip-tutorial">教程</span>' : '',
     ]
       .filter(Boolean)
       .join('');
@@ -710,6 +831,27 @@
       body: file,
     });
     return data.url;
+  };
+
+  /** 上传一个教程资料附件（pdf / zip 等），返回 { upload_id, name, file_size } */
+  BB.uploadAttachment = async (file) => {
+    return BB.api('/api/upload/file', {
+      method: 'POST',
+      raw: true,
+      headers: {
+        'content-type': 'application/octet-stream',
+        'x-file-name': encodeURIComponent(file.name || 'attachment.bin'),
+      },
+      body: file,
+    });
+  };
+
+  /** 文件大小给人看：B / KB / MB */
+  BB.humanSize = (bytes) => {
+    const size = Number(bytes) || 0;
+    if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+    if (size >= 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
+    return `${size} B`;
   };
 
   /**
@@ -1043,6 +1185,21 @@
         text: '## 发生了什么\n- \n\n## 建议怎么做\n- \n',
       },
     ],
+    // 教程帖（发帖页「教程」模式专用）
+    tutorial: [
+      {
+        label: '图文教程',
+        text: '## 简介\n这篇教程教你做什么、做完能达到什么效果\n\n## 准备\n- \n\n## 步骤\n### 第一步：\n\n### 第二步：\n\n## 常见问题\n- \n\n> 小技巧：正文里的一 / 二 / 三级标题会自动生成右侧目录，点击可跳转；\n> 用 ::: fold 标题 … ::: 可以收起长段落；B 站视频链接直接贴进正文就能变成播放卡片。\n',
+      },
+      {
+        label: '视频教程',
+        text: '## 简介\n一句话说明这个视频讲了什么\n\n## 视频\nhttps://www.bilibili.com/video/BVxxxxxxxx\n\n## 图文补充\n### 关键步骤\n\n## 常见问题\n- \n',
+      },
+      {
+        label: '攻略合集',
+        text: '## 简介\n这份攻略覆盖哪些内容\n\n## 目录速览\n```mindmap\n- 攻略主题\n  - 章节 1\n  - 章节 2\n```\n\n## 章节 1\n\n## 章节 2\n',
+      },
+    ],
   };
 
   /** 把预设模板插进 textarea：空正文直接铺满，已有内容时另起一段，插完选中标题下的提示行 */
@@ -1086,7 +1243,7 @@
     editor.className = 'md-editor';
 
     // 预设模板分组（没传 options.presets 就为空，工具栏不出现预设下拉）
-    const presets = MD_PRESETS[options.presets] || [];
+    let presets = MD_PRESETS[options.presets] || [];
     const presetHtml = presets.length
       ? `<select class="md-preset" aria-label="正文预设模板"><option value="">预设…</option>${presets
           .map((preset, index) => `<option value="${index}">${BB.esc(preset.label)}</option>`)
@@ -1105,6 +1262,9 @@
       ['ol', '1. 编号', '有序列表', ''],
       ['link', '链接', '插入链接（Ctrl+K）', ''],
       ['image', '图片', '上传图片', ''],
+      ['fold', '▶ 折叠', '插入折叠块：::: fold 标题 … :::', ''],
+      ['table', '表格', '插入表格', ''],
+      ['mindmap', '导图', '插入思维导图', ''],
     ];
     editor.innerHTML = `
       <div class="md-toolbar" role="toolbar" aria-label="Markdown 工具栏">
@@ -1173,6 +1333,9 @@
       quote: () => lineCommands.quote(textarea),
       ul: () => lineCommands.ul(textarea),
       ol: () => lineCommands.ol(textarea),
+      fold: () => insertAtCursor(textarea, '\n::: fold 标题\n点标题展开查看的内容\n:::\n'),
+      table: () => insertAtCursor(textarea, '\n| 表头 1 | 表头 2 |\n| --- | --- |\n| 内容 | 内容 |\n'),
+      mindmap: () => insertAtCursor(textarea, '\n```mindmap\n- 中心主题\n  - 分支 1\n  - 分支 2\n```\n'),
     };
 
     const toolbar = editor.querySelector('.md-toolbar');
@@ -1222,6 +1385,15 @@
       });
     }
 
+    /** 换预设分组（发帖页「帖子 / 教程」模式切换时用），下拉内容跟着换 */
+    const setPresets = (groupName) => {
+      if (!presetSelect) return;
+      presets = MD_PRESETS[groupName] || [];
+      presetSelect.innerHTML = `<option value="">预设…</option>${presets
+        .map((preset, index) => `<option value="${index}">${BB.esc(preset.label)}</option>`)
+        .join('')}`;
+    };
+
     // ---------- 快捷键 / 智能输入 ----------
     textarea.addEventListener('keydown', (event) => {
       const mod = event.ctrlKey || event.metaKey;
@@ -1250,7 +1422,7 @@
       if (event.key === 'Tab' && indentSelection(textarea, event)) event.preventDefault();
     });
 
-    return { setMode };
+    return { setMode, setPresets };
   };
 
   BB.refreshNav = () => renderNav(document.body.dataset.page || '');

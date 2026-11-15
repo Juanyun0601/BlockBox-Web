@@ -60,11 +60,28 @@ export function threadOut(row, { withSnippet = true } = {}) {
     ...(row.tp_id ? { plugin: pluginOut(row) } : {}),
     // 投影帖：thread 上挂了投影文件才有
     ...(row.ts_id ? { schematic: schematicOut(row) } : {}),
+    // 教程帖：thread_tutorials 里有行就是；资料附件只在详情接口里给全
+    ...(row.tut_id ? { tutorial: true } : {}),
     // 资源帖评论数（楼层回复数仍在 reply_count 里，两者互不混算）
     comment_count: row.comment_count || 0,
     ...(withSnippet ? { snippet: snippetOf(row.first_post) } : {}),
     ...(row.bookmarked === undefined ? {} : { bookmarked: !!row.bookmarked }),
   };
+}
+
+/** links 列的 JSON 字符串 → [{label, url}]，脏数据一律折返成空数组 */
+export function linksOut(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(String(raw));
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && typeof item === 'object' && item.url)
+      .map((item) => ({ label: String(item.label || '').slice(0, 20), url: String(item.url) }))
+      .filter((item) => /^https?:\/\//i.test(item.url));
+  } catch {
+    return [];
+  }
 }
 
 /** thread_plugins 行 → 卡片展示用的插件 JSON */
@@ -79,6 +96,7 @@ export function pluginOut(row) {
     description: row.tp_description || '',
     icon: row.tp_icon || '',
     file_size: row.tp_file_size || 0,
+    links: linksOut(row.tp_links),
     downloads: row.tp_downloads || 0,
   };
 }
@@ -91,7 +109,20 @@ export function schematicOut(row) {
     name: row.ts_name || '',
     file_name: row.ts_file_name || '',
     file_size: row.ts_file_size || 0,
+    links: linksOut(row.ts_links),
     downloads: row.ts_downloads || 0,
+  };
+}
+
+/** thread_attachments 行（JOIN uploads 取 url）→ 教程资料附件 JSON */
+export function attachmentOut(row) {
+  return {
+    id: row.id,
+    name: row.name || '',
+    file_name: row.file_name || '',
+    file_size: row.file_size || 0,
+    downloads: row.downloads || 0,
+    url: row.url || '',
   };
 }
 

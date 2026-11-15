@@ -17,6 +17,10 @@ BB.boot(async () => {
     !!(thread && (thread.plugin || thread.schematic)) ||
     !!(thread && thread.board && RESOURCE_BOARDS.has(thread.board.slug));
 
+  // 教程帖：和帖子一样走楼层回复，但右栏多出目录（正文标题自动生成）和资料附件。
+  // 注意别把「教程分享」板块算进资源板块，两者的回复体系不同。
+  const isTutorialThread = (thread) => !!(thread && (thread.tutorial || (thread.attachments || []).length));
+
   const canEditPost = (post) => !!me && !post.deleted && (me.id === post.author.id || BB.isAdmin());
 
   // ---------------------------------------------------------------- 渲染
@@ -314,7 +318,7 @@ BB.boot(async () => {
   function renderHead(thread) {
     const flags = `${thread.pinned ? '<span class="chip chip-warn">置顶</span>' : ''}${
       thread.locked ? '<span class="chip chip-grey">已锁定</span>' : ''
-    }`;
+    }${thread.tutorial ? '<span class="chip chip-tutorial">教程</span>' : ''}`;
     const tags = (thread.tags || [])
       .map(
         (tag) =>
@@ -397,12 +401,64 @@ BB.boot(async () => {
 
   // ---------------------------------------------------------------- 右侧栏
 
-  async function renderRail(thread, { resource = false } = {}) {
+  async function renderRail(thread, { resource = false, tutorialToc = null, attachments = [] } = {}) {
     const rail = document.getElementById('threadRail');
     if (!rail) return;
     const board = thread.board || {};
     const lockedNote = thread.locked
       ? `<div class="rail-note">该主题已锁定，暂不接受新${resource ? '评论' : '回复'}</div>`
+      : '';
+
+    // 插件帖 / 投影帖：作者绑定的相关链接（官网 / 仓库 / 反馈等），老帖没有就不出这个卡
+    const resourceLinks =
+      (thread.plugin && thread.plugin.links) || (thread.schematic && thread.schematic.links) || [];
+    const linksCard = resourceLinks.length
+      ? `<section class="card rail-card">
+          <h3 class="rail-title">相关链接</h3>
+          <div class="rail-list">
+            ${resourceLinks
+              .map(
+                (link) =>
+                  `<a class="rail-thread rail-link" href="${BB.esc(link.url)}" target="_blank" rel="noopener noreferrer"><span class="t">${BB.esc(
+                    link.label || '链接',
+                  )} ↗</span><span class="m">${BB.esc(link.url)}</span></a>`,
+              )
+              .join('')}
+          </div>
+        </section>`
+      : '';
+
+    // 教程帖：正文标题自动生成的目录（正文在当前页才有锚点可跳，翻页时不出这张卡）
+    const tocCard =
+      tutorialToc && tutorialToc.length
+        ? `<section class="card rail-card rail-toc">
+            <h3 class="rail-title">目录</h3>
+            <nav class="toc-list">
+              ${tutorialToc
+                .map(
+                  (entry) =>
+                    `<a class="toc-row toc-level-${entry.level}" data-target="${BB.esc(entry.id)}" href="javascript:void 0">${BB.esc(entry.text)}</a>`,
+                )
+                .join('')}
+            </nav>
+          </section>`
+        : '';
+
+    // 教程帖：作者上传的资料附件，点一下取下载地址再触发保存
+    const attachmentCard = attachments.length
+      ? `<section class="card rail-card">
+          <h3 class="rail-title">资料附件</h3>
+          <div class="rail-list">
+            ${attachments
+              .map(
+                (item) => `<a class="rail-thread rail-attachment" href="javascript:void 0" data-attachment="${item.id}">
+                  <span class="t">📎 ${BB.esc(item.name || item.file_name || '附件')}</span>
+                  <span class="m">${BB.humanSize(item.file_size)} · ${BB.num(item.downloads || 0)} 次下载</span>
+                </a>`,
+              )
+              .join('')}
+          </div>
+        </section>`
       : '';
 
     rail.innerHTML = `
@@ -428,6 +484,10 @@ BB.boot(async () => {
         <button type="button" class="rail-share" data-share>复制本页链接</button>
       </section>
 
+      ${tocCard}
+      ${attachmentCard}
+      ${linksCard}
+
       <section class="card rail-card">
         <h3 class="rail-title">同版块主题</h3>
         <div class="rail-list" id="railBoardList"><div class="rail-empty">加载中…</div></div>
@@ -446,6 +506,53 @@ BB.boot(async () => {
     if (shareButton) {
       shareButton.addEventListener('click', () => copyLink(location.href, '本页链接已复制'));
     }
+
+    // 教程目录：点击滚到对应章节，滚动时高亮当前章节
+    const tocRows = Array.from(rail.querySelectorAll('.toc-row[data-target]'));
+    if (tocRows.length) {
+      tocRows.forEach((row) => {
+        row.addEventListener('click', () => {
+          const target = document.getElementById(row.dataset.target);
+          if (!target) return;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          target.classList.add('flash');
+          setTimeout(() => target.classList.remove('flash'), 2400);
+        });
+      });
+
+      const spyTargets = tocRows
+        .map((row) => ({ row, el: document.getElementById(row.dataset.target) }))
+        .filter((item) => item.el);
+      const spy = () => {
+        const marker = window.scrollY + 120;
+        let active = spyTargets[0];
+        for (const item of spyTargets) {
+          if (item.el.offsetTop <= marker) active = item;
+        }
+        tocRows.forEach((row) => row.classList.toggle('active', active && row === active.row));
+      };
+      window.addEventListener('scroll', spy, { passive: true });
+      window.addEventListener('resize', spy);
+      spy();
+    }
+
+    // 资料附件：取下载地址后触发浏览器保存
+    rail.querySelectorAll('[data-attachment]').forEach((row) => {
+      row.addEventListener('click', async () => {
+        const attachmentId = Number(row.dataset.attachment);
+        try {
+          const data = await BB.api(`/api/threads/${thread.id}/attachments/${attachmentId}/download`);
+          const anchor = document.createElement('a');
+          anchor.href = data.url;
+          anchor.download = data.filename || '';
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+        } catch (error) {
+          BB.toast(error.message || '下载失败', 'error');
+        }
+      });
+    });
 
     const list = document.getElementById('railBoardList');
     if (!board.slug || !list) return;
@@ -802,7 +909,13 @@ BB.boot(async () => {
       );
       renderComposer(thread);
       bindActions();
-      renderRail(thread);
+      // 教程帖：从 1 楼正文提取目录（正文标题自动生成），正文在当前页才出目录卡
+      let tutorialToc = null;
+      if (isTutorialThread(thread)) {
+        const firstPost = (data.posts || []).find((post) => post.floor === 1 && !post.deleted);
+        tutorialToc = firstPost ? BB.tocOf(firstPost.content) : null;
+      }
+      renderRail(thread, { tutorialToc, attachments: thread.attachments || [] });
     }
 
     const hash = location.hash || '';

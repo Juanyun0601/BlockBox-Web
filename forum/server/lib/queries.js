@@ -14,10 +14,11 @@ const THREAD_SELECT = `
          tp.id AS tp_id, tp.upload_id AS tp_upload_id, tp.plugin_id AS tp_plugin_id,
          tp.name AS tp_name, tp.version AS tp_version, tp.author AS tp_author,
          tp.description AS tp_description, tp.icon AS tp_icon,
-         tp.file_size AS tp_file_size, tp.downloads AS tp_downloads,
+         tp.file_size AS tp_file_size, tp.links AS tp_links, tp.downloads AS tp_downloads,
          ts.id AS ts_id, ts.upload_id AS ts_upload_id, ts.name AS ts_name,
          ts.file_name AS ts_file_name, ts.file_size AS ts_file_size,
-         ts.downloads AS ts_downloads,
+         ts.links AS ts_links, ts.downloads AS ts_downloads,
+         tt.thread_id AS tut_id,
          (SELECT COUNT(*) FROM thread_comments tc
            WHERE tc.thread_id = t.id AND tc.deleted = 0) AS comment_count
     FROM threads t
@@ -25,7 +26,8 @@ const THREAD_SELECT = `
     JOIN users u ON u.id = t.author_id
     LEFT JOIN users lu ON lu.id = t.last_post_user_id
     LEFT JOIN thread_plugins tp ON tp.thread_id = t.id
-    LEFT JOIN thread_schematics ts ON ts.thread_id = t.id`;
+    LEFT JOIN thread_schematics ts ON ts.thread_id = t.id
+    LEFT JOIN thread_tutorials tt ON tt.thread_id = t.id`;
 
 const THREAD_ORDER = {
   latest: 't.pinned DESC, t.last_post_at DESC',

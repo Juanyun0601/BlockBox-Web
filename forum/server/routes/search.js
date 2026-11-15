@@ -52,13 +52,15 @@ export default function register(router) {
                 tp.id AS tp_id, tp.upload_id AS tp_upload_id, tp.plugin_id AS tp_plugin_id,
                 tp.name AS tp_name, tp.version AS tp_version, tp.author AS tp_author,
                 tp.description AS tp_description, tp.icon AS tp_icon,
-                tp.file_size AS tp_file_size, tp.downloads AS tp_downloads
+                tp.file_size AS tp_file_size, tp.downloads AS tp_downloads,
+                ttu.thread_id AS tut_id
            FROM thread_search s
            JOIN threads t ON t.id = s.thread_id
            JOIN boards b ON b.id = t.board_id
            JOIN users u ON u.id = t.author_id
            LEFT JOIN users lu ON lu.id = t.last_post_user_id
            LEFT JOIN thread_plugins tp ON tp.thread_id = t.id
+           LEFT JOIN thread_tutorials ttu ON ttu.thread_id = t.id
           WHERE ${where.join(' AND ')}
           ORDER BY t.last_post_at DESC
           LIMIT ? OFFSET ?`,

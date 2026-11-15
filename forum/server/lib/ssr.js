@@ -24,6 +24,7 @@ import {
   listPosts,
   listThreads,
 } from './queries.js';
+import { linksOut } from './serialize.js';
 
 /** 主题页最多渲染多少个顶层楼层 */
 const MAX_POSTS = 100;
@@ -345,11 +346,23 @@ function renderThreadPage(params) {
   ].join(' · ');
 
   let pluginCard = '';
+  // 作者绑定的相关链接：爬虫页面也一并给出，方便搜索引擎顺着抓
+  const resourceLinks = thread.tp_id ? linksOut(thread.tp_links) : linksOut(thread.ts_links);
+  const linksHtml = resourceLinks.length
+    ? `<p class="small">相关链接：${resourceLinks
+        .map(
+          (link) =>
+            `<a href="${esc(link.url)}" target="_blank" rel="noopener noreferrer">${esc(link.label || '链接')}</a>`,
+        )
+        .join(' · ')}</p>`
+    : '';
+
   if (thread.tp_id) {
     pluginCard = `<div class="card plugin">
   <h3>插件：${esc(thread.tp_name || thread.title)}</h3>
   <div class="small">版本 ${esc(thread.tp_version || '—')} · 作者 ${esc(thread.tp_author || author)} · 下载 ${thread.tp_downloads || 0} 次</div>
   ${thread.tp_description ? `<p>${esc(mdToText(thread.tp_description)).slice(0, 600)}</p>` : ''}
+  ${linksHtml}
   <p class="small">在方块盒子启动器的「资源 → 插件」里搜索「${esc(thread.tp_name || thread.title)}」即可下载安装。</p>
 </div>`;
   }
@@ -359,6 +372,7 @@ function renderThreadPage(params) {
     pluginCard = `<div class="card plugin">
   <h3>投影：${esc(thread.ts_name || thread.title)}</h3>
   <div class="small">文件 ${esc(thread.ts_file_name || '—')} · ${sizeMb} MB · 下载 ${thread.ts_downloads || 0} 次</div>
+  ${linksHtml}
   <p class="small">在方块盒子启动器打开这条帖子，点「下载投影」即可保存；放进实例的 schematics 文件夹就能用 Litematica 加载。</p>
 </div>`;
   }

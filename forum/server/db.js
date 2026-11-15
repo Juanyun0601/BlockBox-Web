@@ -185,6 +185,13 @@ export function migrate() {
       console.log(`[论坛] 数据库已升级：${table} 增加 file_url / file_name / file_size（聊天文件）`);
     }
   }
+
+  // 插件帖 / 投影帖：作者绑定的相关链接（[{label,url}] 的 JSON，发布时填、详情页可编辑）
+  const addedPluginLinks = ensureColumn('thread_plugins', 'links', "TEXT NOT NULL DEFAULT '[]'");
+  const addedSchematicLinks = ensureColumn('thread_schematics', 'links', "TEXT NOT NULL DEFAULT '[]'");
+  if (addedPluginLinks || addedSchematicLinks) {
+    console.log('[论坛] 数据库已升级：thread_plugins / thread_schematics 增加 links（相关链接）');
+  }
 }
 
 migrate();

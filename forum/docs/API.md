@@ -470,6 +470,53 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ---
 
+## 教程帖
+
+和帖子 / 资源并列的第三种大类：发帖时带 `tutorial: true`，主题固定发进
+「教程分享」（`tutorial-share`）板块，列表和详情多一个 `"tutorial": true` 标志。
+教程帖的回复走普通楼层（不是资源帖的平铺评论）；正文目录由渲染端按
+`#` / `##` / `###` 标题自动生成，服务端不存目录。
+
+正文增强语法（网页版与启动器一致）：`::: fold 标题 … :::` 折叠块、
+` ```mindmap ` 思维导图（缩进列表）、GFM 表格、B 站视频链接自动变播放卡。
+
+### POST /api/upload/file · 上传资料附件
+
+请求体是 **文件的原始字节**（`Content-Type: application/octet-stream`），
+原始文件名放在 `X-File-Name` 头里（URL 编码）。单文件上限 50 MB（`MAX_FILE_BYTES`），
+限流每账号 20 个/小时。扩展名白名单（`ATTACHMENT_EXTS`）：
+`.pdf` `.zip` `.rar` `.7z` `.txt` `.md` `.json` `.csv` `.log` `.mp3` `.wav` `.ogg`。
+
+返回与投影上传同构：`{ upload_id, name, file_name, file_size, file_hash, url }`。
+
+### POST /api/threads 的教程字段
+
+```json
+{ "board": "tutorial-share", "title": "…", "content": "…",
+  "tags": [], "tutorial": true, "attachment_ids": [31, 32] }
+```
+
+- 附件上传必须是自己的、类别为 `file`、且还没绑给别的主题，一帖最多 10 个
+  （超出返回 400 `attachment_limit`）
+- 教程与资源互斥：`tutorial` 与 `plugin_upload_id` / `schematic_upload_id`
+  同时出现返回 400 `resource_conflict`
+- 主题输出多一个 `"tutorial": true`；**详情接口**再附 `attachments` 数组：
+
+```json
+"attachments": [
+  { "id": 5, "name": "地图资料", "file_name": "地图资料.pdf",
+    "file_size": 1048576, "downloads": 2, "url": "/uploads/att-2-….pdf" }
+]
+```
+
+### GET /api/threads/:id/attachments/:aid/download · 附件下载地址
+
+匿名可访问，返回结构与投影下载一致（`url` / `size` / `filename` / `downloads`），
+计数同样按「同一 IP 10 分钟只记一次」去抖。删主题时附件的 `uploads`
+记录一起软删，下载地址即失效。
+
+---
+
 ## 资源帖评论（插件帖 / 投影帖）
 
 插件帖和投影帖的详情页是资源详情页：**没有楼层号、没有楼中楼**，正文下面是

@@ -7,7 +7,7 @@
 <meta name="description" content="在方块盒子论坛发表新主题">
 <link rel="icon" href="/assets/img/icon.ico">
 <script src="/assets/i18n.js?v=20261119a"></script>
-<link rel="stylesheet" href="/assets/forum.css?v=20261114a">
+<link rel="stylesheet" href="/assets/forum.css?v=20261120b">
 <script>
   (function () {
     try {
@@ -29,9 +29,20 @@
       <div class="card composer">
         <h3>发新帖</h3>
         <div id="formError"></div>
-        <div class="field">
+        <div class="tabs composer-tabs" role="tablist" aria-label="发布类型">
+          <a href="javascript:void 0" id="modePost" class="active" role="tab" aria-pressed="true">帖子</a>
+          <a href="javascript:void 0" id="modeTutorial" role="tab" aria-pressed="false">教程</a>
+        </div>
+        <p class="muted small composer-mode-hint" id="modeHint">交流讨论、求助提问、分享作品，选一个板块发布。</p>
+        <div class="field" id="boardField">
           <label for="boardSelect">发到哪个板块 <span class="req">*</span></label>
           <select class="select" id="boardSelect"></select>
+        </div>
+        <div class="field hidden" id="attachmentField">
+          <label>资料附件（可选，最多 10 个，单个 ≤ 50MB）</label>
+          <div class="attachment-list" id="attachmentList"></div>
+          <button type="button" class="btn btn-ghost btn-sm" id="attachmentAdd">＋ 添加附件</button>
+          <div class="input-hint">支持 PDF、压缩包、TXT / MD / JSON / CSV / 日志等文件，读者可以在帖子右侧下载。</div>
         </div>
         <div class="field">
           <label for="titleInput">标题 <span class="req">*</span></label>
@@ -49,6 +60,10 @@
           <label for="contentInput">正文 <span class="req">*</span></label>
           <textarea class="textarea textarea-lg" id="contentInput" placeholder="详细描述一下…&#10;&#10;支持 Markdown：**加粗**、`代码`、> 引用、- 列表、[链接](https://…)；输入 @ 可以选人，也能直接粘贴或拖入图片"></textarea>
         </div>
+        <div class="field hidden" id="tocPreviewField">
+          <label>目录预览（正文里的一 / 二 / 三级标题自动生成）</label>
+          <div class="toc-preview" id="tocPreview"><span class="muted small">正文里还没有标题，写上「## 章节名」就会出现在这里。</span></div>
+        </div>
         <div class="composer-foot">
           <span class="muted">发帖前可以先用搜索看看有没有同类问题</span>
           <span class="composer-count" id="contentCount">0 字</span>
@@ -61,7 +76,7 @@
 </main>
 
 <footer class="footer" id="siteFooter"></footer>
-<script src="/assets/core.js?v=20261114a"></script>
-<script src="/assets/page-new.js?v=20261114a"></script>
+<script src="/assets/core.js?v=20261120b"></script>
+<script src="/assets/page-new.js?v=20261120b"></script>
 </body>
 </html>

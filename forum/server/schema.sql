@@ -277,6 +277,7 @@ CREATE TABLE IF NOT EXISTS thread_plugins (
   icon        TEXT    NOT NULL DEFAULT '',
   file_size   INTEGER NOT NULL DEFAULT 0,
   file_hash   TEXT    NOT NULL DEFAULT '',
+  links       TEXT    NOT NULL DEFAULT '[]',  -- 作者绑定的相关链接 JSON：[{label,url}]
   downloads   INTEGER NOT NULL DEFAULT 0,
   created_at  INTEGER NOT NULL
 );
@@ -318,11 +319,39 @@ CREATE TABLE IF NOT EXISTS thread_schematics (
   file_name  TEXT    NOT NULL DEFAULT '',
   file_size  INTEGER NOT NULL DEFAULT 0,
   file_hash  TEXT    NOT NULL DEFAULT '',
+  links      TEXT    NOT NULL DEFAULT '[]',  -- 作者绑定的相关链接 JSON：[{label,url}]
   downloads  INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_thread_schematics_thread ON thread_schematics(thread_id);
+
+-- 教程帖标记 ---------------------------------------------------------------
+-- 教程是和帖子 / 资源并列的第三种大类：存在本行即教程帖。
+-- 正文目录由渲染端按标题自动生成，服务端不存目录；
+-- 教程可以另挂资料附件（thread_attachments），发布流程和资源帖一样先传后绑。
+CREATE TABLE IF NOT EXISTS thread_tutorials (
+  thread_id  INTEGER PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL
+);
+
+-- 教程帖挂载的资料附件（一帖最多 10 个）------------------------------------
+-- 发帖人先 POST /api/upload/file 拿到 upload_id，再随主题一起绑定。
+-- 服务端只记原文件名 / 大小 / 指纹，下载时按 uploads 里的路径发文件。
+CREATE TABLE IF NOT EXISTS thread_attachments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  thread_id  INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+  upload_id  INTEGER NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
+  name       TEXT    NOT NULL DEFAULT '',
+  file_name  TEXT    NOT NULL DEFAULT '',
+  file_size  INTEGER NOT NULL DEFAULT 0,
+  file_hash  TEXT    NOT NULL DEFAULT '',
+  downloads  INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_attachments_thread ON thread_attachments(thread_id);
+CREATE INDEX IF NOT EXISTS idx_thread_attachments_upload ON thread_attachments(upload_id);
 
 -- 搜索用索引表（主题标题 + 正文摘要，避免搜索时全表扫楼层）
 CREATE TABLE IF NOT EXISTS thread_search (
@@ -483,6 +512,19 @@ CREATE TABLE IF NOT EXISTS feedbacks (
 CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedbacks_user ON feedbacks(user_id, created_at DESC);
 
+-- 反馈详情页评论（对着某条反馈留言讨论，平铺无楼中楼）---------------------
+-- 反馈是长期数据不会被删除，user_id 注销时置空反馈本体、级联删掉他的评论。
+CREATE TABLE IF NOT EXISTS feedback_comments (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  feedback_id INTEGER NOT NULL REFERENCES feedbacks(id) ON DELETE CASCADE,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content     TEXT    NOT NULL,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_comments_feedback
+  ON feedback_comments(feedback_id, created_at DESC);
+
 -- 联机大厅（启动器把本机开好的房间发布到这里，网页端只读邀请码）-----------
 -- heartbeat_at 是最近一次心跳时间，超过 2 分钟没心跳就当作房间已关闭；
 -- 客户端在房间开着的时候每 40 秒续一次期，离开房间就主动删掉这一行。
@@ -617,6 +659,7 @@ INSERT OR IGNORE INTO boards (slug, name, description, icon, sort_order, created
   ('plugin',   '插件与开发', '插件使用、开发文档、编码方块相关',           '🛠️', 40, unixepoch()),
   ('plugin-share', '插件分享', '发布和分享方块盒子插件包，下载后可在软件里一键安装', '🔌', 45, unixepoch()),
   ('schematic-share', '投影分享', '发布和分享 Litematica / WorldEdit 投影文件，下载后放进实例的 schematics 文件夹就能加载', '📐', 46, unixepoch()),
+  ('tutorial-share', '教程分享', '图文 / 视频教程与攻略，支持目录、资料附件、折叠块和思维导图', '📚', 47, unixepoch()),
   ('feedback', '意见建议',   '功能建议、缺陷反馈、对官网和论坛的想法',     '💡', 50, unixepoch()),
   ('chat',     '闲聊灌水',   '和方块盒子有关的轻松话题',                   '☕', 60, unixepoch());
 

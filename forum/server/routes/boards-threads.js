@@ -3,7 +3,7 @@ import { badRequest, forbidden, notFound } from '../lib/http.js';
 import { assertCanPost, isAdminRole, requireAdmin, requireUser } from '../lib/auth.js';
 import { enforce } from '../lib/rate-limit.js';
 import { bool, text } from '../lib/validate.js';
-import { boardOut, postOut, threadOut, snippetOf } from '../lib/serialize.js';
+import { boardOut, postOut, threadOut, snippetOf, attachmentOut } from '../lib/serialize.js';
 import { notifyThreadActivity } from '../lib/notify.js';
 import { cleanFileName } from '../lib/schematics.js';
 import { guardBannedWords } from '../lib/banned-words.js';
@@ -46,6 +46,34 @@ function saveTags(threadId, tags) {
   db.prepare('DELETE FROM thread_tags WHERE thread_id = ?').run(threadId);
   const insert = db.prepare('INSERT OR IGNORE INTO thread_tags (thread_id, tag) VALUES (?, ?)');
   for (const tag of tags) insert.run(threadId, tag);
+}
+
+/**
+ * 插件帖 / 投影帖的相关链接：[{label, url}]，最多 6 条。
+ * 名称 1~20 字、地址必须 http(s) 且 ≤500 字符，按地址去重；
+ * 格式不对直接报错（客户端发帖前会先做同样的校验，正常到不了这里）。
+ * 存库为紧凑 JSON 字符串，空数组表示不绑链接。
+ */
+function parseResourceLinks(input) {
+  if (input === undefined || input === null) return null;
+  if (!Array.isArray(input)) throw badRequest('相关链接格式不正确');
+  if (input.length > 6) throw badRequest('相关链接最多 6 条');
+  const links = [];
+  for (const item of input) {
+    if (!item || typeof item !== 'object') throw badRequest('相关链接格式不正确');
+    const label = String(item.label || '').trim().slice(0, 20);
+    const url = String(item.url || '').trim().slice(0, 500);
+    if (!url) continue;
+    if (!/^https?:\/\/\S+$/i.test(url)) throw badRequest(`链接「${label || url}」不是有效的网址（要以 http:// 或 https:// 开头）`);
+    if (links.some((link) => link.url.toLowerCase() === url.toLowerCase())) continue;
+    links.push({ label: label || '链接', url });
+    if (links.length >= 6) break;
+  }
+  return links;
+}
+
+function stringifyResourceLinks(links) {
+  return JSON.stringify(links || []);
 }
 
 function boardBySlug(slug) {
@@ -442,6 +470,20 @@ export default function register(router) {
     const detail = threadOut(thread, { withSnippet: false });
     detail.bookmarked = bookmarked;
 
+    // 教程帖：把资料附件一起带上（列表接口只带 tutorial 标志，附件只在详情给全）
+    if (detail.tutorial) {
+      detail.attachments = db
+        .prepare(
+          `SELECT ta.id, ta.name, ta.file_name, ta.file_size, ta.downloads, up.url
+             FROM thread_attachments ta
+             JOIN uploads up ON up.id = ta.upload_id
+            WHERE ta.thread_id = ?
+            ORDER BY ta.id`,
+        )
+        .all(threadId)
+        .map(attachmentOut);
+    }
+
     const posts = rows.map((row) => {
       const item = postOut({ ...row, liked: liked.has(row.id) });
       const children = childrenByParent.get(row.id) || [];
@@ -475,6 +517,8 @@ export default function register(router) {
     // 违禁词：标题和正文一起查，命中就拦下这帖，普通玩家还会被自动禁言
     guardBannedWords(user, `${title}\n${content}`, { action: '发帖' });
     const tags = parseTags(body.tags);
+    // 相关链接：插件帖 / 投影帖可绑定官网、仓库、反馈等入口（普通帖忽略）
+    const links = parseResourceLinks(body.links) || [];
     const timestamp = now();
 
     // 插件帖：带 plugin_upload_id 就把该上传绑定到这条主题（一帖一个，仅发帖时）。
@@ -544,6 +588,44 @@ export default function register(router) {
       throw badRequest('一条帖子只能挂一个资源：插件和投影请分开发布', 'resource_conflict');
     }
 
+    // 教程帖：body.tutorial 为真按教程帖处理，正文可带资料附件（先 POST /api/upload/file
+    // 拿到 upload_id，再随主题一起绑定，一帖最多 10 个）。教程和资源互斥：
+    // 教程走楼层回复体系，资源走平铺评论，混在一起两边都没法渲染。
+    const isTutorial = body.tutorial === true || body.tutorial === 1;
+    let tutorialAttachments = [];
+    if (isTutorial) {
+      if (pluginUpload || schematicUpload) {
+        throw badRequest('教程帖不能同时挂插件或投影附件', 'resource_conflict');
+      }
+      const rawIds = Array.isArray(body.attachment_ids) ? body.attachment_ids : [];
+      const uniqueIds = [...new Set(rawIds.map((item) => Number(item)).filter((item) => Number.isInteger(item) && item > 0))];
+      if (uniqueIds.length > 10) {
+        throw badRequest('资料附件最多 10 个', 'attachment_limit');
+      }
+      for (const uploadId of uniqueIds) {
+        const upload = db.prepare('SELECT * FROM uploads WHERE id = ? AND user_id = ?').get(uploadId, user.id);
+        if (!upload || upload.deleted) throw notFound('附件上传不存在，请重新上传');
+        if (upload.kind !== 'file') throw badRequest('该上传不是资料附件', 'not_file_upload');
+        if (db.prepare('SELECT thread_id FROM thread_attachments WHERE upload_id = ?').get(uploadId)) {
+          throw badRequest('这个附件已经绑定在一条主题上了', 'attachment_upload_taken');
+        }
+        let meta = {};
+        try {
+          meta = JSON.parse(upload.meta || '{}');
+        } catch {
+          meta = {};
+        }
+        const fileName = cleanFileName(meta.file_name) || 'attachment.bin';
+        tutorialAttachments.push({
+          id: upload.id,
+          size: upload.size,
+          name: fileName.replace(/\.[A-Za-z0-9]{1,12}$/, '') || fileName,
+          file_name: fileName,
+          file_hash: meta.file_hash || '',
+        });
+      }
+    }
+
     const created = transaction(() => {
       const inserted = db
         .prepare(
@@ -561,8 +643,8 @@ export default function register(router) {
       if (pluginUpload) {
         db.prepare(
           `INSERT INTO thread_plugins
-             (thread_id, upload_id, plugin_id, name, version, author, description, icon, file_size, file_hash, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (thread_id, upload_id, plugin_id, name, version, author, description, icon, file_size, file_hash, links, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           id,
           pluginUpload.id,
@@ -574,15 +656,34 @@ export default function register(router) {
           pluginUpload.plugin_icon || '',
           pluginUpload.size || 0,
           pluginUpload.file_hash || '',
+          stringifyResourceLinks(links),
           timestamp,
         );
       }
       saveTags(id, tags);
+      if (isTutorial) {
+        db.prepare('INSERT INTO thread_tutorials (thread_id, created_at) VALUES (?, ?)').run(id, timestamp);
+        for (const attachment of tutorialAttachments) {
+          db.prepare(
+            `INSERT INTO thread_attachments
+               (thread_id, upload_id, name, file_name, file_size, file_hash, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            id,
+            attachment.id,
+            attachment.name || '',
+            attachment.file_name || '',
+            attachment.size || 0,
+            attachment.file_hash || '',
+            timestamp,
+          );
+        }
+      }
       if (schematicUpload) {
         db.prepare(
           `INSERT INTO thread_schematics
-             (thread_id, upload_id, name, file_name, file_size, file_hash, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+             (thread_id, upload_id, name, file_name, file_size, file_hash, links, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           id,
           schematicUpload.id,
@@ -590,6 +691,7 @@ export default function register(router) {
           schematicUpload.file_name || '',
           schematicUpload.size || 0,
           schematicUpload.file_hash || '',
+          stringifyResourceLinks(links),
           timestamp,
         );
       }
@@ -761,6 +863,46 @@ export default function register(router) {
     };
   });
 
+  // ---------------- 教程帖：资料附件下载地址 ----------------
+  // 和插件 / 投影下载同一套做法：按附件 id 取地址，下载计数按 IP 去抖。
+
+  router.get('/api/threads/:id/attachments/:aid/download', async (ctx) => {
+    const threadId = Number(ctx.params.id);
+    const attachmentId = Number(ctx.params.aid);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+    if (!Number.isInteger(attachmentId) || attachmentId <= 0) throw notFound('附件不存在');
+    const thread = db.prepare('SELECT id, deleted FROM threads WHERE id = ?').get(threadId);
+    if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
+
+    const attachment = db
+      .prepare(
+        `SELECT ta.id, ta.downloads, ta.file_name, u.url, u.size
+           FROM thread_attachments ta
+           JOIN uploads u ON u.id = ta.upload_id AND u.deleted = 0
+          WHERE ta.id = ? AND ta.thread_id = ?`,
+      )
+      .get(attachmentId, threadId);
+    if (!attachment) throw notFound('附件不存在');
+
+    const key = `${ctx.ip}:att:${attachment.id}`;
+    const lastSeen = pluginDownloadSeen.get(key) || 0;
+    if (Date.now() - lastSeen > 10 * 60 * 1000) {
+      pluginDownloadSeen.set(key, Date.now());
+      db.prepare('UPDATE thread_attachments SET downloads = downloads + 1 WHERE id = ?').run(attachment.id);
+      if (pluginDownloadSeen.size > 5000) pluginDownloadSeen.clear();
+    }
+
+    const [, pathname] = attachment.url.match(/^\/uploads\/(.+)$/) || [];
+    const url = pathname ? `${cdnBase || config.publicOrigin || ''}/uploads/${pathname}` : attachment.url;
+    return {
+      url,
+      size: attachment.size || 0,
+      content_type: 'application/octet-stream',
+      filename: cleanFileName(attachment.file_name) || pathname || 'attachment.bin',
+      downloads: attachment.downloads,
+    };
+  });
+
   // ---------------- 插件帖：版本历史 ----------------
   // thread_plugins 始终是「当前版」，旧包上传新版本时挪进 plugin_versions 留档。
 
@@ -895,6 +1037,13 @@ export default function register(router) {
     if (title !== thread.title) guardBannedWords(user, title, { action: '修改标题' });
     db.prepare('UPDATE threads SET title = ? WHERE id = ?').run(title, thread.id);
     if (body.tags !== undefined) saveTags(thread.id, parseTags(body.tags));
+    // 相关链接：作者（或管理员）改绑插件帖 / 投影帖的链接；空数组 = 全部清掉
+    if (body.links !== undefined) {
+      const links = parseResourceLinks(body.links) || [];
+      const resourceLinks = stringifyResourceLinks(links);
+      db.prepare('UPDATE thread_plugins SET links = ? WHERE thread_id = ?').run(resourceLinks, thread.id);
+      db.prepare('UPDATE thread_schematics SET links = ? WHERE thread_id = ?').run(resourceLinks, thread.id);
+    }
     indexThread(thread.id);
     return { thread: threadOut(getThread(thread.id)) };
   });
@@ -917,6 +1066,12 @@ export default function register(router) {
       `UPDATE uploads SET deleted = 1
         WHERE deleted = 0 AND kind = 'schematic'
           AND id IN (SELECT upload_id FROM thread_schematics WHERE thread_id = ?)`,
+    ).run(thread.id);
+    // 教程帖同理：资料附件跟着下架，地址不再可下载
+    db.prepare(
+      `UPDATE uploads SET deleted = 1
+        WHERE deleted = 0 AND kind = 'file'
+          AND id IN (SELECT upload_id FROM thread_attachments WHERE thread_id = ?)`,
     ).run(thread.id);
     db.prepare('DELETE FROM thread_search WHERE thread_id = ?').run(thread.id);
     db.prepare('DELETE FROM notifications WHERE thread_id = ?').run(thread.id);

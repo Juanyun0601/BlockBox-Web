@@ -25,11 +25,15 @@ BB.boot(async () => {
     return;
   }
 
+  const TUTORIAL_BOARD = 'tutorial-share';
+  const ATTACHMENT_EXTS = ['pdf', 'zip', 'rar', '7z', 'txt', 'md', 'json', 'csv', 'log', 'mp3', 'wav', 'ogg'];
+  const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
+
   const boardData = await BB.api('/api/boards');
-  // 插件分享 / 投影分享是资源板块：必须带文件，只能从启动器「发布 → 资源」发，
-  // 网页普通发帖不列出来，免得发出一个只有标题的资源帖
+  // 插件分享 / 投影分享是资源板块：必须带文件，只能从启动器「发布 → 资源」发；
+  // 教程分享只能从上面的「教程」模式发（固定板块 + 附件 + 目录）。都从普通发帖下拉里隐藏。
   const boards = (boardData.boards || []).filter(
-    (board) => !['plugin-share', 'schematic-share'].includes(board.slug),
+    (board) => !['plugin-share', 'schematic-share', 'tutorial-share'].includes(board.slug),
   );
   const wanted = BB.param('board');
   const select = document.getElementById('boardSelect');
@@ -49,7 +53,116 @@ BB.boot(async () => {
   const insertImageFiles = BB.attachImagePaste(contentInput);
   BB.attachMentions(contentInput);
   BB.bindDraft(contentInput, 'new-thread');
-  BB.attachMarkdownEditor(contentInput, { imageFiles: insertImageFiles, presets: 'thread' });
+  const editor = BB.attachMarkdownEditor(contentInput, { imageFiles: insertImageFiles, presets: 'thread' });
+
+  // ---------------- 帖子 / 教程 模式切换 ----------------
+  // 教程固定发进「教程分享」板块：不选板块，多出资料附件和目录预览。
+  const modePost = document.getElementById('modePost');
+  const modeTutorial = document.getElementById('modeTutorial');
+  const modeHint = document.getElementById('modeHint');
+  const boardField = document.getElementById('boardField');
+  const attachmentField = document.getElementById('attachmentField');
+  const tocPreviewField = document.getElementById('tocPreviewField');
+  let tutorialMode = wanted === TUTORIAL_BOARD;
+
+  const applyMode = () => {
+    modePost.classList.toggle('active', !tutorialMode);
+    modePost.setAttribute('aria-pressed', String(!tutorialMode));
+    modeTutorial.classList.toggle('active', tutorialMode);
+    modeTutorial.setAttribute('aria-pressed', String(tutorialMode));
+    boardField.classList.toggle('hidden', tutorialMode);
+    attachmentField.classList.toggle('hidden', !tutorialMode);
+    tocPreviewField.classList.toggle('hidden', !tutorialMode);
+    modeHint.textContent = tutorialMode
+      ? '图文 / 视频教程与攻略：正文标题自动生成目录，支持折叠块、表格、思维导图，B 站链接直接贴进正文。'
+      : '交流讨论、求助提问、分享作品，选一个板块发布。';
+    titleInput.placeholder = tutorialMode ? '一句话说清这篇教程教什么' : '一句话说清问题或想聊的内容';
+    if (editor && typeof editor.setPresets === 'function') editor.setPresets(tutorialMode ? 'tutorial' : 'thread');
+    updateTocPreview();
+  };
+  modePost.addEventListener('click', () => {
+    tutorialMode = false;
+    applyMode();
+  });
+  modeTutorial.addEventListener('click', () => {
+    tutorialMode = true;
+    applyMode();
+  });
+
+  // ---------------- 资料附件（教程模式） ----------------
+  const attachmentList = document.getElementById('attachmentList');
+  const attachmentAdd = document.getElementById('attachmentAdd');
+  const attachmentPicker = document.createElement('input');
+  attachmentPicker.type = 'file';
+  attachmentPicker.multiple = true;
+  attachmentPicker.hidden = true;
+  document.body.appendChild(attachmentPicker);
+  const attachments = []; // { upload_id, name, file_size }
+
+  const renderAttachments = () => {
+    attachmentList.innerHTML = attachments
+      .map(
+        (item, index) => `<span class="attachment-chip">📎 ${BB.esc(item.name)} <i>${Math.max(
+          1,
+          Math.round(item.file_size / 1024),
+        )} KB</i><button type="button" data-index="${index}" aria-label="移除附件">×</button></span>`,
+      )
+      .join('');
+  };
+
+  attachmentList.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-index]');
+    if (!button) return;
+    attachments.splice(Number(button.dataset.index), 1);
+    renderAttachments();
+  });
+
+  attachmentAdd.addEventListener('click', () => attachmentPicker.click());
+  attachmentPicker.addEventListener('change', async () => {
+    const files = Array.from(attachmentPicker.files || []);
+    attachmentPicker.value = '';
+    for (const file of files) {
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      if (!ATTACHMENT_EXTS.includes(ext)) {
+        BB.toast(`不支持 .${ext} 文件，试试 PDF、压缩包或文本类`, 'error');
+        continue;
+      }
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        BB.toast(`${file.name} 超过 50MB`, 'error');
+        continue;
+      }
+      if (attachments.length >= 10) {
+        BB.toast('资料附件最多 10 个', 'error');
+        break;
+      }
+      BB.toast(`正在上传 ${file.name}…`);
+      try {
+        const uploaded = await BB.uploadAttachment(file);
+        attachments.push({ upload_id: uploaded.upload_id, name: uploaded.name || file.name, file_size: uploaded.file_size || file.size });
+        renderAttachments();
+        BB.toast(`${file.name} 已添加`, 'ok');
+      } catch (error) {
+        BB.toast(error.message || '附件上传失败', 'error');
+      }
+    }
+  });
+
+  // ---------------- 目录预览（教程模式） ----------------
+  const tocPreview = document.getElementById('tocPreview');
+  const updateTocPreview = () => {
+    if (!tutorialMode || !tocPreview) return;
+    const toc = BB.tocOf(contentInput.value);
+    tocPreview.innerHTML = toc.length
+      ? toc
+          .map(
+            (entry) =>
+              `<a class="toc-row toc-level-${entry.level}" href="javascript:void 0" style="pointer-events:none">${BB.esc(entry.text)}</a>`,
+          )
+          .join('')
+      : '<span class="muted small">正文里还没有标题，写上「## 章节名」就会出现在这里。</span>';
+  };
+  contentInput.addEventListener('input', () => updateTocPreview());
+  applyMode();
 
   // 正文字数（和回复框一致）
   const contentCount = document.getElementById('contentCount');
@@ -121,10 +234,17 @@ BB.boot(async () => {
     BB.showError(errorHost, '');
     commitTag();
     try {
-      const data = await BB.api('/api/threads', {
-        method: 'POST',
-        body: { board: select.value, title, content, tags },
-      });
+      const body = tutorialMode
+        ? {
+            board: TUTORIAL_BOARD,
+            title,
+            content,
+            tags,
+            tutorial: true,
+            attachment_ids: attachments.map((item) => item.upload_id),
+          }
+        : { board: select.value, title, content, tags };
+      const data = await BB.api('/api/threads', { method: 'POST', body });
       BB.draft.clear('new-thread');
       location.href = `/thread.html?id=${data.id}`;
     } catch (error) {
