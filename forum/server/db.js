@@ -151,6 +151,10 @@ export function migrate() {
   const addedEmailVerified = ensureColumn('users', 'email_verified_at', 'INTEGER NOT NULL DEFAULT 0');
   if (addedEmailVerified) console.log('[论坛] 数据库已升级：users 增加 email_verified_at（邮箱验证时间）');
 
+  // 第三方登录自动创建的账号没有密码，可首次设置；老账号默认都有密码
+  const addedPasswordSet = ensureColumn('users', 'password_set', 'INTEGER NOT NULL DEFAULT 1');
+  if (addedPasswordSet) console.log('[论坛] 数据库已升级：users 增加 password_set（是否设置过密码）');
+
   // 插件帖：uploads 增加 meta（插件包的清单快照与 sha256，图片类上传恒为 '{}'）
   const addedUploadMeta = ensureColumn('uploads', 'meta', "TEXT NOT NULL DEFAULT '{}'");
   if (addedUploadMeta) console.log('[论坛] 数据库已升级：uploads 增加 meta（插件包元数据）');
@@ -238,4 +242,11 @@ export function refreshBoardCounts(boardId) {
 /** 清理过期会话，启动时与定时任务调用 */
 export function purgeExpiredSessions() {
   db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now());
+}
+
+/** 清理过期的第三方登录状态与设备码（启动时与定时任务调用） */
+export function purgeExpiredOAuth() {
+  const timestamp = now();
+  db.prepare('DELETE FROM oauth_states WHERE expires_at <= ?').run(timestamp);
+  db.prepare('DELETE FROM oauth_devices WHERE expires_at <= ?').run(timestamp);
 }

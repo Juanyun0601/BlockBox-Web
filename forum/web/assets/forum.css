@@ -753,6 +753,15 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
 .comment-empty b { font-size: 14px; color: var(--ink-2); }
 .comment-empty .muted { margin: 6px 0 0; }
 
+/* 资源帖 / 教程帖：正文（1 楼）单独一张卡，评论跟在下面 */
+.thread-body { padding: 20px 22px; }
+.thread-body-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.thread-body-title {
+  margin: 0; font-size: 15px; font-weight: 800; color: var(--ink-2); letter-spacing: 0.02em;
+}
+.thread-body-actions { margin: 0 0 0 auto; padding: 0; border-top: 0; }
+.thread-body .post-content { margin-top: 8px; }
+
 /* ---------------- 主题右侧栏 ---------------- */
 
 .rail-card { padding: 16px 18px; }
@@ -825,6 +834,10 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
 .textarea { resize: vertical; min-height: 130px; line-height: 1.75; }
 .textarea-lg { min-height: 260px; }
 .input-hint { font-size: 12px; color: var(--ink-3); margin-top: 5px; }
+/* 注册页的「验证码 + 发送按钮」一行：输入框吃掉剩余宽度，按钮不缩 */
+.code-row { display: flex; gap: 8px; }
+.code-row .input { flex: 1; min-width: 0; }
+.code-row .btn { flex: 0 0 auto; }
 .form-error {
   background: var(--danger-soft); color: var(--danger); border-radius: 8px;
   padding: 9px 12px; font-size: 13.5px; margin-bottom: 12px;
@@ -891,6 +904,42 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
 }
 .auth-tabs button.active { background: var(--card); color: var(--brand); box-shadow: var(--shadow-sm); }
 .auth-note { text-align: center; font-size: 12.5px; color: var(--ink-3); margin-top: 16px; }
+
+/* 第三方登录：登录表单下方的「或」分隔线和 GitHub / LittleSkin 入口 */
+.auth-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 0 12px; color: var(--ink-3); font-size: 12.5px;
+}
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.oauth-buttons { display: grid; gap: 10px; }
+.oauth-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 44px; padding: 0 16px; border-radius: 12px;
+  border: 1px solid var(--line-2); background: var(--card); color: var(--ink);
+  font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer;
+  transition: border-color .16s, background .16s, color .16s, transform .16s;
+}
+.oauth-btn:hover { border-color: var(--brand-line); color: var(--brand); background: var(--brand-soft); }
+.oauth-btn:active { transform: translateY(1px); }
+.oauth-badge {
+  width: 24px; height: 24px; border-radius: 8px; display: inline-grid; place-items: center;
+  font-size: 11px; font-weight: 800; letter-spacing: .3px; color: #fff; background: #24292f;
+}
+.oauth-btn.oauth-littleskin .oauth-badge { background: linear-gradient(135deg, #39c5bb, #1f8f87); }
+.oauth-hint { text-align: center; font-size: 12px; color: var(--ink-3); margin-top: 10px; line-height: 1.6; }
+.oauth-hint:empty { display: none; }
+
+/* 个人设置里的第三方账号列表 */
+.linked-list { display: grid; gap: 10px; }
+.linked-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card);
+}
+.linked-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.linked-main b { font-size: 14px; }
+.linked-main .muted { font-size: 12.5px; margin-top: 2px; }
+.oauth-badge.oauth-github { background: #24292f; }
+.oauth-badge.oauth-littleskin { background: linear-gradient(135deg, #39c5bb, #1f8f87); }
 
 /* ---------------- 用户页 ---------------- */
 
@@ -1250,6 +1299,29 @@ body[data-page="thread"] .wrap { max-width: 1200px; }
   width: 32px; height: 32px; border-radius: 8px; line-height: 1;
 }
 .emoji-panel button:hover { background: var(--bg-tint); }
+
+/* ---------------- 群聊 ---------------- */
+
+/* 官方全用户群的头像：方块盒子图标底色的表情占位，和普通群的首字头像区分开 */
+.gr-avatar-official { font-size: 15px; background: var(--g700); }
+
+/* 系统提示（「某某 邀请 某某 加入了群聊」）：居中灰字，不可回复 */
+.msg-system {
+  align-self: center; max-width: 88%; text-align: center;
+  font-size: 11.5px; line-height: 1.7; color: var(--ink-3);
+  background: var(--bg-tint); border-radius: 999px; padding: 3px 12px;
+}
+
+/* 群聊里别人的消息：气泡上方先来一行发送者昵称 */
+.msg-sender { font-size: 11.5px; color: var(--ink-3); padding: 0 2px 3px; }
+
+/* 群文件 / 私聊文件：文件名 + 大小 + 提取按钮（提取才计下载流量） */
+.msg-file {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  font-size: 13.5px; line-height: 1.6;
+}
+.msg-file-name { font-weight: 600; word-break: break-all; }
+.msg-file-size { font-size: 12px; color: var(--ink-3); }
 
 /* ============================================================
    通用居中弹窗（禁言弹窗等）

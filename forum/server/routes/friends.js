@@ -254,9 +254,9 @@ export default function register(router) {
       content = text(body.body, { field: '私信内容', min: 1, max: 1000 });
     }
 
-    // 回复引用：只能引用这个会话里的消息
+    // 回复引用：只能引用这个会话里的消息（reply_to 传 0 / 空表示不是引用回复）
     let replyTo = 0;
-    if (body.reply_to !== undefined && body.reply_to !== null && body.reply_to !== '') {
+    if (body.reply_to !== undefined && body.reply_to !== null && body.reply_to !== '' && Number(body.reply_to) > 0) {
       replyTo = int(body.reply_to, { field: '回复消息' });
       const target = db.prepare('SELECT sender_id, peer_id FROM direct_messages WHERE id = ?').get(replyTo);
       const inPair =

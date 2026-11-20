@@ -107,7 +107,7 @@ export function notifyThreadActivity({ thread, post, actor, parentPostAuthorId =
 }
 
 /**
- * 资源帖收到评论后：通知楼主 + 评论里 @ 到的人。
+ * 资源帖 / 教程帖收到评论后：通知楼主 + 评论里 @ 到的人。
  *
  * 评论没有楼层（post_id 为空），所以 target_kind 一律按主题算，
  * 客户端点开通知直接进主题页就行。

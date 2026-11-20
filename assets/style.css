@@ -1324,37 +1324,6 @@ body.modal-open { overflow: hidden; }
 .ver-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .ver-links .btn { padding: 8px 16px; font-size: 13.5px; }
 
-/* --- 插件 --- */
-.plug {
-  margin-top: 84px; padding: 34px 36px 30px;
-  border: 1px solid var(--line); border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, var(--card), var(--bg-tint));
-  box-shadow: var(--shadow-sm);
-}
-.plug-head h2 { font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
-.plug-head p { margin-top: 6px; max-width: 64ch; font-size: 14.5px; color: var(--ink-2); }
-.plug-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin: 22px 0 26px; }
-.plug-note { font-size: 13.5px; color: var(--ink-3); }
-.plug-table-wrap {
-  overflow-x: auto; background: var(--card);
-  border: 1px solid var(--line); border-radius: 14px;
-}
-.plug-table { width: 100%; border-collapse: collapse; min-width: 460px; }
-.plug-table th {
-  padding: 12px 18px; text-align: left;
-  font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-3); background: var(--bg-tint); border-bottom: 1px solid var(--line);
-}
-.plug-table td { padding: 12px 18px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
-.plug-table tbody tr:last-child td { border-bottom: 0; }
-.plug-table tbody tr:hover td { background: var(--hover-row); }
-.plug-table code {
-  font-family: ui-monospace, "Cascadia Mono", Consolas, "Microsoft YaHei", monospace;
-  font-size: 13.5px; color: var(--green-ink);
-  background: var(--tint); padding: 2px 7px; border-radius: 6px;
-}
-.plug-table .ver-tag { font-size: 11.5px; margin-left: 6px; }
-
 @media (max-width: 1024px) {
   .dlp-latest { grid-template-columns: 1fr; }
   .latest-side { border-left: 0; border-top: 1px solid rgba(255, 255, 255, .14); }
@@ -1368,25 +1337,11 @@ body.modal-open { overflow: hidden; }
   .latest-links .btn { width: 100%; }
   .ver-head { margin-top: 56px; }
   .ver-row { align-items: flex-start; }
-  .plug { margin-top: 56px; padding: 26px 20px 22px; }
 }
 @media (max-width: 480px) {
   .dlp-os li { font-size: 13px; padding: 7px 13px; }
   .ver-links { width: 100%; }
   .ver-links .btn { flex: 1 1 auto; justify-content: center; }
-}
-
-@media (max-width: 640px) {
-  .plug-table-wrap { overflow: visible; }
-  .plug-table { min-width: 0; }
-  .plug-table thead { display: none; }
-  .plug-table, .plug-table tbody, .plug-table tr, .plug-table td { display: block; width: 100%; }
-  .plug-table tr { padding: 11px 16px; border-bottom: 1px solid var(--line); }
-  .plug-table tbody tr:last-child { border-bottom: 0; }
-  .plug-table td { padding: 0; border: 0; }
-  .plug-table td:first-child { margin-bottom: 3px; }
-  .plug-table td:last-child { font-size: 13.5px; color: var(--ink-2); }
-  .plug-table code { font-size: 13px; }
 }
 
 /* --- 当前系统识别 --- */

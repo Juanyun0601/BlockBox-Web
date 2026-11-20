@@ -1,7 +1,8 @@
 # 方块盒子论坛 · 接口文档
 
 - 基础地址：本站根路径（例如 `http://127.0.0.1:3210`）
-- 除 `/api/health`、`/api/me`、`/api/boards`、`/api/threads*`（GET）、`/api/search` 外，其余接口都需要登录
+- 除 `/api/health`、`/api/me`、`/api/boards`、`/api/threads*`（GET）、`/api/search`、
+  `/api/auth/*`（登录 / 注册相关）外，其余接口都需要登录
 - 登录态用 Cookie（`bbf_sid`，HttpOnly）。用脚本调用时把 `set-cookie` 里的值带到后续请求的 `Cookie` 头即可
 - 请求体统一 `application/json; charset=utf-8`（上传头像除外，见下）
 - 时间字段都是 **Unix 秒**
@@ -18,13 +19,38 @@
 
 ## 认证
 
+### GET /api/auth/register/policy · 注册规矩
+
+返回 `{ "email_required": true, "register_open": true }`。`email_required` 表示注册要不要填邮箱 +
+验证码（对应 `.env` 的 `REGISTER_EMAIL_REQUIRED`）。此接口不要求登录，也不经过人机验证。
+
+### POST /api/auth/register/code · 注册前发送邮箱验证码
+
+```json
+{ "email": "player@example.com" }
+```
+
+给还没注册的邮箱发一封注册验证码（6 位数字，10 分钟内有效），返回
+`{ "ok": true, "expires_in": 600 }`。此接口不要求登录，但要先过人机验证；邮箱已被别的账号
+注册过返回 `email_taken`。限流：同一 IP 每小时 10 封、同一邮箱每小时 3 封；
+没配 SMTP 时返回 `503 mail_disabled`。
+
 ### POST /api/auth/register · 注册
 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
 | `username` | 是 | 2–20 位，中文 / 字母 / 数字 / 下划线 / 短横线，不能纯数字 |
 | `password` | 是 | 6–72 位 |
-| `email` | 否 | 只做记录，不发验证邮件 |
+| `email` | 是 | 一个邮箱只能注册一个账号；`REGISTER_EMAIL_REQUIRED=0` 时是选填 |
+| `code` | 是 | 上一步邮件里的 6 位验证码；`REGISTER_EMAIL_REQUIRED=0` 时不用填 |
+
+```json
+{ "username": "player", "password": "secret123", "email": "player@example.com", "code": "123456" }
+```
+
+验证码校验通过后邮箱直接被标记为已验证（返回的 `user.email_verified` 为 `true`），不需要再走
+`/api/me/email/verify`。缺邮箱返回 `email_required`、缺验证码返回 `email_code_required`、
+验证码不对 / 过期返回 `email_code_invalid`、邮箱已被注册返回 `email_taken`。
 
 成功返回 `{ "user": {...}, "first_user": true }` 并写入登录 Cookie。
 **站点第一个注册的账号自动是管理员。** 限流：同一 IP 每小时 6 次。
@@ -41,6 +67,80 @@
 
 清掉会话与 Cookie，返回 `{ "ok": true }`。
 
+### GET /api/auth/oauth/providers · 可用的第三方登录方式
+
+返回 `{ "providers": [{ "id": "github", "name": "GitHub", "enabled": true }, …], "enabled": ["github"] }`。
+没在 `.env` 配客户端 ID / Secret 的方式 `enabled` 为 `false`，前端据此隐藏按钮。此接口不要求登录。
+
+### POST /api/auth/oauth/device · 启动器申请第三方登录（设备码）
+
+```json
+{ "provider": "github" }
+```
+
+返回：
+
+```json
+{
+  "provider": "github",
+  "device_code": "…（只给启动器保存，不要展示）",
+  "user_code": "ABCD2345",
+  "verification_url": "https://论坛/oauth/start/github?device=ABCD2345",
+  "expires_in": 600,
+  "interval": 3
+}
+```
+
+启动器把 `verification_url` 交给系统浏览器打开，然后按 `interval` 轮询下面的状态接口。
+`device_code` 等同一次登录凭据，不要把 `user_code` 和它拼在同一段日志里。限流：同一 IP 10 分钟 20 次。
+
+### POST /api/auth/oauth/device/status · 轮询授权结果
+
+```json
+{ "device_code": "…" }
+```
+
+- 还没授权：`{ "status": "pending", "expires_in": 512 }`
+- 授权完成：`{ "status": "authorized", "token": "会话令牌", "user": { … } }`
+- 过期 / 失败：`{ "status": "expired" }` 或 `{ "status": "failed", "message": "…" }`
+
+拿到 `token` 后，后续请求用 `Cookie: bbf_sid=<token>` 即可，和网页登录拿到的是同一类会话。
+设备码放在请求体里而不是 URL 上，避免被访问日志记下来；手工排查时也支持
+`GET /api/auth/oauth/device/status?device_code=…`。
+
+### GET /oauth/start/:provider · 浏览器授权起点
+
+查询参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `next` | 授权完成后回跳的站内路径，默认 `/`；只接受以 `/` 开头的站内地址 |
+| `device` | 启动器设备码流程的 `user_code`；带上它就表示这次授权结果交给启动器 |
+| `bind=1` | 已登录账号主动绑定第三方账号；未登录会先要求登录 |
+
+会 302 到 GitHub / LittleSkin 的授权页。
+
+### GET /oauth/callback/:provider · 服务商回调
+
+服务商回调后由服务端换取 access token、读取用户资料，然后：
+
+1. 这个第三方账号已经绑定过 → 登录对应账号；
+2. 发起授权时浏览器已登录、或显式带 `bind=1` → 绑定到当前账号；
+3. 服务商返回已验证邮箱，且站内有同邮箱的已验证账号 → 自动绑过去；
+4. 以上都没有 → 自动创建新账号（站点关闭注册时返回明确提示）。
+
+网页流程会种下 `bbf_sid` Cookie 并跳回 `next`；启动器流程会把权限交给启动器并跳到
+`/oauth/done.html` 提示「回到启动器」。自动创建的新账号没有密码（`password_set: false`）。
+
+### GET /api/me/oauth · 我的第三方绑定（需登录）
+
+返回 `{ "providers": […], "links": [{ "provider": "github", "name": "GitHub", "display_name": "…", … }] }`。
+
+### DELETE /api/me/oauth/:provider · 解除绑定（需登录）
+
+返回 `{ "ok": true, "links": [...] }`。如果这是账号最后的登录方式（还没设置密码），会返回
+`400 last_login_method`，请先在账号设置里设置密码。
+
 ### GET /api/me · 当前登录用户
 
 ```json
@@ -48,7 +148,7 @@
   "user": { "id": 1, "username": "admin", "display_name": "admin", "role": "admin", "avatar": "", "cover": "" },
   "unread": 3,
   "friend_unread": 2,
-  "site": { "name": "方块盒子论坛", "desc": "…", "register_open": true }
+  "site": { "name": "方块盒子论坛", "desc": "…", "register_open": true, "register_email_required": true }
 }
 ```
 
@@ -62,7 +162,8 @@
 ### PATCH /api/me
 
 `display_name`（≤24 字）、`bio`（≤300 字）、`email`，都可选，传什么改什么。
-把 `email` 改成别的地址后，原邮箱的验证状态会被清掉，需要重新走验证码验证。
+把 `email` 改成别的地址后，原邮箱的验证状态会被清掉，需要重新走验证码验证；
+换成别的账号已经用过的邮箱会返回 `email_taken`。
 
 ### POST /api/me/email/code · 发送邮箱验证码（需登录）
 
@@ -95,6 +196,9 @@
 ```
 
 改完后除当前设备外的会话全部失效。
+
+第三方登录自动创建的账号 `password_set` 为 `false`，首次设置密码时 `current_password`
+可以传空串（服务端认账号这个状态，不是认空密码）；设置成功后 `password_set` 变为 `true`。
 
 ### POST /api/me/avatar · 上传头像
 

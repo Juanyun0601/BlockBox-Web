@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第三方登录 · 方块盒子</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: #f4f8f3;
+    color: #17251a;
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  }
+  .card {
+    width: min(420px, 100%);
+    padding: 34px 28px 30px;
+    border-radius: 18px;
+    border: 1px solid #e2ebe0;
+    background: #fff;
+    box-shadow: 0 18px 50px rgba(24, 64, 30, .08);
+    text-align: center;
+  }
+  .mark {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 18px;
+    display: grid;
+    place-items: center;
+    border-radius: 20px;
+    background: #e9f5e8;
+    color: #2e7d32;
+    font-size: 32px;
+    font-weight: 800;
+  }
+  h1 { margin: 0 0 10px; font-size: 22px; }
+  p { margin: 0; color: #5c6f60; font-size: 14px; line-height: 1.8; }
+  .hint { margin-top: 18px; padding-top: 16px; border-top: 1px dashed #e1e9df; font-size: 12.5px; color: #87998b; }
+  .error .mark { background: #fdecea; color: #c62828; }
+  .error h1 { color: #b3261e; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0e1411; color: #e7f0e9; }
+    .card { background: #151d18; border-color: #24312a; box-shadow: none; }
+    .mark { background: rgba(102, 187, 106, .14); color: #8bd08e; }
+    p { color: #a7baac; }
+    .hint { border-color: #24312a; color: #7d9184; }
+    .error .mark { background: rgba(198, 40, 40, .18); color: #ef7c74; }
+    .error h1 { color: #ef7c74; }
+  }
+</style>
+</head>
+<body>
+<main class="card" id="card">
+  <div class="mark" id="mark">✓</div>
+  <h1 id="title">登录成功</h1>
+  <p id="message">请回到方块盒子启动器，那边会自动完成登录。</p>
+  <div class="hint">现在可以关闭这个页面了。</div>
+</main>
+<script>
+  (function () {
+    var params = new URLSearchParams(location.search);
+    var status = params.get('status') || 'ok';
+    var provider = params.get('provider') || '';
+    var message = params.get('message') || '';
+    var names = { github: 'GitHub', littleskin: 'LittleSkin' };
+    var title = document.getElementById('title');
+    var text = document.getElementById('message');
+    var mark = document.getElementById('mark');
+
+    if (status === 'error') {
+      document.getElementById('card').classList.add('error');
+      mark.textContent = '!';
+      title.textContent = '登录没有完成';
+      text.textContent = message || '授权被取消或已经过期，请回到启动器重新发起登录。';
+      document.querySelector('.hint').textContent = '请回到方块盒子启动器重试。';
+      return;
+    }
+
+    title.textContent = '登录成功';
+    mark.textContent = '✓';
+    text.textContent = provider && names[provider]
+      ? '已通过 ' + names[provider] + ' 完成授权，请回到方块盒子启动器，那边会自动登录。'
+      : '授权已完成，请回到方块盒子启动器，那边会自动完成登录。';
+  })();
+</script>
+</body>
+</html>

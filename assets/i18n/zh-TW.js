@@ -769,7 +769,7 @@ window.BB_I18N_DICT = {
   "去论坛提问 →": "去論壇提問 →",
   "方块盒子 BlockBox 官网封面": "方塊盒子 BlockBox 官網封面",
   "方块盒子下载 — 免费 Minecraft 启动器安装包（Windows / Linux / 鸿蒙 / 安卓）": "方塊盒子下載 — 免費 Minecraft 啟動器安裝檔（Windows / Linux / 鴻蒙 / 安卓）",
-  "方块盒子 BlockBox 官方下载页：获取最新公测版安装包，支持 Windows、Linux、鸿蒙 HarmonyOS 与 Android。提供 123 盘免登录高速下载、夸克网盘与 GitHub 三个渠道，另有历史版本与官方插件包。": "方塊盒子 BlockBox 官方下載頁：取得最新公測版安裝檔，支援 Windows、Linux、鴻蒙 HarmonyOS 與 Android。提供 123 盤免登入高速下載、夸克網盤與 GitHub 三個管道，另有歷史版本與官方外掛包。",
+  "方块盒子 BlockBox 官方下载页：获取最新公测版安装包，支持 Windows、Linux、鸿蒙 HarmonyOS 与 Android。提供 123 盘免登录高速下载、夸克网盘与 GitHub 三个渠道，另有历史版本可回退。": "方塊盒子 BlockBox 官方下載頁：取得最新公測版安裝檔，支援 Windows、Linux、鴻蒙 HarmonyOS 與 Android。提供 123 盤免登入高速下載、夸克網盤與 GitHub 三個管道，另有歷史版本可回退。",
   "方块盒子更新日志 — Minecraft 启动器每个版本改了什么": "方塊盒子更新日誌 — Minecraft 啟動器每個版本改了什麼",
   "方块盒子插件开发文档 — plugin.json、命令与示例 | BlockBox 开发者平台": "方塊盒子外掛開發文件 — plugin.json、指令與範例 | BlockBox 開發者平台",
   "方块盒子（BlockBox）插件开发文档：plugin.json 清单字段、权限与命令声明、内嵌 UI 表单、PowerShell 脚本骨架、打包更新与故障排查，帮助开发者从零做出第一个启动器插件。": "方塊盒子（BlockBox）外掛開發文件：plugin.json 清單欄位、權限與指令宣告、內嵌 UI 表單、PowerShell 腳本骨架、打包更新與疑難排解，協助開發者從零做出第一個啟動器外掛。",

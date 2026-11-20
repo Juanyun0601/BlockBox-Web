@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS users (
   quiz_passed_at  INTEGER NOT NULL DEFAULT 0,
   quiz_best_score INTEGER NOT NULL DEFAULT -1,
   email_verified_at INTEGER NOT NULL DEFAULT 0,
+  -- 是否设置过密码：0 表示账号由 GitHub / LittleSkin 等第三方登录自动创建，
+  -- 还没有密码，个人设置里可以首次设置（不需要输入旧密码）。
+  password_set  INTEGER NOT NULL DEFAULT 1,
   created_at    INTEGER NOT NULL,
   last_seen_at  INTEGER NOT NULL DEFAULT 0
 );
@@ -47,6 +50,50 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+-- 第三方账号绑定（GitHub / LittleSkin OAuth 2.0）-------------------------
+-- 一位方块盒子用户可以绑定多个第三方账号；同一个第三方账号只能绑定一个用户。
+CREATE TABLE IF NOT EXISTS oauth_links (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider      TEXT    NOT NULL CHECK (provider IN ('github', 'littleskin')),
+  provider_uid  TEXT    NOT NULL,
+  display_name  TEXT    NOT NULL DEFAULT '',
+  avatar        TEXT    NOT NULL DEFAULT '',
+  created_at    INTEGER NOT NULL,
+  last_login_at INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (provider, provider_uid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_links_user ON oauth_links(user_id);
+
+-- 第三方登录的授权状态（防 CSRF，一次性，10 分钟内有效）
+CREATE TABLE IF NOT EXISTS oauth_states (
+  state       TEXT    PRIMARY KEY,
+  provider    TEXT    NOT NULL,
+  redirect_uri TEXT   NOT NULL DEFAULT '',
+  next_path   TEXT    NOT NULL DEFAULT '/',
+  device_code TEXT    NOT NULL DEFAULT '',
+  bind_user_id INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL,
+  expires_at  INTEGER NOT NULL
+);
+
+-- 启动器登录用的设备码：启动器生成一对码，浏览器完成授权后启动器凭 device_code 取回会话
+CREATE TABLE IF NOT EXISTS oauth_devices (
+  device_code  TEXT    PRIMARY KEY,
+  user_code    TEXT    NOT NULL UNIQUE,
+  provider     TEXT    NOT NULL,
+  status       TEXT    NOT NULL DEFAULT 'pending'
+               CHECK (status IN ('pending', 'authorized', 'failed', 'expired')),
+  user_id      INTEGER NOT NULL DEFAULT 0,
+  session_token TEXT   NOT NULL DEFAULT '',
+  message      TEXT    NOT NULL DEFAULT '',
+  created_at   INTEGER NOT NULL,
+  expires_at   INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_devices_expires ON oauth_devices(expires_at);
 
 -- 每日签到（论坛积分「方块」）----------------------------------------
 -- day 是论坛时区（Asia/Shanghai）的日期 YYYY-MM-DD，一人一天只有一条；

@@ -406,8 +406,9 @@ export default function register(router) {
       content = text(body.body, { field: '群消息内容', min: 1, max: 1000 });
     }
 
+    // 回复引用：只能引用本群消息（reply_to 传 0 / 空表示不是引用回复）
     let replyTo = 0;
-    if (body.reply_to !== undefined && body.reply_to !== null && body.reply_to !== '') {
+    if (body.reply_to !== undefined && body.reply_to !== null && body.reply_to !== '' && Number(body.reply_to) > 0) {
       replyTo = int(body.reply_to, { field: '回复消息' });
       const target = db.prepare('SELECT group_id FROM group_messages WHERE id = ?').get(replyTo);
       if (!target || target.group_id !== group.id) throw notFound('要回复的消息不存在');

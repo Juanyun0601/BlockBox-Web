@@ -786,9 +786,10 @@
       .map((tag) => `<a class="tag" href="/search.html?q=${encodeURIComponent('#' + tag)}">#${BB.esc(tag)}</a>`)
       .join('');
 
-    // 插件帖 / 投影帖的讨论是评论，列表上别拿楼层回复数显示成 0
+    // 插件帖 / 投影帖 / 教程帖的讨论是评论，列表上别拿楼层回复数显示成 0
     const resourceThread =
       !!(thread.plugin || thread.schematic) ||
+      !!thread.tutorial ||
       ['plugin-share', 'schematic-share'].includes((thread.board || {}).slug || '');
     const countValue = resourceThread ? thread.comment_count || 0 : thread.reply_count || 0;
 

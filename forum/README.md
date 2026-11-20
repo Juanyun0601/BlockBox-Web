@@ -12,6 +12,7 @@
 | 模块 | 内容 |
 | --- | --- |
 | 账号 | 注册 / 登录 / 退出、scrypt 加盐存密码、会话 Cookie（HttpOnly、SameSite）、改密码后其他设备自动下线 |
+| 第三方登录 | 支持 GitHub / LittleSkin 一键登录，首次使用自动建号并绑定，已登录时直接绑定；启动器点按钮打开浏览器授权后自动完成登录；个人设置里可绑定 / 解除绑定，第三方建号可首次设置密码 |
 | 用户中心 | 昵称、简介、邮箱、头像上传（自动裁成圆形显示）、个人主页封面图（拖拽裁成 3:1 横图）、我发过的主题 / 回复 |
 | 板块 | 6 个默认板块（综合讨论 / 使用求助 / 教程与分享 / 插件与开发 / 意见建议 / 闲聊灌水），管理员可增删改 |
 | 主题 | 发帖、编辑标题、删除、置顶、锁定、换板块、浏览量、按最新回复 / 最新发布 / 最热排序、分页 |
@@ -142,6 +143,7 @@ node server/index.js
 | `CDN_BASE` | 空 | 公开资源走 CDN 时填 `https://cdn.你的域名`（只填协议 + 域名，不带路径）。`/assets/` 与 `/uploads/` 会改从这个域名加载，留空则由论坛自己发 |
 | `SESSION_DAYS` | `30` | 登录保持天数 |
 | `REGISTER_OPEN` | `1` | `0` 表示关闭注册，只能管理员开号 |
+| `REGISTER_EMAIL_REQUIRED` | `1` | 注册必须填邮箱并过验证码；要先把 `SMTP_*` / `MAIL_FROM` 配好。设成 `0` 退回「邮箱选填、不验证」 |
 | `TRUST_PROXY` | `0` | 在 Nginx / Caddy 后面时设为 `1`，按 `X-Forwarded-For` 取真实 IP |
 | `SECURE_COOKIE` | `0` | 全站 HTTPS 后设为 `1` |
 | `LOG_REQUESTS` | `1` | 是否打印访问日志 |
@@ -165,6 +167,11 @@ node server/index.js
 | `HUMAN_CHECK` | `1` | 是否开启进站人机验证（滑块拼图）。`0` 关掉，接口脚本自测时很方便 |
 | `HUMAN_CHECK_TTL_HOURS` | `8` | 通过验证后多少小时内免验 |
 | `HUMAN_CHECK_SECRET` | 空 | 验证令牌的签名密钥。不配则每次重启换一把，用户要重新验证 |
+| `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` | 空 | GitHub 第三方登录；不填就隐藏 GitHub 入口。回调地址填 `https://你的论坛/oauth/callback/github` |
+| `LITTLESKIN_OAUTH_CLIENT_ID` / `LITTLESKIN_OAUTH_CLIENT_SECRET` | 空 | LittleSkin 第三方登录；不填就隐藏 LittleSkin 入口。回调地址填 `https://你的论坛/oauth/callback/littleskin` |
+| `LITTLESKIN_BASE_URL` | `https://littleskin.cn` | LittleSkin（Blessing Skin）站点地址；换成别的站时授权、换令牌、读资料都跟着变 |
+| `OAUTH_PUBLIC_BASE` | 依次取 `PUBLIC_ORIGIN` → 请求 Host | 生成 OAuth 回调地址用的对外地址；正式环境建议直接配 `PUBLIC_ORIGIN` |
+| `OAUTH_DEVICE_TTL` / `OAUTH_DEVICE_INTERVAL` | `600` / `3` | 启动器设备码有效期与轮询间隔（秒） |
 
 > 管理后台的「首页公告」发布后写进 `ANNOUNCEMENT_FILE`，启动器首页公告栏读的就是这个文件。
 > 同一个文件里的 `important` 字段就是「启动重要公告」：启动器启动时弹窗，官网与论坛每个页面打开时也会
@@ -179,7 +186,7 @@ node server/index.js
 ```bash
 node server/index.js              # 启动（生产）
 npm run dev                       # 改代码自动重启（--watch）
-npm run smoke                     # 端到端测试：人机验证→注册→发帖→回复→通知→图床→举报→权限，129 项
+npm run smoke                     # 端到端测试：人机验证→邮箱验证码注册→发帖→回复→通知→图床→举报→权限，183 项
 npm run backup                    # 备份数据库 + 上传文件到 data/backups
 npm run seed -- --demo            # 造演示数据
 node scripts/set-admin.js 张三 密码   # 建管理员 / 重置管理员密码
@@ -226,7 +233,9 @@ sudo cp deploy/nginx-forum.conf /etc/nginx/conf.d/forum.conf && sudo certbot --n
 - 楼中楼固定两层：回复楼中楼里的回复，会挂到同一个父楼层下，没有无限嵌套（这样楼层和分页不会乱）。
 - 点赞只到楼层级；主题没有单独的「赞」；没有 RSS 和按标签订阅。
 - 图片压缩和缩略图：内置实现只处理 PNG（截图、导出图够用）；JPEG / WebP / GIF 想压缩和出缩略图要装**可选依赖** sharp（见下）。
-- 没有邮件服务：暂不支持邮箱验证、找回密码（可以用 `node scripts/set-admin.js 账号 新密码` 手工重置）。
+- 邮件服务没配 `SMTP_*` / `MAIL_FROM` 时注册会被卡住（注册要邮箱验证码）：可以先把
+  `REGISTER_EMAIL_REQUIRED=0` 关掉邮箱要求，或者用 `node scripts/set-admin.js 账号 新密码` 手工开号。
+  另外还没有「找回密码」邮件（忘记密码同样用这个脚本重置）。
 - 全文搜索是 `LIKE` 匹配（中文两字可用、量级到几万帖都够快）；更大规模可以换成 SQLite FTS5。
 - 没有第三方登录（微软正版账号 / QQ / GitHub）——等论坛跑起来再和启动器账号打通。
 - 前端是原生 JS，没做表单实时校验。

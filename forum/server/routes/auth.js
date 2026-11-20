@@ -28,7 +28,46 @@ function findByUsername(name) {
   return db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE').get(name);
 }
 
+/** 一个邮箱只能绑一个账号：注册、改资料、验证邮箱前都先查一遍 */
+function emailTakenBy(mail, exceptUserId = 0) {
+  if (!mail) return false;
+  return !!db
+    .prepare("SELECT id FROM users WHERE email <> '' AND email = ? COLLATE NOCASE AND id <> ?")
+    .get(mail, exceptUserId);
+}
+
 export default function register(router) {
+  // 注册卡显示之前先问一句：这站注册要不要填邮箱 + 验证码、现在开不开放。
+  // 不涉及任何数据，所以和第三方登录列表一样不被人机验证拦住
+  router.get('/api/auth/register/policy', async () => ({
+    email_required: config.registerEmailRequired,
+    register_open: config.registerOpen || userCount() === 0,
+  }));
+
+  // 注册前先给邮箱发验证码：这时用户还没登录，所以单独开一个不要求登录的发码口。
+  // 只发码、不建号；验证码校验放在下面的注册接口里，过了才算注册成功
+  router.post('/api/auth/register/code', async (ctx) => {
+    enforce(`register-code-ip:${ctx.ip}`, 10, 60 * 60 * 1000, '发送太频繁');
+
+    const body = await ctx.json();
+    const mail = emailField(body.email);
+    if (!mail) throw badRequest('请先填写邮箱地址', 'email_required');
+    enforce(`register-code-mail:${mail.toLowerCase()}`, 3, 60 * 60 * 1000, '这个邮箱收验证码太频繁，过一会儿再试');
+    if (emailTakenBy(mail)) throw badRequest('这个邮箱已经被注册过了', 'email_taken');
+
+    const { code, expiresIn } = issueEmailCode(mail);
+    await sendMail({
+      to: mail,
+      subject: `【${config.siteName}】注册验证码`,
+      text:
+        `你正在${config.siteName}注册账号，验证码用于确认这个邮箱是你的。\n\n` +
+        `验证码：${code}\n\n` +
+        `${Math.round(EMAIL_CODE_TTL / 60)} 分钟内有效，填进注册页就能完成注册。\n` +
+        `如果不是你本人的操作，请忽略这封邮件。`,
+    });
+    return { ok: true, expires_in: expiresIn };
+  });
+
   router.post('/api/auth/register', async (ctx) => {
     enforce(`register:${ctx.ip}`, 6, 60 * 60 * 1000, '注册太频繁');
 
@@ -40,19 +79,34 @@ export default function register(router) {
     const body = await ctx.json();
     const name = usernameField(body.username);
     const pass = passwordField(body.password);
+    const mail = emailField(body.email);
+    // 默认注册就得填邮箱并把验证码验证通过；两条都过了才建号
+    if (config.registerEmailRequired && !mail) throw badRequest('请填写邮箱地址', 'email_required');
     if (findByUsername(name)) throw badRequest('这个用户名已经被注册了', 'username_taken');
+    if (emailTakenBy(mail)) throw badRequest('这个邮箱已经被注册过了', 'email_taken');
+
+    let emailVerifiedAt = 0;
+    if (config.registerEmailRequired) {
+      const code = String(body.code || '').trim();
+      if (!code) throw badRequest('请填写邮箱验证码', 'email_code_required');
+      const checked = consumeEmailCode(mail, code);
+      if (!checked.ok) throw badRequest(checked.message, 'email_code_invalid');
+      emailVerifiedAt = now();
+    }
 
     const timestamp = now();
     const result = db
       .prepare(
-        `INSERT INTO users (username, display_name, pass_hash, email, role, created_at, last_seen_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO users (username, display_name, pass_hash, email, email_verified_at, role,
+                            created_at, last_seen_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         name,
         '',
         hashPassword(pass),
-        emailField(body.email),
+        mail,
+        emailVerifiedAt,
         firstUser ? 'admin' : 'user',
         timestamp,
         timestamp,
@@ -100,6 +154,8 @@ export default function register(router) {
       name: config.siteName,
       desc: config.siteDesc,
       register_open: config.registerOpen || userCount() === 0,
+      // 注册要不要填邮箱 + 验证码：前端据此决定显示 / 隐藏邮箱那几栏
+      register_email_required: config.registerEmailRequired,
     },
   }));
 
@@ -111,6 +167,11 @@ export default function register(router) {
     const mail = emailField(body.email);
     // 换了邮箱就视为未验证；邮箱没变（或都是空）时保留验证记录
     const current = db.prepare('SELECT email, email_verified_at FROM users WHERE id = ?').get(user.id);
+    const changed = String(current?.email || '').toLowerCase() !== mail.toLowerCase();
+    // 只有真换了邮箱才查重：老账号之间可能存在同一个邮箱，不该因此存不了资料
+    if (changed && emailTakenBy(mail, user.id)) {
+      throw badRequest('这个邮箱已经被别的账号用过了', 'email_taken');
+    }
     const keepVerified =
       !!current?.email_verified_at && !!current.email && current.email.toLowerCase() === mail.toLowerCase();
     db.prepare('UPDATE users SET display_name = ?, bio = ?, email = ?, email_verified_at = ? WHERE id = ?').run(
@@ -129,9 +190,13 @@ export default function register(router) {
     const body = await ctx.json();
     const current = String(body.current_password || '');
     const next = passwordField(body.new_password);
-    const row = db.prepare('SELECT pass_hash FROM users WHERE id = ?').get(user.id);
-    if (!verifyPassword(current, row.pass_hash)) throw badRequest('当前密码不正确', 'bad_password');
-    db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?').run(hashPassword(next), user.id);
+    const row = db.prepare('SELECT pass_hash, password_set FROM users WHERE id = ?').get(user.id);
+    // 第三方登录自动创建的账号没有密码（password_set = 0），首次设置不需要旧密码；
+    // 已经设置过密码的账号必须先验证旧密码，防止会话被借用后直接改密码。
+    if (row.password_set !== 0 && !verifyPassword(current, row.pass_hash)) {
+      throw badRequest('当前密码不正确', 'bad_password');
+    }
+    db.prepare('UPDATE users SET pass_hash = ?, password_set = 1 WHERE id = ?').run(hashPassword(next), user.id);
     // 改完密码把其他设备踢下线
     db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(user.id, ctx.token || '');
     return { ok: true };
@@ -172,6 +237,7 @@ export default function register(router) {
     const body = await ctx.json();
     const mail = emailField(body.email);
     if (!mail) throw badRequest('请先填写邮箱地址', 'email_required');
+    if (emailTakenBy(mail, user.id)) throw badRequest('这个邮箱已经被别的账号用过了', 'email_taken');
 
     const result = consumeEmailCode(mail, String(body.code || ''));
     if (!result.ok) throw badRequest(result.message, 'email_code_invalid');

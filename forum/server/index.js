@@ -2,7 +2,7 @@ import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
 import { config, ROOT_DIR } from './config.js';
-import { db, purgeExpiredSessions, now } from './db.js';
+import { db, purgeExpiredOAuth, purgeExpiredSessions, now } from './db.js';
 import { purgeExpiredEmailCodes } from './lib/email-code.js';
 import {
   HttpError,
@@ -36,6 +36,7 @@ import registerReleases from './routes/releases.js';
 import registerNotice from './routes/notice.js';
 import registerPoints from './routes/points.js';
 import registerComments from './routes/comments.js';
+import registerOAuth from './routes/oauth.js';
 import { isVerified } from './lib/human-check.js';
 import { isCrawlerUA } from './lib/crawler.js';
 import { renderCrawlerPage, renderSitemapXml } from './lib/ssr.js';
@@ -83,7 +84,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints, registerComments]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints, registerComments, registerOAuth]) {
   register(router);
 }
 
@@ -119,7 +120,15 @@ function logRequest(req, res, startedAt) {
 
 /** 人机验证门禁的例外：验证接口本身、健康检查、版本发布下发（官网与启动器要用） */
 function humanGateExempt(pathname) {
-  return pathname.startsWith('/api/human/') || pathname === '/api/health' || pathname.startsWith('/api/app/');
+  return (
+    pathname.startsWith('/api/human/') ||
+    pathname === '/api/health' ||
+    pathname.startsWith('/api/app/') ||
+    // 第三方登录：登录页和启动器要先拿到可选方式、设备码，授权回调也不能被滑块拦住
+    pathname.startsWith('/api/auth/oauth/') ||
+    // 注册页要先知道「要不要邮箱验证」才能画表单，这个接口只读、没有副作用
+    pathname === '/api/auth/register/policy'
+  );
 }
 
 /** 把 /a/b?x=1 收成只允许站内相对路径，防止验证页把人送去站外 */
@@ -173,10 +182,16 @@ async function handle(req, res) {
     return;
   }
 
-  if (pathname.startsWith('/api/')) {
+  // 第三方登录的起点 / 回调不是 JSON 接口：直接 302 去服务商或回站内，
+  // 所以和 /api/ 共用路由表，但跳过 JSON 响应和人机验证门禁。
+  const isApiRequest = pathname.startsWith('/api/');
+  const isOAuthPage =
+    pathname.startsWith('/oauth/start/') || pathname.startsWith('/oauth/callback/');
+
+  if (isApiRequest || isOAuthPage) {
     const method = req.method === 'HEAD' ? 'GET' : req.method;
     const matched = router.match(method, pathname);
-    if (!matched) throw notFound('接口不存在');
+    if (!matched) throw notFound(isApiRequest ? '接口不存在' : '页面不存在');
 
     if (!isSafeMethod(method) && !checkOrigin(req.headers)) {
       throw new HttpError(403, '请求来源不被允许', 'bad_origin');
@@ -184,7 +199,7 @@ async function handle(req, res) {
 
     // 人机验证门禁：没过验证之前，除了验证接口一律不放行。
     // 客户端看到 human_required 就该去弹滑块，过了之后把令牌带上重发。
-    if (!humanGateExempt(pathname) && !isVerified(cookies, req.headers)) {
+    if (isApiRequest && !humanGateExempt(pathname) && !isVerified(cookies, req.headers)) {
       throw new HttpError(403, '请先完成人机验证', 'human_required');
     }
 
@@ -212,6 +227,7 @@ async function handle(req, res) {
 
     const payload = await matched.handler(ctx);
     if (res.writableEnded) return;
+    if (isOAuthPage) return;
     sendJson(res, 200, payload ?? { ok: true });
     return;
   }
@@ -272,6 +288,7 @@ async function handle(req, res) {
   if (
     config.humanCheck.enabled &&
     !pathname.startsWith('/assets/') &&
+    !pathname.startsWith('/oauth/') &&
     pathname !== '/verify.html' &&
     pathname !== '/robots.txt' &&
     !isVerified(cookies, req.headers)
@@ -348,6 +365,7 @@ if (isMain) {
   purgeExpiredSessions();
   purgeOldVisits();
   purgeExpiredEmailCodes();
+  purgeExpiredOAuth();
 
   const server = createServer();
   server.on('error', (error) => {
@@ -377,6 +395,7 @@ if (isMain) {
     purgeExpiredSessions();
     purgeOldVisits();
     purgeExpiredEmailCodes();
+    purgeExpiredOAuth();
   }, 6 * 60 * 60 * 1000);
   timer.unref();
 

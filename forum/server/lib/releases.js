@@ -35,6 +35,27 @@ export const PLATFORMS = [
 ];
 const PLATFORM_KEYS = PLATFORMS.map(([key]) => key);
 
+/**
+ * 按安装包文件名判平台（与打包脚本的命名一致）。
+ * 鸿蒙要排在安卓前面：鸿蒙包同样带 arm64-v8a（BlockBox-<版本>-harmony-arm64-v8a.hap），
+ * 先判 arm64-v8a 就会把鸿蒙包装成安卓 arm64。判不出返回空串。
+ */
+export function detectPlatformFromFilename(filename) {
+  const name = String(filename == null ? '' : filename).toLowerCase();
+  if (name.includes('harmony') || name.includes('ohos') || name.endsWith('.hap')) return 'harmony-arm64-v8a';
+  if (name.includes('android') || name.endsWith('.apk')) {
+    return name.includes('x86') || name.includes('x64') ? 'android-x86_64' : 'android-arm64-v8a';
+  }
+  if (name.includes('winarm64')) return 'winarm64';
+  if (name.includes('win64')) return 'win64';
+  if (name.includes('linux-arm64')) return 'linux-arm64';
+  if (name.includes('linux-x64')) return 'linux-x64';
+  if (name.includes('arm64-v8a')) return 'android-arm64-v8a';
+  if (name.includes('x86_64')) return 'android-x86_64';
+  if (name.includes('linux')) return 'linux-x64';
+  return '';
+}
+
 /** latest.json 里最多保留多少个启用版本（更新日志往下翻得完） */
 export const MAX_EXPORT_VERSIONS = 12;
 /**
@@ -513,7 +534,12 @@ export function saveReleaseFile(buffer, { version, platform, filename, admin }) 
   const dirName = cleanVersion(version);
   const name = String(filename || '').trim();
   if (!FILENAME_RE.test(name)) throw badRequest('文件名不合法（只允许字母数字与 . _ ( ) + -）');
-  const platformKey = PLATFORM_KEYS.includes(platform) ? platform : 'other';
+  // 平台标记以上传时传的为准，但文件名明确是鸿蒙包、标记却给了安卓的，按文件名纠正，
+  // 免得后台把鸿蒙安装包当安卓包登记（官网与启动器都会跟着认错）
+  let platformKey = PLATFORM_KEYS.includes(platform) ? platform : 'other';
+  if (platformKey.startsWith('android') && detectPlatformFromFilename(name) === 'harmony-arm64-v8a') {
+    platformKey = 'harmony-arm64-v8a';
+  }
   const { dir, target } = safeResolveDir(dirName, name);
 
   fs.mkdirSync(dir, { recursive: true });
@@ -640,9 +666,35 @@ export async function handleReleaseFileRequest(res, { version, filename, cookies
   return served;
 }
 
+/**
+ * 纠正历史上被认成安卓（或其他）的鸿蒙安装包标记。
+ * 老后台按文件名识别平台时把 arm64-v8a 排在了鸿蒙前面，鸿蒙包上传后就存成了安卓 arm64，
+ * 官网下载页与启动器于是把它当安卓包展示；这里按文件名把这类记录改回来，已经是鸿蒙的不动。
+ * 返回纠正条数。
+ */
+export function repairHarmonyFilePlatforms() {
+  const rows = db.prepare('SELECT id, platform, filename FROM release_files').all();
+  if (!rows.length) return 0;
+  const update = db.prepare('UPDATE release_files SET platform = ? WHERE id = ?');
+  let fixed = 0;
+  for (const row of rows) {
+    const current = String(row.platform || '');
+    if (current === 'harmony-arm64-v8a') continue;
+    if (current !== 'other' && !current.startsWith('android')) continue;
+    if (detectPlatformFromFilename(row.filename) !== 'harmony-arm64-v8a') continue;
+    update.run('harmony-arm64-v8a', row.id);
+    fixed += 1;
+  }
+  return fixed;
+}
+
 /** 启动时同步：按保留策略清理旧文件组，再生成/刷新官网 latest.json，避免冷启动 404 或残留过期文件 */
 export function initReleases() {
   try {
+    const fixed = repairHarmonyFilePlatforms();
+    if (fixed) {
+      console.log(`[版本] 纠正了 ${fixed} 个被认错平台的鸿蒙安装包标记（官网与启动器按鸿蒙展示）`);
+    }
     if (latestVersion()) {
       syncAfterMutation();
       console.log(`[版本] 版本数据已同步到官网 latest.json（${localLatestPath()}）`);

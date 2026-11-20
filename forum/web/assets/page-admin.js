@@ -550,17 +550,23 @@ BB.boot(async () => {
     if (releaseEditor) BB.attachMarkdownEditor(releaseEditor, { presets: 'release' });
   }
 
-  /** 从安装包文件名猜平台标记（与一键打包.bat 的命名约定一致），猜不出交给管理员手选 */
+  /**
+   * 从安装包文件名猜平台标记（与一键打包的命名约定一致），猜不出交给管理员手选。
+   * 鸿蒙必须排在安卓前面：鸿蒙包同样带 arm64-v8a（BlockBox-<版本>-harmony-arm64-v8a.hap），
+   * 先判安卓就会把鸿蒙包认成安卓 arm64。
+   */
   function guessReleasePlatform(filename) {
     const name = String(filename || '').toLowerCase();
+    if (name.includes('harmony') || name.includes('ohos') || name.endsWith('.hap')) return 'harmony-arm64-v8a';
+    if (name.includes('android') || name.endsWith('.apk')) {
+      return name.includes('x86') || name.includes('x64') ? 'android-x86_64' : 'android-arm64-v8a';
+    }
     if (name.includes('winarm64')) return 'winarm64';
     if (name.includes('win64')) return 'win64';
     if (name.includes('linux-arm64')) return 'linux-arm64';
     if (name.includes('linux-x64')) return 'linux-x64';
     if (name.includes('arm64-v8a')) return 'android-arm64-v8a';
     if (name.includes('x86_64')) return 'android-x86_64';
-    if (name.includes('harmony')) return 'harmony-arm64-v8a';
-    if (name.includes('android')) return 'android-arm64-v8a';
     if (name.includes('linux')) return 'linux-x64';
     return '';
   }

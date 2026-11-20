@@ -17,9 +17,12 @@ BB.boot(async () => {
     !!(thread && (thread.plugin || thread.schematic)) ||
     !!(thread && thread.board && RESOURCE_BOARDS.has(thread.board.slug));
 
-  // 教程帖：和帖子一样走楼层回复，但右栏多出目录（正文标题自动生成）和资料附件。
-  // 注意别把「教程分享」板块算进资源板块，两者的回复体系不同。
+  // 教程帖：正文（1 楼）单独一张卡，讨论同样走平铺的评论区，不再盖楼。
+  // 注意别把「教程分享」板块算进资源板块：两者都不盖楼，但资源帖才有下载与相关链接。
   const isTutorialThread = (thread) => !!(thread && (thread.tutorial || (thread.attachments || []).length));
+
+  // 资源帖 / 教程帖共用一套平铺评论
+  const isCommentThread = (thread) => isResourceThread(thread) || isTutorialThread(thread);
 
   const canEditPost = (post) => !!me && !post.deleted && (me.id === post.author.id || BB.isAdmin());
 
@@ -224,10 +227,11 @@ BB.boot(async () => {
   /** 评论区的发表框：登录 / 答题 / 锁定三种前置状态和楼层回复框一致 */
   function renderCommentComposer(thread) {
     const host = document.getElementById('composerHost');
+    const tutorial = isTutorialThread(thread);
     if (!me) {
       host.innerHTML = `<section class="card composer">
         <h3>来说两句？</h3>
-        <p class="muted small" style="margin-bottom: 12px">登录后就能评论这个资源，也可以用同一账号在方块盒子论坛发帖。</p>
+        <p class="muted small" style="margin-bottom: 12px">登录后就能评论${tutorial ? '这篇教程' : '这个资源'}，也可以用同一账号在方块盒子论坛发帖。</p>
         <div class="composer-foot"><a class="btn btn-primary" href="${BB.loginLink()}">登录 / 注册</a></div>
       </section>`;
       return;
@@ -340,8 +344,8 @@ BB.boot(async () => {
          </button>`
       : `<a class="btn btn-ghost btn-sm bookmark-btn" href="${BB.loginLink()}">☆ 收藏</a>`;
 
-    const resource = isResourceThread(thread);
-    const countLine = resource
+    const commentMode = isCommentThread(thread);
+    const countLine = commentMode
       ? `<span>${BB.num(thread.comment_count || 0)} 条评论</span>`
       : `<span>${BB.num(thread.reply_count || 0)} 条回复</span>`;
 
@@ -401,12 +405,12 @@ BB.boot(async () => {
 
   // ---------------------------------------------------------------- 右侧栏
 
-  async function renderRail(thread, { resource = false, tutorialToc = null, attachments = [] } = {}) {
+  async function renderRail(thread, { commentMode = false, tutorialToc = null, attachments = [] } = {}) {
     const rail = document.getElementById('threadRail');
     if (!rail) return;
     const board = thread.board || {};
     const lockedNote = thread.locked
-      ? `<div class="rail-note">该主题已锁定，暂不接受新${resource ? '评论' : '回复'}</div>`
+      ? `<div class="rail-note">该主题已锁定，暂不接受新${commentMode ? '评论' : '回复'}</div>`
       : '';
 
     // 插件帖 / 投影帖：作者绑定的相关链接（官网 / 仓库 / 反馈等），老帖没有就不出这个卡
@@ -466,8 +470,8 @@ BB.boot(async () => {
         <h3 class="rail-title">主题信息</h3>
         <div class="rail-stats">
           <div><b>${BB.num(thread.views)}</b><span>浏览</span></div>
-          <div><b>${BB.num(resource ? thread.comment_count || 0 : thread.reply_count || 0)}</b><span>${
-            resource ? '评论' : '回复'
+          <div><b>${BB.num(commentMode ? thread.comment_count || 0 : thread.reply_count || 0)}</b><span>${
+            commentMode ? '评论' : '回复'
           }</span></div>
         </div>
         <div class="rail-info">
@@ -478,7 +482,7 @@ BB.boot(async () => {
             thread.author.id
           }">${BB.esc(thread.author.display_name)}</a></span></div>
           <div class="row"><span class="k">发布</span><span class="v">${BB.datetime(thread.created_at)}</span></div>
-          <div class="row"><span class="k">${resource ? '最后活动' : '最后回复'}</span><span class="v">${BB.time(thread.last_post_at) || '—'}</span></div>
+          <div class="row"><span class="k">${commentMode ? '最后活动' : '最后回复'}</span><span class="v">${BB.time(thread.last_post_at) || '—'}</span></div>
         </div>
         ${lockedNote}
         <button type="button" class="rail-share" data-share>复制本页链接</button>
@@ -565,8 +569,8 @@ BB.boot(async () => {
               (item) => `<a class="rail-thread" href="/thread.html?id=${item.id}">
                 <span class="t">${BB.esc(item.title)}</span>
                 <span class="m">${BB.esc((item.author && item.author.display_name) || '匿名')} · ${BB.num(
-                  item.reply_count,
-                )} 回复</span>
+                  item.tutorial ? item.comment_count : item.reply_count,
+                )} ${item.tutorial ? '评论' : '回复'}</span>
               </a>`,
             )
             .join('')
@@ -884,23 +888,59 @@ BB.boot(async () => {
 
     renderHead(thread);
 
-    // 插件帖 / 投影帖：没有楼层与楼中楼，正文下面是平铺的评论区
-    if (isResourceThread(thread)) {
+    // 插件帖 / 投影帖 / 教程帖：没有楼层与楼中楼，正文（1 楼）单独一张卡，下面是平铺的评论区
+    if (isCommentThread(thread)) {
+      const tutorial = isTutorialThread(thread);
+      let firstPost = (data.posts || []).find((post) => post.floor === 1 && !post.deleted);
+      if (!firstPost && page > 1) {
+        // 翻评论页时楼层接口翻过了 1 楼：把第 1 页单独要回来，正文和目录才不会「翻页就消失」
+        try {
+          const firstPage = await BB.api(`/api/threads/${threadId}?page=1&per_page=20`);
+          firstPost = (firstPage.posts || []).find((post) => post.floor === 1 && !post.deleted);
+        } catch {
+          firstPost = null;
+        }
+      }
+
       const comments = await BB.api(`/api/threads/${threadId}/comments?page=${page}&per_page=20`);
       const list = comments.comments || [];
-      document.getElementById('postList').innerHTML = list.length
-        ? list.map((comment) => commentHtml(comment)).join('')
+      if (firstPost) postCache.set(firstPost.id, firstPost);
+      const bodyHtml = firstPost
+        ? `<article class="card thread-body" id="post-${firstPost.id}" data-post-id="${firstPost.id}">
+             <div class="thread-body-head">
+               <h2 class="thread-body-title">${tutorial ? '教程正文' : '详细信息'}</h2>
+               <div class="post-actions thread-body-actions">
+                 <button type="button" class="act" data-act="copy-link" data-post="${firstPost.id}">复制链接</button>
+                 ${canEditPost(firstPost) ? `<button type="button" class="act" data-act="edit" data-post="${firstPost.id}">编辑正文</button>` : ''}
+               </div>
+             </div>
+             <div class="post-content">${BB.md(firstPost.content)}</div>
+           </article>`
+        : '';
+      const emptyHtml = tutorial
+        ? `<div class="card comment-empty">
+             <b>还没有评论</b>
+             <p class="muted small">看完有什么想法、哪一段没讲清楚，都可以写在下面。</p>
+           </div>`
         : `<div class="card comment-empty">
              <b>还没有评论</b>
              <p class="muted small">用过的感受、遇到的问题、想提的建议，都可以写在下面。</p>
            </div>`;
+      document.getElementById('postList').innerHTML =
+        bodyHtml + (list.length ? list.map((comment) => commentHtml(comment)).join('') : emptyHtml);
       document.getElementById('pager').innerHTML = BB.pagination(
         comments.pagination,
         (target) => `/thread.html?id=${threadId}&page=${target}`,
       );
       renderCommentComposer(thread);
       bindCommentActions();
-      renderRail(thread, { resource: true });
+      bindActions();
+      // 教程帖：目录从正文标题生成，正文在当前页才有锚点可跳
+      renderRail(thread, {
+        commentMode: true,
+        tutorialToc: tutorial && firstPost ? BB.tocOf(firstPost.content) : null,
+        attachments: thread.attachments || [],
+      });
     } else {
       document.getElementById('postList').innerHTML = data.posts.map(postHtml).join('');
       document.getElementById('pager').innerHTML = BB.pagination(
@@ -909,13 +949,7 @@ BB.boot(async () => {
       );
       renderComposer(thread);
       bindActions();
-      // 教程帖：从 1 楼正文提取目录（正文标题自动生成），正文在当前页才出目录卡
-      let tutorialToc = null;
-      if (isTutorialThread(thread)) {
-        const firstPost = (data.posts || []).find((post) => post.floor === 1 && !post.deleted);
-        tutorialToc = firstPost ? BB.tocOf(firstPost.content) : null;
-      }
-      renderRail(thread, { tutorialToc, attachments: thread.attachments || [] });
+      renderRail(thread);
     }
 
     const hash = location.hash || '';

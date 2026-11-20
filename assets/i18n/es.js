@@ -769,7 +769,7 @@ window.BB_I18N_DICT = {
   "去论坛提问 →": "Preguntar en el foro →",
   "方块盒子 BlockBox 官网封面": "Portada del sitio oficial de BlockBox",
   "方块盒子下载 — 免费 Minecraft 启动器安装包（Windows / Linux / 鸿蒙 / 安卓）": "Descargar BlockBox — Instaladores gratuitos del lanzador de Minecraft (Windows / Linux / HarmonyOS / Android)",
-  "方块盒子 BlockBox 官方下载页：获取最新公测版安装包，支持 Windows、Linux、鸿蒙 HarmonyOS 与 Android。提供 123 盘免登录高速下载、夸克网盘与 GitHub 三个渠道，另有历史版本与官方插件包。": "Página oficial de descarga de BlockBox: consigue la última beta pública para Windows, Linux, HarmonyOS y Android. Tres fuentes —123 Pan (sin registro, rápido), Quark Drive y GitHub— además de versiones anteriores y paquetes de plugins oficiales.",
+  "方块盒子 BlockBox 官方下载页：获取最新公测版安装包，支持 Windows、Linux、鸿蒙 HarmonyOS 与 Android。提供 123 盘免登录高速下载、夸克网盘与 GitHub 三个渠道，另有历史版本可回退。": "Página oficial de descarga de BlockBox: consigue la última beta pública para Windows, Linux, HarmonyOS y Android. Tres fuentes —123 Pan (sin registro, rápido), Quark Drive y GitHub— además de versiones anteriores a las que puedes volver.",
   "方块盒子更新日志 — Minecraft 启动器每个版本改了什么": "Registro de cambios de BlockBox — Novedades de cada versión",
   "方块盒子插件开发文档 — plugin.json、命令与示例 | BlockBox 开发者平台": "Documentación de plugins de BlockBox — plugin.json, comandos y ejemplos | Plataforma para desarrolladores",
   "方块盒子（BlockBox）插件开发文档：plugin.json 清单字段、权限与命令声明、内嵌 UI 表单、PowerShell 脚本骨架、打包更新与故障排查，帮助开发者从零做出第一个启动器插件。": "Documentación de plugins de BlockBox: campos del manifiesto plugin.json, permisos y comandos, formularios de UI integrados, esqueletos de scripts de PowerShell, empaquetado, actualizaciones y resolución de problemas para crear tu primer plugin desde cero.",

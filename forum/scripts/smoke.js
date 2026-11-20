@@ -110,9 +110,76 @@ function solvePuzzle(challenge) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * 冒烟测试用的极简 SMTP 收件箱。
+ * 注册现在必须邮箱验证码，这里假扮邮件服务器把信收下来，
+ * 测试再把正文里的 6 位验证码取出来填回注册接口。
+ */
+function startSmtpInbox() {
+  const mails = [];
+  const server = net.createServer((socket) => {
+    let buffer = '';
+    let inData = false;
+    let current = { to: '', data: [] };
+    socket.setEncoding('utf8');
+    socket.write('220 smoke-inbox ESMTP\r\n');
+    socket.on('data', (chunk) => {
+      buffer += chunk;
+      let index;
+      while ((index = buffer.indexOf('\r\n')) >= 0) {
+        const line = buffer.slice(0, index);
+        buffer = buffer.slice(index + 2);
+        if (inData) {
+          if (line === '.') {
+            inData = false;
+            mails.push(current);
+            current = { to: '', data: [] };
+            socket.write('250 queued\r\n');
+          } else {
+            current.data.push(line);
+          }
+          continue;
+        }
+        const command = line.toUpperCase();
+        if (command.startsWith('EHLO')) socket.write('250-smoke-inbox\r\n250 SIZE 10485760\r\n');
+        else if (command.startsWith('HELO')) socket.write('250 smoke-inbox\r\n');
+        else if (command.startsWith('RCPT TO')) {
+          current.to = (line.match(/<([^>]+)>/)?.[1] || '').toLowerCase();
+          socket.write('250 ok\r\n');
+        } else if (command === 'DATA') {
+          inData = true;
+          socket.write('354 go ahead\r\n');
+        } else if (command === 'QUIT') {
+          socket.write('221 bye\r\n');
+          socket.end();
+        } else socket.write('250 ok\r\n');
+      }
+    });
+    socket.on('error', () => {});
+  });
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => resolve({ server, mails, port: server.address().port }));
+  });
+}
+
+/** 从收件箱里取出某个地址最新一封邮件正文里的 6 位验证码（正文是 base64） */
+function emailCodeFor(mails, to) {
+  const mail = [...mails].reverse().find((item) => item.to === String(to).toLowerCase());
+  if (!mail) return '';
+  const blank = mail.data.indexOf('');
+  const body = mail.data.slice(Math.max(0, blank + 1)).join('');
+  try {
+    return Buffer.from(body, 'base64').toString('utf8').match(/(\d{6})/)?.[1] || '';
+  } catch {
+    return '';
+  }
+}
+
 async function main() {
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
+  // 注册要邮箱验证码：起一个假的 SMTP 收件箱，服务端把验证码邮件真发过来
+  const inbox = await startSmtpInbox();
 
   const child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'server/index.js'], {
     cwd: ROOT,
@@ -127,11 +194,25 @@ async function main() {
       LOG_REQUESTS: '0',
       SESSION_DAYS: '1',
       HUMAN_CHECK_SECRET: 'smoke-test-secret',
+      // 收件箱就是本机这个临时端口，明文、无认证
+      SMTP_HOST: '127.0.0.1',
+      SMTP_PORT: String(inbox.port),
+      SMTP_SECURE: '0',
+      SMTP_USER: '',
+      SMTP_PASS: '',
+      MAIL_FROM: 'noreply@smoke.test',
+      // 注册限流按 IP 算，测试里个别请求会带上 X-Forwarded-For 换个来源
+      TRUST_PROXY: '1',
     },
     stdio: ['ignore', 'ignore', 'ignore'],
   });
 
   const cleanup = () => {
+    try {
+      inbox.server.close();
+    } catch {
+      /* ignore */
+    }
     try {
       if (process.platform === 'win32') {
         // Windows 下要连子进程树一起结束，否则会留下占端口的孤儿进程
@@ -170,10 +251,12 @@ async function main() {
   let cookie = '';
   // 人机验证令牌：过了验证之后每个请求都带上（模拟启动器的做法）
   let humanToken = '';
-  async function request(method, urlPath, body, { raw = false } = {}) {
+  async function request(method, urlPath, body, { raw = false, ip } = {}) {
     const headers = { accept: 'application/json' };
     if (cookie) headers.cookie = cookie;
     if (humanToken) headers['x-human-token'] = humanToken;
+    // 只有少数几条要绕开「同一 IP 每小时 6 次注册」的限流时才指定来源
+    if (ip) headers['x-forwarded-for'] = ip;
     if (body !== undefined) headers['content-type'] = 'application/json';
     const res = await fetch(`${base}${urlPath}`, {
       method,
@@ -190,6 +273,20 @@ async function main() {
       /* 非 JSON */
     }
     return { status: res.status, json, text, headers: res.headers };
+  }
+
+  let playerSeq = 0;
+  /** 走完整注册流程：请求验证码 → 从假收件箱取码 → 带邮箱 + 验证码注册 */
+  async function registerPlayer(username, password, options = {}) {
+    playerSeq += 1;
+    const email = (options.email || `player${playerSeq}@smoke.test`).toLowerCase();
+    const sent = await request('POST', '/api/auth/register/code', { email }, options);
+    if (sent.status !== 200) return sent;
+    const code = emailCodeFor(inbox.mails, email);
+    const body = { username, password, email, code };
+    // 故意填一个和真码不一样的验证码（1/900000 的概率撞上，那就换一个）
+    if (options.wrongCode) body.code = code === '000000' ? '111111' : '000000';
+    return request('POST', '/api/auth/register', body, options);
   }
 
   const health = await request('GET', '/api/health');
@@ -248,15 +345,51 @@ async function main() {
   const boards = await request('GET', '/api/boards');
   check('默认板块存在', boards.json?.boards?.length >= 6, `板块数 ${boards.json?.boards?.length}`);
 
-  const register = await request('POST', '/api/auth/register', { username: '测试管理员', password: 'test123456' });
+  // 注册规矩：邮箱必填、且必须过验证码（这几条用不同的 X-Forwarded-For，免得撞上注册限流）
+  const policy = await request('GET', '/api/auth/register/policy');
+  check('注册规矩：要求邮箱验证', policy.status === 200 && policy.json?.email_required === true, policy.text);
+
+  const noEmail = await request(
+    'POST',
+    '/api/auth/register',
+    { username: '没填邮箱', password: 'test123456' },
+    { ip: '10.9.9.1' },
+  );
+  check('注册不填邮箱被拒绝', noEmail.status === 400 && noEmail.json?.code === 'email_required', noEmail.text);
+
+  const noCode = await request(
+    'POST',
+    '/api/auth/register',
+    { username: '没填验证码', password: 'test123456', email: 'nocode@smoke.test' },
+    { ip: '10.9.9.2' },
+  );
+  check('注册不填验证码被拒绝', noCode.status === 400 && noCode.json?.code === 'email_code_required', noCode.text);
+
+  const badCode = await registerPlayer('验证码不对', 'test123456', {
+    ip: '10.9.9.3',
+    email: 'badcode@smoke.test',
+    wrongCode: true,
+  });
+  check('验证码不对时注册被拒绝', badCode.status === 400 && badCode.json?.code === 'email_code_invalid', badCode.text);
+
+  const register = await registerPlayer('测试管理员', 'test123456', { email: 'admin@smoke.test' });
   check('首个注册用户自动成为管理员', register.status === 200 && register.json?.user?.role === 'admin', register.text);
+  check('注册后邮箱直接标记为已验证', register.json?.user?.email_verified === true, register.text);
   const adminId = register.json?.user?.id;
   // 发帖 / 回复要求先通过入站答题，这里直接上报及格成绩
   const adminQuiz = await request('POST', '/api/quiz/complete', { score: 96 });
   check('管理员通过入站答题', adminQuiz.json?.quiz_passed === true, adminQuiz.text);
 
-  const dup = await request('POST', '/api/auth/register', { username: '测试管理员', password: 'test123456' });
-  check('重复用户名被拒绝', dup.status === 400);
+  const takenMail = await request(
+    'POST',
+    '/api/auth/register',
+    { username: '邮箱重复', password: 'test123456', email: 'admin@smoke.test' },
+    { ip: '10.9.9.4' },
+  );
+  check('同一个邮箱不能注册两个账号', takenMail.status === 400 && takenMail.json?.code === 'email_taken', takenMail.text);
+
+  const dup = await registerPlayer('测试管理员', 'test123456', { email: 'dup@smoke.test' });
+  check('重复用户名被拒绝', dup.status === 400 && dup.json?.code === 'username_taken', dup.text);
 
   const thread = await request('POST', '/api/threads', {
     board: 'general',
@@ -328,7 +461,7 @@ async function main() {
   const afterLogout = await request('POST', '/api/threads', { board: 'chat', title: '退出后发帖', content: '应该失败' });
   check('退出后发帖返回 401', afterLogout.status === 401, afterLogout.text);
 
-  const second = await request('POST', '/api/auth/register', { username: '普通玩家', password: 'test123456' });
+  const second = await registerPlayer('普通玩家', 'test123456', { email: 'player2@smoke.test' });
   check('第二个用户是普通用户', second.json?.user?.role === 'user');
   const playerQuiz = await request('POST', '/api/quiz/complete', { score: 96 });
   check('普通玩家通过入站答题', playerQuiz.json?.quiz_passed === true, playerQuiz.text);
@@ -351,7 +484,7 @@ async function main() {
   check('管理员新建未锁定主题', notifyThread.status === 200 && notifyThreadId > 0, notifyThread.text);
 
   await request('POST', '/api/auth/logout');
-  const third = await request('POST', '/api/auth/register', { username: '路人甲', password: 'test123456' });
+  const third = await registerPlayer('路人甲', 'test123456', { email: 'player3@smoke.test' });
   check('第三个用户注册成功', third.status === 200 && third.json?.user?.id > 0, third.text);
   const thirdId = third.json?.user?.id;
   const thirdQuiz = await request('POST', '/api/quiz/complete', { score: 96 });
@@ -1019,7 +1152,7 @@ async function main() {
     wordList.text,
   );
 
-  const wordPlayer = await request('POST', '/api/auth/register', { username: '违禁测试员', password: 'test123456' });
+  const wordPlayer = await registerPlayer('违禁测试员', 'test123456', { email: 'word1@smoke.test' });
   check('违禁词测试账号注册成功', wordPlayer.status === 200 && wordPlayer.json?.user?.role === 'user', wordPlayer.text);
   const wordQuiz = await request('POST', '/api/quiz/complete', { score: 96 });
   check('违禁词测试账号通过答题', wordQuiz.json?.quiz_passed === true, wordQuiz.text);
@@ -1063,7 +1196,7 @@ async function main() {
   const permWordId = permWord.json?.word?.id;
 
   // 注册即登录，直接换到新账号
-  await request('POST', '/api/auth/register', { username: '违禁测试员乙', password: 'test123456' });
+  await registerPlayer('违禁测试员乙', 'test123456', { email: 'word2@smoke.test' });
   await request('POST', '/api/quiz/complete', { score: 96 });
   const editThread = await request('POST', '/api/threads', { board: 'general', title: '编辑测试主题', content: '正文没问题' });
   const editDetail = editThread.json?.id ? await request('GET', `/api/threads/${editThread.json.id}`) : null;

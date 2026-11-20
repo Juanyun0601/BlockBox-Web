@@ -62,7 +62,7 @@ export function threadOut(row, { withSnippet = true } = {}) {
     ...(row.ts_id ? { schematic: schematicOut(row) } : {}),
     // 教程帖：thread_tutorials 里有行就是；资料附件只在详情接口里给全
     ...(row.tut_id ? { tutorial: true } : {}),
-    // 资源帖评论数（楼层回复数仍在 reply_count 里，两者互不混算）
+    // 资源帖 / 教程帖的评论数（楼层回复数仍在 reply_count 里，两者互不混算）
     comment_count: row.comment_count || 0,
     ...(withSnippet ? { snippet: snippetOf(row.first_post) } : {}),
     ...(row.bookmarked === undefined ? {} : { bookmarked: !!row.bookmarked }),

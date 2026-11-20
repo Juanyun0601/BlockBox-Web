@@ -138,7 +138,7 @@ export function likedPostIds(userId, postIds) {
   return new Set(rows.map((row) => row.post_id));
 }
 
-// ------------------------------------------------------------ 资源帖评论
+// ------------------------------------------------------------ 资源帖 / 教程帖评论
 
 const COMMENT_SELECT = `
   SELECT c.id, c.thread_id, c.author_id, c.content, c.deleted, c.created_at, c.updated_at,
@@ -150,7 +150,7 @@ const COMMENT_SELECT = `
     LEFT JOIN users u ON u.id = c.author_id`;
 
 /**
- * 资源帖的评论列表：不做楼层号、不做楼中楼，按「最热 + 最新」综合排序。
+ * 资源帖 / 教程帖的评论列表：不做楼层号、不做楼中楼，按「最热 + 最新」综合排序。
  *
  * 热度算法（和网页端、启动器端共用同一份顺序，因为排序在服务端算）：
  *   score = (点赞数 + 1) * 48 / (2 + 评论年龄/小时)

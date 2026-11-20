@@ -7,7 +7,7 @@
 <meta name="description" content="我在方块盒子论坛的好友与私信">
 <link rel="icon" href="/assets/img/icon.ico">
 <script src="/assets/i18n.js?v=20261119a"></script>
-<link rel="stylesheet" href="/assets/forum.css?v=20261120b">
+<link rel="stylesheet" href="/assets/forum.css?v=20261120c">
 <script>
   (function () {
     try {
@@ -34,6 +34,7 @@
       <aside class="friends-side">
         <div class="tabs" id="friendTabs">
           <button type="button" class="active" data-tab="friends">好友<span class="tab-dot" id="friendsTabDot" hidden></span></button>
+          <button type="button" data-tab="groups">群聊<span class="tab-dot" id="groupsTabDot" hidden></span></button>
           <button type="button" data-tab="requests">申请<span class="tab-dot" id="reqTabDot" hidden></span></button>
           <button type="button" data-tab="add">添加好友</button>
         </div>
@@ -43,7 +44,7 @@
       </aside>
 
       <section class="card chat-panel" id="chatPanel">
-        <div class="chat-empty" id="chatEmpty">在左侧选择一个好友，开始聊天</div>
+        <div class="chat-empty" id="chatEmpty">在左侧选择一个好友或群聊，开始聊天</div>
         <div class="chat-main" id="chatMain" hidden>
           <div class="chat-head" id="chatHead"></div>
           <div class="chat-more" id="chatMore" hidden><button class="btn btn-ghost btn-sm" id="chatMoreBtn" type="button">查看更早的消息</button></div>
@@ -68,7 +69,7 @@
 </main>
 
 <footer class="footer" id="siteFooter"></footer>
-<script src="/assets/core.js?v=20261120b"></script>
-<script src="/assets/page-friends.js?v=20261113a"></script>
+<script src="/assets/core.js?v=20261120c"></script>
+<script src="/assets/page-friends.js?v=20261120a"></script>
 </body>
 </html>

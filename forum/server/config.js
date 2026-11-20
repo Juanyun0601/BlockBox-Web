@@ -62,6 +62,24 @@ const defaultAnnouncementFile = fs.existsSync(SITE_DIR)
 
 const cdnBaseValue = normalizeOrigin(env.CDN_BASE);
 
+/** 去掉结尾斜杠，空值保持空串 */
+const origin = (value) => String(value || '').trim().replace(/\/+$/, '');
+
+// 第三方登录（GitHub / LittleSkin OAuth 2.0）：
+// 没填客户端 ID / Secret 的应用视为未启用，登录页和启动器会自动隐藏对应入口。
+// 回调地址固定为 <对外地址>/oauth/callback/<github|littleskin>，需要在各平台应用后台原样登记。
+const littleskinBase = origin(env.LITTLESKIN_BASE_URL) || 'https://littleskin.cn';
+const oauthProvider = (id, defaults) => ({
+  id,
+  clientId: String(env[`${id.toUpperCase()}_OAUTH_CLIENT_ID`] || '').trim(),
+  clientSecret: String(env[`${id.toUpperCase()}_OAUTH_CLIENT_SECRET`] || ''),
+  scope: String(env[`${id.toUpperCase()}_OAUTH_SCOPE`] || defaults.scope).trim(),
+  authorizeUrl: origin(env[`${id.toUpperCase()}_OAUTH_AUTHORIZE_URL`]) || defaults.authorizeUrl,
+  tokenUrl: origin(env[`${id.toUpperCase()}_OAUTH_TOKEN_URL`]) || defaults.tokenUrl,
+  userUrl: origin(env[`${id.toUpperCase()}_OAUTH_USER_URL`]) || defaults.userUrl,
+  emailsUrl: origin(env[`${id.toUpperCase()}_OAUTH_EMAILS_URL`]) || defaults.emailsUrl || '',
+});
+
 export const config = {
   host: env.HOST || '127.0.0.1',
   port: num(env.PORT, 3210),
@@ -81,6 +99,30 @@ export const config = {
 
   publicOrigin: (env.PUBLIC_ORIGIN || '').replace(/\/+$/, ''),
 
+  // 第三方登录：PUBLIC_ORIGIN 是生成回调地址的首选；本机调试没填时按请求的 Host 现算。
+  oauth: {
+    publicBase: origin(env.OAUTH_PUBLIC_BASE) || origin(env.PUBLIC_ORIGIN),
+    stateTtl: Math.max(120, num(env.OAUTH_STATE_TTL, 600)),
+    deviceTtl: Math.max(120, num(env.OAUTH_DEVICE_TTL, 600)),
+    deviceInterval: Math.max(2, num(env.OAUTH_DEVICE_INTERVAL, 3)),
+    providers: {
+      github: oauthProvider('github', {
+        scope: 'read:user user:email',
+        authorizeUrl: 'https://github.com/login/oauth/authorize',
+        tokenUrl: 'https://github.com/login/oauth/access_token',
+        userUrl: 'https://api.github.com/user',
+        emailsUrl: 'https://api.github.com/user/emails',
+      }),
+      littleskin: oauthProvider('littleskin', {
+        scope: 'User.Read',
+        authorizeUrl: `${littleskinBase}/oauth/authorize`,
+        tokenUrl: `${littleskinBase}/oauth/token`,
+        userUrl: `${littleskinBase}/api/user`,
+        emailsUrl: '',
+      }),
+    },
+  },
+
   // CDN：把公开资源（/assets/ 静态文件、/uploads/ 图片）交给 CDN 域名去发。
   // 只填协议 + 域名，例如 https://cdn.mcblockbox.top；留空表示仍由论坛自己提供。
   cdnBase: normalizeOrigin(env.CDN_BASE),
@@ -91,6 +133,9 @@ export const config = {
 
   sessionDays: num(env.SESSION_DAYS, 30),
   registerOpen: bool(env.REGISTER_OPEN, true),
+  // 注册时必须填邮箱并收验证码：关掉才退回「邮箱选填、不验证」的老规矩。
+  // 开启前要先把 SMTP_* / MAIL_FROM 配好，否则用户收不到验证码也就注册不了
+  registerEmailRequired: bool(env.REGISTER_EMAIL_REQUIRED, true),
   trustProxy: bool(env.TRUST_PROXY, false),
   secureCookie: bool(env.SECURE_COOKIE, false),
   logRequests: bool(env.LOG_REQUESTS, true),

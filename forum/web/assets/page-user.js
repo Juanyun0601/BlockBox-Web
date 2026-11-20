@@ -14,6 +14,22 @@ BB.boot(async () => {
   const user = data.user;
   document.title = `${user.display_name || user.username} · 方块盒子论坛`;
 
+  // 第三方登录 / 绑定完成后回到这里，给一句明确的结果提示
+  if (isSelf) {
+    const created = BB.param('oauth_created');
+    const linked = BB.param('oauth_linked');
+    const signedIn = BB.param('oauth_login');
+    const providerName = (id) => ({ github: 'GitHub', littleskin: 'LittleSkin' })[id] || '第三方账号';
+    if (created) BB.toast(`已通过 ${providerName(created)} 创建并登录方块盒子账号`, 'ok');
+    else if (linked) BB.toast(`已绑定 ${providerName(linked)}`, 'ok');
+    else if (signedIn) BB.toast(`已通过 ${providerName(signedIn)} 登录`, 'ok');
+    if (created || linked || signedIn) {
+      const url = new URL(location.href);
+      for (const key of ['oauth_created', 'oauth_linked', 'oauth_login']) url.searchParams.delete(key);
+      history.replaceState(null, '', url.toString());
+    }
+  }
+
   const roleChip =
     user.role === 'admin'
       ? '<span class="chip">管理员</span>'
@@ -226,6 +242,35 @@ BB.boot(async () => {
 
   function renderEditPanel(currentUser) {
     const host = document.getElementById('editHost');
+    // 第三方登录自动创建的账号还没有密码：这里显示「设置密码」，不需要填旧密码
+    const hasPassword = currentUser.password_set !== false;
+    const passwordPanelHtml = (user) => `
+      <section class="card composer hidden" id="passwordPanel" style="margin-top: 16px">
+        <h3>${hasPassword ? '修改密码' : '设置密码'}</h3>
+        <div id="passwordError"></div>
+        <div class="form-row">
+          ${
+            hasPassword
+              ? `<div class="field">
+                   <label>当前密码</label>
+                   <input class="input" id="currentPassword" type="password" autocomplete="current-password">
+                 </div>`
+              : ''
+          }
+          <div class="field">
+            <label>${hasPassword ? '新密码' : '密码'}</label>
+            <input class="input" id="newPassword" type="password" autocomplete="new-password">
+          </div>
+        </div>
+        <div class="composer-foot">
+          <span class="muted">${
+            hasPassword
+              ? '改完密码后其他设备需要重新登录'
+              : `这个账号是用第三方登录创建的，设置密码后也能用账号密码登录（当前账号 @${BB.esc(user.username)}）`
+          }</span>
+          <button class="btn btn-primary btn-sm" id="savePasswordBtn">${hasPassword ? '更新密码' : '设置密码'}</button>
+        </div>
+      </section>`;
     host.innerHTML = `
       <section class="card composer hidden" id="editPanel" style="margin-top: 16px">
         <h3>编辑资料</h3>
@@ -259,32 +304,27 @@ BB.boot(async () => {
         </div>
       </section>
 
-      <section class="card composer hidden" id="passwordPanel" style="margin-top: 16px">
-        <h3>修改密码</h3>
-        <div id="passwordError"></div>
-        <div class="form-row">
-          <div class="field">
-            <label>当前密码</label>
-            <input class="input" id="currentPassword" type="password" autocomplete="current-password">
-          </div>
-          <div class="field">
-            <label>新密码</label>
-            <input class="input" id="newPassword" type="password" autocomplete="new-password">
-          </div>
-        </div>
-        <div class="composer-foot">
-          <span class="muted">改完密码后其他设备需要重新登录</span>
-          <button class="btn btn-primary btn-sm" id="savePasswordBtn">更新密码</button>
-        </div>
+      ${passwordPanelHtml(currentUser)}
+
+      <section class="card composer hidden" id="linkedPanel" style="margin-top: 16px">
+        <h3>第三方账号</h3>
+        <p class="muted" style="margin-bottom: 12px">绑定后可以直接用 GitHub / LittleSkin 一键登录方块盒子，不用记密码。</p>
+        <div id="linkedError"></div>
+        <div id="linkedList" class="linked-list"><span class="muted">正在读取…</span></div>
       </section>`;
 
     document.getElementById('editProfileBtn').addEventListener('click', () => {
       const panel = document.getElementById('editPanel');
-      const passwordPanel = document.getElementById('passwordPanel');
-      panel.classList.toggle('hidden');
-      passwordPanel.classList.toggle('hidden', panel.classList.contains('hidden'));
-      if (!panel.classList.contains('hidden')) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const showing = panel.classList.toggle('hidden');
+      const opening = !showing;
+      for (const id of ['passwordPanel', 'linkedPanel']) {
+        const item = document.getElementById(id);
+        if (item) item.classList.toggle('hidden', !opening);
+      }
+      if (opening) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
+
+    loadLinkedAccounts();
 
     document.getElementById('saveProfileBtn').addEventListener('click', async () => {
       const errorHost = document.getElementById('editError');
@@ -332,7 +372,8 @@ BB.boot(async () => {
 
     document.getElementById('savePasswordBtn').addEventListener('click', async () => {
       const errorHost = document.getElementById('passwordError');
-      const currentPassword = document.getElementById('currentPassword').value;
+      const currentInput = document.getElementById('currentPassword');
+      const currentPassword = currentInput ? currentInput.value : '';
       const newPassword = document.getElementById('newPassword').value;
       if (newPassword.length < 6) {
         BB.showError(errorHost, '新密码至少 6 位');
@@ -343,13 +384,74 @@ BB.boot(async () => {
           method: 'POST',
           body: { current_password: currentPassword, new_password: newPassword },
         });
-        BB.toast('密码已更新', 'ok');
-        document.getElementById('currentPassword').value = '';
+        BB.toast(hasPassword ? '密码已更新' : '密码已设置，以后也能用账号密码登录', 'ok');
+        if (currentInput) currentInput.value = '';
         document.getElementById('newPassword').value = '';
+        setTimeout(() => location.reload(), 600);
       } catch (error) {
         BB.showError(errorHost, error.message);
       }
     });
+
+    /** 第三方账号：列出已绑定 / 可绑定的入口，支持绑定与解除绑定 */
+    async function loadLinkedAccounts() {
+      const host = document.getElementById('linkedList');
+      const errorHost = document.getElementById('linkedError');
+      if (!host) return;
+      if (errorHost) BB.showError(errorHost, '');
+      try {
+        const data = await BB.api('/api/me/oauth');
+        const providers = (data.providers || []).filter((item) => item.enabled);
+        if (!providers.length) {
+          host.innerHTML = '<span class="muted">当前站点还没有开启第三方登录。</span>';
+          return;
+        }
+        const linked = new Map((data.links || []).map((item) => [item.provider, item]));
+        const next = encodeURIComponent(location.pathname + location.search);
+        const badges = { github: 'GH', littleskin: 'LS' };
+        host.innerHTML = providers
+          .map((provider) => {
+            const link = linked.get(provider.id);
+            const badge = badges[provider.id] || provider.name.slice(0, 1);
+            return `<div class="linked-row">
+              <div class="linked-main">
+                <span class="oauth-badge oauth-${BB.esc(provider.id)}">${BB.esc(badge)}</span>
+                <div>
+                  <b>${BB.esc(provider.name)}</b>
+                  <div class="muted">${
+                    link
+                      ? `已绑定${link.display_name ? `「${BB.esc(link.display_name)}」` : ''}`
+                      : '未绑定'
+                  }</div>
+                </div>
+              </div>
+              ${
+                link
+                  ? `<button class="btn btn-ghost btn-sm" data-unlink="${BB.esc(provider.id)}">解除绑定</button>`
+                  : `<a class="btn btn-ghost btn-sm" href="/oauth/start/${encodeURIComponent(provider.id)}?bind=1&next=${next}">绑定</a>`
+              }
+            </div>`;
+          })
+          .join('');
+
+        host.querySelectorAll('[data-unlink]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const provider = button.dataset.unlink;
+            button.disabled = true;
+            try {
+              await BB.api(`/api/me/oauth/${encodeURIComponent(provider)}`, { method: 'DELETE' });
+              BB.toast('已解除绑定', 'ok');
+              await loadLinkedAccounts();
+            } catch (error) {
+              BB.showError(errorHost, error.message);
+              button.disabled = false;
+            }
+          });
+        });
+      } catch (error) {
+        BB.showError(errorHost, error.message);
+      }
+    }
 
     // 编辑面板里的封面：上传 / 删除
     bindCoverInput('coverInputPanel');
