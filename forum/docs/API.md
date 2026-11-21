@@ -1034,6 +1034,63 @@ score = (点赞数 + 1) × 48 / (2 + 评论年龄/小时)
 
 标记为 `resolved` / `ignored` 时，会自动给反馈人发一条系统通知（「您的反馈有了新回复」，正文用 `reply`，为空则用固定文案）；重新打开不通知。反馈人已注销时不发。
 
+## 内容翻译
+
+启动器在线详情页（CurseForge / Modrinth 的模组、整合包、资源包、光影包等）的「创建翻译 / 完善翻译」。
+用户把资源的简介和详细信息翻成中文提交，进审核队列，管理员通过后公开：其他用户打开同一个详情页时，
+右下角翻译条会自动切到中文并显示这条人工翻译。每次提交一条记录，公开显示「最近一条审核通过的」。
+
+### GET /api/content-translations?source=&project_id=&lang= · 获取公开翻译（无需登录）
+
+`source`：`curseforge` / `modrinth`；`project_id`：资源在来源站的项目 id；`lang`：目标语言（目前只有 `zh-CN`，缺省同此）。
+
+```json
+{ "translation": { "source": "curseforge", "project_id": "238222", "project_name": "Just Enough Items",
+  "lang": "zh-CN", "summary": "JEI 是一款物品查询与合成表查看模组", "detail_html": "<p>…</p>",
+  "author_name": "某位玩家", "status": "approved", "review_note": "", "created_at": 1795276537, "updated_at": 1795276537 } }
+```
+
+还没有审核通过的翻译时 `translation` 为 `null`（HTTP 仍是 200），启动器据此回退到 AI 翻译。
+
+### GET /api/content-translations/mine?source=&project_id=&lang= · 我的最新提交（需登录）
+
+返回自己在该资源、该语言下的最新一条提交（含待审核 / 已驳回），「完善翻译」预填与状态展示用：
+
+```json
+{ "translation": { "summary": "…", "detail_html": "…", "status": "pending", "review_note": "", "updated_at": 1795276537 } }
+```
+
+`status`：`pending`（待审核）/ `approved`（已通过）/ `rejected`（已驳回，`review_note` 为驳回理由）。没提交过时 `translation` 为 `null`。
+
+### POST /api/content-translations · 提交翻译（需登录，每小时 10 条）
+
+```json
+{ "source": "curseforge", "project_id": "238222", "project_name": "Just Enough Items", "lang": "zh-CN",
+  "summary": "JEI 是一款物品查询与合成表查看模组", "detail_html": "<p>物品查询模组</p>",
+  "source_summary": "Just Enough Items", "source_detail_html": "<p>JEI is an item and recipe viewing mod</p>" }
+```
+
+- `summary` 必填（2~500 字）；`detail_html` 可选（≤200KB，没翻译详情区就不传，公开时两项各自独立覆盖）。
+- `project_name` / `source_summary` / `source_detail_html` 为审核对照用的原文快照，可选。
+- 返回 `{ "ok": true, "id": 12, "status": "pending" }`，全部进审核队列。
+- 违禁词命中的直接拦下（按发帖同款规则处理）。
+
+### GET /api/admin/content-translations?status=pending&page=1 · 审核队列（管理员）
+
+`status` 支持 `pending` / `approved` / `rejected` / `all`。每条带提交人 `user`、原文快照（`source_summary` / `source_detail_html`）、审核人 `reviewed_by` 与三种状态的 `counts`，带 `pagination`。管理后台「翻译」页签使用。
+
+### PATCH /api/admin/content-translations/:id · 审核翻译（管理员）
+
+```json
+{ "status": "approved", "review_note": "" }
+```
+
+`status` 为 `approved` / `rejected`，`review_note` 最多 300 字（驳回时建议写理由）。返回 `{ "ok": true, "status": "approved" }`。
+
+审核结果会以系统通知发给提交人：通过为「您的翻译已通过审核」；驳回为「您的翻译未通过审核」，正文用 `review_note`（为空则用固定文案）。提交人已注销时不发。
+
+
+
 ---
 
 ## 联机大厅

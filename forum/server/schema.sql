@@ -824,3 +824,30 @@ CREATE TABLE IF NOT EXISTS release_files (
 );
 
 CREATE INDEX IF NOT EXISTS idx_release_files_version ON release_files(version_id);
+
+-- 内容翻译（启动器在线详情页「创建翻译」提交，审核通过后公开）-------------
+-- 每次提交一条记录：pending（待审核）/ approved（已通过，公开显示）/ rejected（驳回）。
+-- 公开展示取对应资源最近一条 approved；作者的提交永久保留，「完善翻译」预填用。
+CREATE TABLE IF NOT EXISTS content_translations (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id            INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  source             TEXT    NOT NULL,               -- curseforge / modrinth
+  project_id         TEXT    NOT NULL,               -- 资源在来源站的项目 id
+  project_name       TEXT    NOT NULL DEFAULT '',    -- 资源名称快照（审核列表与通知用）
+  lang               TEXT    NOT NULL DEFAULT 'zh-CN',
+  summary            TEXT    NOT NULL DEFAULT '',    -- 翻译后的简介
+  detail_html        TEXT    NOT NULL DEFAULT '',    -- 翻译后的详细信息（HTML）
+  source_summary     TEXT    NOT NULL DEFAULT '',    -- 提交时的原文简介（审核对照用）
+  source_detail_html TEXT    NOT NULL DEFAULT '',    -- 提交时的原文正文（审核对照用）
+  status             TEXT    NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  review_note        TEXT    NOT NULL DEFAULT '',    -- 驳回理由 / 审核备注
+  reviewed_by        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at        INTEGER NOT NULL DEFAULT 0,
+  created_at         INTEGER NOT NULL,
+  updated_at         INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_content_translations_lookup
+  ON content_translations(source, project_id, lang, status);
+CREATE INDEX IF NOT EXISTS idx_content_translations_user
+  ON content_translations(user_id, created_at DESC);

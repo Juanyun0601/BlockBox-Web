@@ -29,6 +29,7 @@ import registerCommunity from './routes/community.js';
 import registerFriends from './routes/friends.js';
 import registerSupport from './routes/support.js';
 import registerFeedback from './routes/feedback.js';
+import registerContentTranslations from './routes/content-translations.js';
 import registerQuiz from './routes/quiz.js';
 import registerLobby from './routes/lobby.js';
 import registerGroups from './routes/groups.js';
@@ -86,7 +87,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints, registerPay, registerComments, registerOAuth]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerContentTranslations, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints, registerPay, registerComments, registerOAuth]) {
   register(router);
 }
 

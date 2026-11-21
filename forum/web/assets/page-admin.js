@@ -29,6 +29,8 @@ BB.boot(async () => {
   let adminUsers = [];
   let feedbackData = null;
   let feedbackStatus = 'open';
+  let translationData = null;
+  let translationStatus = 'pending';
   let visitData = null;
   let visitDays = 30;
   let announcementData = null;
@@ -50,6 +52,7 @@ BB.boot(async () => {
     ['content', '内容', '/admin-content.html'],
     ['reports', '举报', '/admin-reports.html'],
     ['feedback', '反馈', '/admin-feedback.html'],
+    ['translations', '翻译', '/admin-translations.html'],
     ['support', '客服', '/admin-support.html'],
     ['users', '用户', '/admin-users.html'],
   ];
@@ -126,6 +129,7 @@ BB.boot(async () => {
     else if (section === 'content') await bootContent();
     else if (section === 'reports') await bootReports();
     else if (section === 'feedback') await bootFeedback();
+    else if (section === 'translations') await bootTranslations();
     else if (section === 'support') await bootSupport();
     else if (section === 'users') await bootUsers();
   } catch (error) {
@@ -1633,6 +1637,162 @@ BB.boot(async () => {
           BB.toast(action === 'reopen' ? '已重新打开' : '已处理', 'ok');
           feedbackData = await BB.api(`/api/admin/feedbacks?status=${feedbackStatus}&per_page=50`);
           renderFeedback();
+        } catch (error) {
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+  }
+
+  // ---------------- 内容翻译审核 ----------------
+
+  /** 详情正文预览：沙箱 iframe，用户提交的 HTML 不可能带脚本跑起来 */
+  function translationPreview(html) {
+    if (!html) return '';
+    return `<iframe class="translation-preview" sandbox="" srcdoc="${BB.esc(html)}"></iframe>`;
+  }
+
+  function translationChip(status) {
+    if (status === 'approved') return '<span class="chip chip-ok">已通过</span>';
+    if (status === 'rejected') return '<span class="chip chip-danger">已驳回</span>';
+    return '<span class="chip chip-warn">待审核</span>';
+  }
+
+  async function bootTranslations() {
+    translationData = await BB.api(`/api/admin/content-translations?status=${translationStatus}&per_page=50`);
+
+    host.innerHTML = `
+      <section class="card admin-section">
+        <h2>内容翻译审核 <span id="translationCountsChip"></span></h2>
+        <p class="small muted" style="margin-bottom: 12px">
+          启动器在线详情页（CurseForge / Modrinth）的「创建翻译」提交都进这个队列。
+          通过后其他用户打开同一个详情页，右下角翻译条就会显示这条人工翻译；驳回时写的理由会以系统通知发给提交人。
+        </p>
+        <div id="translationFilters" style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap"></div>
+        <div id="translationRows"></div>
+      </section>`;
+
+    renderTranslations();
+  }
+
+  function renderTranslations() {
+    if (!translationData) return;
+    const counts = translationData.counts || {};
+
+    const countsChip = document.getElementById('translationCountsChip');
+    countsChip.innerHTML =
+      counts.pending > 0
+        ? `<span class="chip chip-danger">待审核 ${counts.pending}</span>`
+        : '<span class="chip chip-grey">没有待审核的翻译</span>';
+
+    const filters = document.getElementById('translationFilters');
+    filters.innerHTML = [
+      ['pending', `待审核 ${counts.pending || 0}`],
+      ['approved', `已通过 ${counts.approved || 0}`],
+      ['rejected', `已驳回 ${counts.rejected || 0}`],
+      ['all', '全部'],
+    ]
+      .map(
+        ([value, label]) =>
+          `<button class="btn btn-sm ${translationStatus === value ? 'btn-primary' : 'btn-ghost'}" data-tstatus="${value}">${label}</button>`,
+      )
+      .join('');
+    filters.querySelectorAll('[data-tstatus]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        translationStatus = button.dataset.tstatus;
+        try {
+          translationData = await BB.api(`/api/admin/content-translations?status=${translationStatus}&per_page=50`);
+          renderTranslations();
+        } catch (error) {
+          BB.toast(error.message, 'error');
+        }
+      });
+    });
+
+    const rows = document.getElementById('translationRows');
+    if (!translationData.translations || translationData.translations.length === 0) {
+      rows.innerHTML = '<div class="empty">暂时没有翻译提交。</div>';
+      return;
+    }
+
+    const sourceLabel = (item) => (item.source === 'modrinth' ? 'Modrinth' : 'CurseForge');
+    rows.innerHTML = translationData.translations
+      .map(
+        (item) => `
+      <div class="feedback-admin-row">
+        <div class="feedback-admin-main">
+          <div>
+            ${translationChip(item.status)}
+            <span class="chip chip-grey">${sourceLabel(item)}</span>
+            <b>${BB.esc(item.project_name || item.project_id)}</b>
+            <span class="chip chip-grey">${BB.esc(item.lang)}</span>
+          </div>
+          <div class="feedback-admin-meta">
+            提交人：${item.user ? BB.esc(item.user.display_name || item.user.username) : '已注销用户'}
+            · ${BB.datetime(item.created_at)}
+            ${item.reviewed_by ? ` · 由 ${BB.esc(item.reviewed_by)} 审核` : ''}
+            ${item.review_note ? ` · 备注：${BB.esc(item.review_note)}` : ''}
+          </div>
+          <div class="translation-compare">
+            <div>
+              <div class="small muted" style="margin-bottom: 4px">简介原文</div>
+              <div class="small">${BB.esc(item.source_summary || '（无）')}</div>
+            </div>
+            <div>
+              <div class="small muted" style="margin-bottom: 4px">译文简介</div>
+              <div class="small">${BB.esc(item.summary || '（无）')}</div>
+            </div>
+          </div>
+          ${
+            item.source_detail_html || item.detail_html
+              ? `<details class="translation-detail-toggle">
+                   <summary class="small muted">详细信息正文对照</summary>
+                   <div class="translation-compare">
+                     <div>
+                       <div class="small muted" style="margin-bottom: 4px">原文</div>
+                       ${translationPreview(item.source_detail_html)}
+                     </div>
+                     <div>
+                       <div class="small muted" style="margin-bottom: 4px">译文</div>
+                       ${translationPreview(item.detail_html)}
+                     </div>
+                   </div>
+                 </details>`
+              : ''
+          }
+          ${item.review_note ? `<div class="feedback-reply"><b>审核备注</b>：${BB.esc(item.review_note)}</div>` : ''}
+        </div>
+        <div class="feedback-admin-actions">
+          <input class="input" placeholder="驳回理由（以系统通知发给用户，驳回时可填）" data-tnote="${item.id}">
+          <div class="btn-row">
+            ${
+              item.status === 'pending'
+                ? `<button class="btn btn-primary btn-sm" data-translation="${item.id}" data-act="approved">通过</button>
+                   <button class="btn btn-ghost btn-sm" data-translation="${item.id}" data-act="rejected">驳回</button>`
+                : `<button class="btn btn-ghost btn-sm" data-translation="${item.id}" data-act="approved">改为通过</button>`
+            }
+          </div>
+        </div>
+      </div>`,
+      )
+      .join('');
+
+    rows.querySelectorAll('[data-translation]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = Number(button.dataset.translation);
+        const action = button.dataset.act;
+        const noteInput = rows.querySelector(`[data-tnote="${id}"]`);
+        if (action === 'rejected' && !confirm('确定驳回这条翻译？写的理由会发给提交人。')) return;
+        try {
+          await BB.api(`/api/admin/content-translations/${id}`, {
+            method: 'PATCH',
+            body: { status: action, review_note: noteInput ? noteInput.value.trim() : '' },
+          });
+          BB.toast(action === 'approved' ? '已通过，其他用户现在能看到这条翻译' : '已驳回，理由已通知提交人', 'ok');
+          translationData = await BB.api(
+            `/api/admin/content-translations?status=${translationStatus}&per_page=50`,
+          );
+          renderTranslations();
         } catch (error) {
           BB.toast(error.message, 'error');
         }
