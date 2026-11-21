@@ -7,7 +7,7 @@
 <meta name="description" content="方块盒子论坛积分「方块」：每日签到领取，连续签到奖励更多，每周天还有神秘礼包。">
 <link rel="icon" href="/assets/img/icon.ico">
 <script src="/assets/i18n.js?v=20261119a"></script>
-<link rel="stylesheet" href="/assets/forum.css?v=20261120b">
+<link rel="stylesheet" href="/assets/forum.css?v=20261121d">
 <script>
   (function () {
     try {
@@ -43,6 +43,28 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="card points-shop-card" id="pointsShop" hidden>
+      <div class="points-card-head">
+        <h3>购买方块</h3>
+        <span class="small muted" id="shopHint"></span>
+      </div>
+      <div class="shop-grid" id="shopGrid">
+        <div class="skeleton">正在加载档位…</div>
+      </div>
+      <div class="shop-pay" id="shopPay" hidden>
+        <div class="shop-pay-info">
+          <b id="shopPayTitle">订单已创建</b>
+          <p id="shopPayText">在新窗口完成支付，方块会自动到账。</p>
+        </div>
+        <div class="shop-pay-actions">
+          <a class="btn btn-primary" id="shopPayLink" href="#" target="_blank" rel="noopener">打开支付页</a>
+          <button class="btn btn-ghost" id="shopPayCheck" type="button">我已完成支付</button>
+          <button class="btn btn-ghost" id="shopPayCancel" type="button">取消</button>
+        </div>
+      </div>
+      <p class="points-rule" id="shopNote">用支付宝或微信付款，付完方块会自动到账，一般几秒内就能刷新。</p>
     </section>
 
     <section class="card points-week-card">
@@ -84,12 +106,12 @@
       </div>
     </section>
 
-    <p class="points-foot muted small">方块会记在论坛账号上，用启动器登录同一个账号也能看到；以后会开放更多获取和消费方式。</p>
+    <p class="points-foot muted small">方块会记在论坛账号上，用启动器登录同一个账号也能看到；每天签到、购买都能拿到方块。</p>
   </div>
 </main>
 
 <footer class="footer" id="siteFooter"></footer>
-<script src="/assets/core.js?v=20261120c"></script>
-<script src="/assets/page-points.js?v=20261118c"></script>
+<script src="/assets/core.js?v=20261121a"></script>
+<script src="/assets/page-points.js?v=20261121b"></script>
 </body>
 </html>

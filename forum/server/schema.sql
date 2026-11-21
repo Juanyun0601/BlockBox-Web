@@ -111,15 +111,42 @@ CREATE TABLE IF NOT EXISTS point_checkins (
 
 CREATE INDEX IF NOT EXISTS idx_point_checkins_user ON point_checkins(user_id, day DESC);
 
--- 方块收支流水：目前只有签到，后面加兑换 / 神秘礼包也记这里
+-- 方块收支流水：签到、买补签卡、充值、有奖问答的托管 / 发放 / 退款都记这里
 CREATE TABLE IF NOT EXISTS point_transactions (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   amount     INTEGER NOT NULL,
-  kind       TEXT    NOT NULL DEFAULT 'checkin' CHECK (kind IN ('checkin', 'gift', 'admin', 'spend')),
+  kind       TEXT    NOT NULL DEFAULT 'checkin'
+             CHECK (kind IN ('checkin', 'gift', 'admin', 'spend', 'recharge',
+                             'bounty_lock', 'bounty_award', 'bounty_refund')),
   note       TEXT    NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL
 );
+
+-- 方块充值订单（源开易支付）：
+-- out_trade_no 是我们自己的商户订单号，也是支付方回调时的唯一凭据；
+-- status 从 pending 变成 paid 时给账号加方块，重复回调只会生效一次。
+CREATE TABLE IF NOT EXISTS point_orders (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  out_trade_no TEXT    NOT NULL UNIQUE,     -- 商户订单号（我方生成，回调凭证）
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  package_id   TEXT    NOT NULL DEFAULT '', -- 档位标识，如 p600
+  package_name TEXT    NOT NULL DEFAULT '', -- 档位名，如 小额包
+  points       INTEGER NOT NULL DEFAULT 0,  -- 到账方块数
+  money        TEXT    NOT NULL DEFAULT '', -- 金额（元，两位小数）
+  money_cents  INTEGER NOT NULL DEFAULT 0,  -- 金额（分），比对用
+  pay_type     TEXT    NOT NULL DEFAULT '', -- 支付方式，空表示收银台
+  trade_no     TEXT    NOT NULL DEFAULT '', -- 支付平台订单号
+  status       TEXT    NOT NULL DEFAULT 'pending'
+               CHECK (status IN ('pending', 'paid', 'closed')),
+  client_ip    TEXT    NOT NULL DEFAULT '',
+  created_at   INTEGER NOT NULL,
+  paid_at      INTEGER NOT NULL DEFAULT 0,
+  paid_ip      TEXT    NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_point_orders_user ON point_orders(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_point_orders_status ON point_orders(status, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_point_transactions_user ON point_transactions(user_id, created_at DESC);
 
@@ -355,9 +382,10 @@ CREATE TABLE IF NOT EXISTS plugin_versions (
 CREATE INDEX IF NOT EXISTS idx_plugin_versions_thread ON plugin_versions(thread_id, id DESC);
 
 -- 帖子挂载的投影文件（投影帖）--------------------------------------------
--- 和插件帖一样一帖一个：发帖人先 POST /api/upload/schematic 拿到 upload_id，
--- 再随主题一起绑定。服务端不解析投影内容，只记原文件名 / 大小 / 指纹，
--- 下载时按 uploads 里的路径发文件。
+-- 发帖人先 POST /api/upload/schematic 拿到 upload_id，再随主题一起绑定。
+-- 服务端不解析投影内容，只记原文件名 / 大小 / 指纹，下载时按 uploads 里的路径发文件。
+-- 一帖可以挂多份投影（主世界 / 下界等不同版本，各自命名），这里只留第一份，
+-- 作为老版本启动器与列表卡片的主文件；完整清单在 thread_schematic_files。
 CREATE TABLE IF NOT EXISTS thread_schematics (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   thread_id  INTEGER NOT NULL UNIQUE REFERENCES threads(id) ON DELETE CASCADE,
@@ -372,6 +400,27 @@ CREATE TABLE IF NOT EXISTS thread_schematics (
 );
 
 CREATE INDEX IF NOT EXISTS idx_thread_schematics_thread ON thread_schematics(thread_id);
+
+-- 投影帖的全部投影文件（一帖最多 8 份）------------------------------------
+-- 同一个建筑经常要分维度发：主世界一份、下界一份，甚至不同比例 / 不同版本各一份。
+-- 每个文件带自己的名字（label，空 = 用文件名），下载时由用户挑要哪一份。
+-- thread_schematics 里的那一份也在这张表里有对应行，两边 upload_id 相同；
+-- 下载计数记在本表，thread_schematics.downloads 保留为该帖的总下载数。
+CREATE TABLE IF NOT EXISTS thread_schematic_files (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  thread_id  INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+  upload_id  INTEGER NOT NULL UNIQUE REFERENCES uploads(id) ON DELETE CASCADE,
+  label      TEXT    NOT NULL DEFAULT '',
+  file_name  TEXT    NOT NULL DEFAULT '',
+  file_size  INTEGER NOT NULL DEFAULT 0,
+  file_hash  TEXT    NOT NULL DEFAULT '',
+  downloads  INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_schematic_files_thread
+  ON thread_schematic_files(thread_id, sort_order, id);
 
 -- 教程帖标记 ---------------------------------------------------------------
 -- 教程是和帖子 / 资源并列的第三种大类：存在本行即教程帖。
@@ -399,6 +448,25 @@ CREATE TABLE IF NOT EXISTS thread_attachments (
 
 CREATE INDEX IF NOT EXISTS idx_thread_attachments_thread ON thread_attachments(thread_id);
 CREATE INDEX IF NOT EXISTS idx_thread_attachments_upload ON thread_attachments(upload_id);
+
+-- 有奖问答（与帖子 / 资源 / 教程并列的第四个大类）--------------------------
+-- 发起时就把赏金从作者账户里扣下来托管在这里，避免「口头悬赏、结果不发」；
+-- 作者可以挑选任意一层回答采纳，赏金当场发给那一层的作者；
+-- 30 天内没人采纳的话，由服务端自动把赏金发给「点赞最多」的回答楼层，
+-- 一层回答都没有才退回作者。status：open 托管中 / settled 已发放 / refunded 已退回。
+CREATE TABLE IF NOT EXISTS thread_questions (
+  thread_id      INTEGER PRIMARY KEY REFERENCES threads(id) ON DELETE CASCADE,
+  bounty         INTEGER NOT NULL DEFAULT 0,          -- 托管中的方块赏金
+  status         TEXT    NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'settled', 'refunded')),
+  winner_post_id INTEGER,                             -- 中奖楼层（发放后才有）
+  winner_user_id INTEGER,                             -- 中奖人
+  settle_source  TEXT    NOT NULL DEFAULT '',         -- author 作者采纳 / likes 到期按赞数 / refund 无人回答 / admin 管理员
+  deadline       INTEGER NOT NULL DEFAULT 0,          -- 到期自动结算时间
+  settled_at     INTEGER NOT NULL DEFAULT 0,
+  created_at     INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_questions_open ON thread_questions(status, deadline);
 
 -- 搜索用索引表（主题标题 + 正文摘要，避免搜索时全表扫楼层）
 CREATE TABLE IF NOT EXISTS thread_search (
@@ -475,6 +543,20 @@ CREATE TABLE IF NOT EXISTS friendships (
 
 CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id, status);
 CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id, status);
+
+-- 关注关系（单向，不需要对方同意：follower 关注 following）------------------
+-- 和好友分开：好友要双方同意才能私信，关注只是「想持续看这个人的动态」，
+-- 随时可以自己取消。个人主页显示关注数 / 粉丝数，并可按页查看名单。
+CREATE TABLE IF NOT EXISTS user_follows (
+  follower_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  following_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at   INTEGER NOT NULL,
+  PRIMARY KEY (follower_id, following_id),
+  CHECK (follower_id != following_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_follows_following ON user_follows(following_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id, created_at DESC);
 
 -- 好友私信 -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS direct_messages (

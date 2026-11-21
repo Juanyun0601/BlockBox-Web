@@ -18,6 +18,7 @@ import {
 } from './lib/http.js';
 import { SESSION_COOKIE, hashPassword, userFromToken } from './lib/auth.js';
 import { purgeOldVisits, recordVisit } from './lib/visits.js';
+import { settleDueQuestions } from './lib/questions.js';
 import { cdnBase, rewritePageHtml } from './lib/cdn.js';
 import registerAuth from './routes/auth.js';
 import registerBoards from './routes/boards-threads.js';
@@ -35,6 +36,7 @@ import registerHuman from './routes/human.js';
 import registerReleases from './routes/releases.js';
 import registerNotice from './routes/notice.js';
 import registerPoints from './routes/points.js';
+import registerPay from './routes/pay.js';
 import registerComments from './routes/comments.js';
 import registerOAuth from './routes/oauth.js';
 import { isVerified } from './lib/human-check.js';
@@ -84,7 +86,7 @@ function createRouter() {
 }
 
 const router = createRouter();
-for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints, registerComments, registerOAuth]) {
+for (const register of [registerAuth, registerBoards, registerUsers, registerSearch, registerAdmin, registerCommunity, registerFriends, registerGroups, registerSupport, registerFeedback, registerQuiz, registerLobby, registerHuman, registerReleases, registerNotice, registerPoints, registerPay, registerComments, registerOAuth]) {
   register(router);
 }
 
@@ -124,6 +126,8 @@ function humanGateExempt(pathname) {
     pathname.startsWith('/api/human/') ||
     pathname === '/api/health' ||
     pathname.startsWith('/api/app/') ||
+    // 支付方回调来自服务器而不是浏览器，过不了滑块，只能靠签名把关
+    pathname === '/api/pay/notify' ||
     // 第三方登录：登录页和启动器要先拿到可选方式、设备码，授权回调也不能被滑块拦住
     pathname.startsWith('/api/auth/oauth/') ||
     // 注册页要先知道「要不要邮箱验证」才能画表单，这个接口只读、没有副作用
@@ -366,6 +370,8 @@ if (isMain) {
   purgeOldVisits();
   purgeExpiredEmailCodes();
   purgeExpiredOAuth();
+  // 启动时先补一轮「到期未采纳」的有奖问答：停机期间到期的也照常结算，不会一直挂着
+  settleDueQuestions();
 
   const server = createServer();
   server.on('error', (error) => {
@@ -398,6 +404,16 @@ if (isMain) {
     purgeExpiredOAuth();
   }, 6 * 60 * 60 * 1000);
   timer.unref();
+
+  // 有奖问答：10 分钟扫一次「到 30 天还没采纳」的，按点赞最多的回答自动发赏金
+  const questionTimer = setInterval(() => {
+    try {
+      settleDueQuestions();
+    } catch (error) {
+      console.error('[论坛] 有奖问答自动结算任务出错：', error.message);
+    }
+  }, 10 * 60 * 1000);
+  questionTimer.unref();
 
   const shutdown = (signal) => {
     console.log(`[论坛] 收到 ${signal}，正在退出…`);

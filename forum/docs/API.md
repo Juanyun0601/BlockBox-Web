@@ -233,7 +233,7 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/me/cover \
 
 ## 积分（方块）
 
-论坛积分叫「方块」，目前来自每日签到，余额记在 `users.points`；`/api/me` 和
+论坛积分叫「方块」，来自每日签到和充值购买，余额记在 `users.points`；`/api/me` 和
 `/api/users/:id` 返回的 `user` 里都带 `points`。
 
 - 日期按论坛时区 **Asia/Shanghai** 的 0 点切换，同一账号一天只能签一次；
@@ -241,7 +241,8 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/me/cover \
 - 断签（中间空一天）从第 1 天重新计算；
 - 每周天（周日）签到会额外记一份神秘礼包到 `point_gifts`（内容暂未开放）；
 - 每次签到同时写一条 `point_transactions` 流水，方便以后接兑换和礼包；
-- 补签卡价格 20 方块，可以补上昨天；昨天是周日的话礼包也会一起记上。
+- 补签卡价格 20 方块，可以补上昨天；昨天是周日的话礼包也会一起记上；
+- 充值走源开易支付，下单 / 回调 / 查单的流水类型是 `recharge`（详见下文「充值」小节）。
 
 ### GET /api/points · 我的方块与签到进度（需登录）
 
@@ -328,6 +329,81 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/me/cover \
 返回前会重新算一遍积分状态，`makeup_cards` 已扣减。昨天已经签到时返回
 `400 {"error": "昨天已经签到过了，不需要补签", "code": "nothing_to_makeup"}`，
 没有补签卡时返回 `400 {"error": "还没有补签卡，先买一张吧", "code": "no_makeup_card"}`。
+
+### GET /api/points/shop · 充值档位（需登录）
+
+方块可以用钱买（源开易支付），档位由服务端定死，客户端只负责展示：
+
+```json
+{
+  "enabled": true,
+  "name": "方块",
+  "packages": [
+    { "id": "p600", "name": "小额包", "points": 600, "price": "6.00", "cents": 600 },
+    { "id": "p3300", "name": "常用包", "points": 3300, "price": "30.00", "cents": 3000 },
+    { "id": "p8000", "name": "高频包", "points": 8000, "price": "68.00", "cents": 6800 },
+    { "id": "p16000", "name": "重度包", "points": 16000, "price": "128.00", "cents": 12800 }
+  ],
+  "methods": [],
+  "note": "支付完成后方块自动到账，一般几秒内就会刷新。",
+  "points": 42,
+  "recent": [
+    { "out_trade_no": "BB261121143005123456", "package_name": "小额包", "points": 600,
+      "price": "6.00", "status": "paid", "created_at": 1764138605, "paid_at": 1764138639 }
+  ]
+}
+```
+
+`enabled` 为 `false` 表示服务端没配商户号（`PAY_PID` / `PAY_KEY`），两端都应隐藏购买入口；
+`methods` 为空时跳收银台让用户自己选支付方式。
+
+### POST /api/points/shop/order · 创建充值订单（需登录）
+
+请求体 `{"package": "p600"}`（可选 `type` 指定支付方式，取值见 `methods`）。
+返回订单和收银台地址，客户端把 `pay_url` 交给浏览器打开即可：
+
+```json
+{
+  "order": {
+    "out_trade_no": "BB261121143005123456",
+    "package_id": "p600",
+    "package_name": "小额包",
+    "points": 600,
+    "price": "6.00",
+    "status": "pending",
+    "created_at": 1764138605,
+    "payable": true,
+    "pay_url": "https://pay.ykmcn.com/submit.php?pid=...&sign=..."
+  },
+  "pay_url": "https://pay.ykmcn.com/submit.php?pid=...&sign=...",
+  "points": 42
+}
+```
+
+半小时内同一账号最多下 20 单；通道未开通返回 `400 pay_disabled`，档位不存在返回
+`400 bad_package`，请求太频繁返回 `429 rate_limited`。
+
+### GET /api/points/shop/order/:out_trade_no · 查订单状态（需登录）
+
+只返回自己的订单。状态还是 `pending` 时，服务端会顺带向支付方查一次单（6 秒节流、
+每笔最多 40 次），确认已付款就当场加方块，所以关掉支付页也能到账：
+
+```json
+{
+  "order": { "out_trade_no": "BB261121143005123456", "status": "paid", "points": 600,
+             "price": "6.00", "trade_no": "2026112114300512345", "paid_at": 1764138639 },
+  "points": 642
+}
+```
+
+订单不存在返回 `404 not_found`。
+
+### GET /api/pay/notify · 支付异步通知（支付方调用，无需登录）
+
+来自支付方服务器的 GET 回调，不走 JSON：验签、核对商户号与金额后加方块，
+成功回纯文本 `success`，否则回 `fail`。同一条通知重复到达只会加一次方块
+（订单状态 `pending → paid` 时才入账）。这个地址不受人机验证门禁限制，
+所以必须在 `.env` 里把 `PAY_PID` / `PAY_KEY` 配成真实值，否则一律回 `fail`。
 
 ---
 
@@ -538,27 +614,67 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 
 ### POST /api/threads 的投影字段
 
+一条投影帖可以挂多份投影（主世界 / 下界，或者不同版本各一份），每份自己命名：
+
 ```json
 { "board": "schematic-share", "title": "…", "content": "…",
-  "schematic_upload_id": 21 }
+  "schematic_uploads": [
+    { "upload_id": 21, "label": "主世界" },
+    { "upload_id": 22, "label": "下界" }
+  ] }
 ```
 
-- 上传必须是自己的、类别为投影、且**还没绑给别的主题**（一帖一个文件）
-- 一条帖子只能挂一种资源：`plugin_upload_id` 与 `schematic_upload_id` 同时出现返回 400
-- 绑定后主题输出多一个对象：
+- 老的 `"schematic_upload_id": 21` 仍然可用（等同于只挂一份，名字默认取文件名）
+- 一帖最多 8 份（超出返回 400 `schematic_limit`）；名字最长 20 字，留空自动用文件名
+- 上传必须是自己的、类别为投影、且**还没绑给别的主题**（同一上传重复提交只算一份）
+- 一条帖子只能挂一种资源：`plugin_upload_id` 与投影字段同时出现返回 400
+- 绑定后主题输出多一个对象（列表接口按第一份给出，`file_count` 是份数）：
 
 ```json
 "schematic": {
   "id": 3, "upload_id": 21, "name": "中世纪小镇",
-  "file_name": "中世纪小镇.litematic", "file_size": 1048576, "downloads": 2
+  "file_name": "中世纪小镇.litematic", "file_size": 1048576,
+  "file_count": 2, "downloads": 2
 }
+```
+
+- **详情接口**的 `schematic` 再附 `files` 数组，按上传顺序排：
+
+```json
+"files": [
+  { "id": 7, "upload_id": 21, "label": "主世界",
+    "file_name": "中世纪小镇.litematic", "file_size": 1048576, "downloads": 1 },
+  { "id": 8, "upload_id": 22, "label": "下界",
+    "file_name": "下界塔.litematic", "file_size": 524288, "downloads": 1 }
+]
 ```
 
 - 删主题时对应 `uploads` 记录一起软删，下载接口即 404
 
+### POST /api/threads/:id/schematic/files · 作者补一份投影（需要登录）
+
+```json
+{ "upload_id": 22, "label": "下界" }
+```
+
+只允许帖子作者或管理员调用；校验口径同发帖（本人、投影类别、没绑过），
+同名版本会返回 400 `schematic_label_taken`。返回 `{ ok, files: [...] }`。
+
+### PATCH /api/threads/:id/schematic/files/:fid · 改版本名
+
+```json
+{ "label": "下界 · 1.20" }
+```
+
+### DELETE /api/threads/:id/schematic/files/:fid · 删一份投影
+
+删掉的文件随之软删、不再可下载；**至少要留一份**（否则 400 `schematic_last_file`）。
+删的是第一份时，剩下的第一份会顶到 `thread_schematics`，老客户端照旧能下载。
+
 ### GET /api/threads/:id/schematic/download · 拿下载地址
 
-匿名可访问（人机验证门禁照旧），返回结构与插件下载一致：
+匿名可访问（人机验证门禁照旧）。不传 `file` 就发第一份（老客户端行为），
+一帖多份时传 `?file=<files[].id>` 发选中的那份：
 
 ```json
 {
@@ -566,11 +682,14 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
   "size": 1048576,
   "content_type": "application/octet-stream",
   "filename": "中世纪小镇.litematic",
-  "downloads": 3
+  "downloads": 3,
+  "file_id": 7,
+  "label": "主世界"
 }
 ```
 
-`downloads` 同样按「同一 IP 10 分钟只记一次」去抖。
+`downloads` 同样按「同一 IP 10 分钟只记一次」去抖；`thread_schematics.downloads`
+是该帖所有版本下载数的总和。
 
 ---
 
@@ -618,6 +737,67 @@ curl -b cookie.txt -X POST http://127.0.0.1:3210/api/upload \
 匿名可访问，返回结构与投影下载一致（`url` / `size` / `filename` / `downloads`），
 计数同样按「同一 IP 10 分钟只记一次」去抖。删主题时附件的 `uploads`
 记录一起软删，下载地址即失效。
+
+---
+
+## 有奖问答
+
+和帖子 / 资源 / 教程并列的第四个大类：发帖时带 `question: true` 和 `bounty`，
+主题固定发进「有奖问答」（`qa`）板块，回复照常走楼层（盖楼）。
+
+赏金规则（服务端托管，保证一定发得出去）：
+
+1. **发起即托管**：发帖时从作者账户里扣掉 `bounty` 个方块（流水 `bounty_lock`），
+   余额不足返回 400 `not_enough_points`，整帖都发不出去；
+2. **作者采纳**：作者挑任意一层回答采纳，赏金当场打进那一层的作者账户
+   （流水 `bounty_award`）；
+3. **30 天兜底**：30 天内作者一直没采纳，服务端每 10 分钟扫一次，
+   把赏金发给「点赞最多」的回答楼层（同赞数取楼层靠前的）；
+4. **无人回答**：到期一层有效回答都没有，赏金退回作者（流水 `bounty_refund`）；
+5. **删帖退款**：还没结算的问答被删除时，赏金立刻退回作者。
+
+### POST /api/threads 的问答字段
+
+```json
+{ "title": "…", "content": "…", "tags": [], "question": true, "bounty": 10 }
+```
+
+- `bounty` 必须是 1~500 的整数，否则返回 400 `bad_bounty`
+- 问答与资源 / 教程互斥：和 `plugin_upload_id` / `schematic_upload_id` /
+  `tutorial` 同时出现返回 400 `resource_conflict`
+- 板块不用传，服务端固定发到 `qa`
+- 主题输出多一个 `question` 对象：
+
+```json
+"question": {
+  "bounty": 10, "status": "open", "deadline": 1796000000,
+  "winner_post_id": null, "winner_user_id": null,
+  "settle_source": "", "settled_at": 0
+}
+```
+
+**详情接口**再补 `remaining` / `days_left` / `can_accept`（当前登录用户是不是
+提问者或管理员），已结算时补 `winner`：
+
+```json
+"question": {
+  "bounty": 10, "status": "settled", "deadline": 1796000000,
+  "winner_post_id": 88, "winner_user_id": 7, "settle_source": "author",
+  "remaining": 0, "days_left": 0, "can_accept": false,
+  "winner": { "post_id": 88, "floor": 5,
+              "user": { "id": 7, "username": "…", "display_name": "…", "avatar": "" } }
+}
+```
+
+`status`：`open` 托管中 / `settled` 已发放 / `refunded` 已退回作者；
+`settle_source`：`author` 作者采纳 / `admin` 管理员采纳 / `likes` 到期按赞数 /
+`refund` 无人回答退款 / `thread_deleted` 删帖退款。
+
+### POST /api/threads/:id/question/accept · 采纳回答（需登录）
+
+请求体 `{ "post_id": 88 }`。只有提问者本人（或管理员）能采纳，
+只能采纳别人的楼层（`floor > 1`）。成功返回 `{ question, thread }`，
+重复采纳返回 400 `question_settled`，不重复发钱。
 
 ---
 
@@ -1018,6 +1198,9 @@ score = (点赞数 + 1) × 48 / (2 + 评论年龄/小时)
             "cover": "/uploads/cover-2-1793426400000.png", "role": "user",
             "status": "active", "thread_count": 1, "post_count": 1, "created_at": 1793426400 },
   "friendship": "none",
+  "following": false,
+  "follower_count": 3,
+  "following_count": 8,
   "threads": [ /* 最近 8 个主题 */ ],
   "replies": [ { "thread_id": 3, "thread_title": "…", "snippet": "…" } ],
   "thread_total": 1
@@ -1025,6 +1208,43 @@ score = (点赞数 + 1) × 48 / (2 + 评论年龄/小时)
 ```
 
 `friendship` 只有登录时才有意义：`self`（自己）/ `none` / `outgoing`（我申请了对方）/ `incoming`（对方申请了我）/ `friends`。
+
+`following` 表示当前登录账号是否关注了 TA（未登录恒为 `false`）；`follower_count` / `following_count` 是这个人的粉丝数与关注数，被封禁的账号不计入。
+
+### POST /api/users/:id/follow · 关注（需登录）
+
+关注是**单向**的，不需要对方同意，也不需要先加好友。重复关注不报错。
+
+```json
+{ "ok": true, "following": true, "follower_count": 4, "following_count": 9 }
+```
+
+不能关注自己（400）、未登录返回 401、对方已封禁按「用户不存在」处理。每分钟最多 120 次关注 / 取关操作。
+
+### DELETE /api/users/:id/follow · 取消关注（需登录）
+
+返回结构与关注相同，`following` 为 `false`。
+
+### GET /api/users/:id/followers?page=1&per_page=20 · 粉丝名单
+
+谁关注了这位用户，按关注时间倒序。
+
+```json
+{
+  "users": [
+    { "id": 5, "username": "红石工程师", "display_name": "红石工程师", "avatar": "",
+      "bio": "…", "role": "user", "last_seen_at": 1793426400, "online": true,
+      "official": false, "following": true }
+  ],
+  "pagination": { "page": 1, "per_page": 20, "total": 1, "pages": 1 }
+}
+```
+
+`following` 表示「我是否也关注了这一行的用户」，网页和启动器据此显示关注按钮的状态。
+
+### GET /api/users/:id/following?page=1&per_page=20 · 关注名单
+
+这位用户关注了谁，结构与粉丝名单相同。
 
 ### GET /api/users/:id/threads?page=1&per_page=20
 

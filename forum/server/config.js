@@ -227,6 +227,27 @@ export const config = {
     secret: env.HUMAN_CHECK_SECRET || '',
   },
 
+  // 方块充值（源开易支付 https://pay.ykmcn.com/doc/index.html）。
+  // 用的是 V1 接口：页面跳转支付 submit.php + 主动查单 api.php?act=order，签名 MD5。
+  // 没填商户号 / 密钥、或 PAY_ENABLED=0 时视为未开放，客户端和网页会自动隐藏购买入口。
+  pay: {
+    enabled: bool(env.PAY_ENABLED, true) && !!(env.PAY_PID && env.PAY_KEY),
+    // 支付网关，换服务商时只改这一行；不要带结尾斜杠
+    gateway: origin(env.PAY_GATEWAY) || 'https://pay.ykmcn.com',
+    pid: String(env.PAY_PID || '').trim(),
+    // 商户密钥（后台「API信息」里那串），只留在服务端，绝不能下发到客户端
+    key: String(env.PAY_KEY || '').trim(),
+    // 支付方式：留空表示不指定，跳转收银台让用户自己选；填 alipay 或 wxpay 可直达
+    types: (env.PAY_TYPES || '')
+      .split(',')
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+    // 异步通知 / 跳转回站用的公网地址：优先 PAY_NOTIFY_BASE，其次 PUBLIC_ORIGIN
+    notifyBase: origin(env.PAY_NOTIFY_BASE) || origin(env.PUBLIC_ORIGIN),
+    // 一笔订单多久内还允许主动查单（秒），超过就只等回调，不再打支付方接口
+    orderTtl: Math.max(60, num(env.PAY_ORDER_TTL, 30 * 60)),
+  },
+
   // 邮件发送（邮箱验证码用）：SMTP_HOST 留空表示不启用，相关接口会明确提示未配置。
   // 465 端口用隐式 TLS（SMTP_SECURE=1）；587 端口配 SMTP_SECURE=0，会自动升级 STARTTLS
   smtpHost: (env.SMTP_HOST || '').trim(),

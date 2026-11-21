@@ -172,6 +172,12 @@ node server/index.js
 | `LITTLESKIN_BASE_URL` | `https://littleskin.cn` | LittleSkin（Blessing Skin）站点地址；换成别的站时授权、换令牌、读资料都跟着变 |
 | `OAUTH_PUBLIC_BASE` | 依次取 `PUBLIC_ORIGIN` → 请求 Host | 生成 OAuth 回调地址用的对外地址；正式环境建议直接配 `PUBLIC_ORIGIN` |
 | `OAUTH_DEVICE_TTL` / `OAUTH_DEVICE_INTERVAL` | `600` / `3` | 启动器设备码有效期与轮询间隔（秒） |
+| `PAY_PID` | 空 | 源开易支付商户 ID；和 `PAY_KEY` 一起填才算开通方块充值，没填时启动器与网页都隐藏购买入口 |
+| `PAY_KEY` | 空 | 源开易支付商户密钥（商户后台「API信息」里那串），**只放服务端**，不要写进启动器或网页 |
+| `PAY_GATEWAY` | `https://pay.ykmcn.com` | 支付网关地址，换服务商时改这里 |
+| `PAY_TYPES` | 空 | 支付方式，留空跳收银台让用户自己选；填 `alipay` 或 `wxpay` 直达对应通道 |
+| `PAY_NOTIFY_BASE` | 依次取 `PUBLIC_ORIGIN` → 请求 Host | 支付回调地址前缀，拼出来是 `<前缀>/api/pay/notify`，必须是外网能访问到的论坛地址 |
+| `PAY_ORDER_TTL` | `1800` | 一笔订单多久内还允许主动向支付方查单（秒）；回调正常时用不到，只作兜底 |
 
 > 管理后台的「首页公告」发布后写进 `ANNOUNCEMENT_FILE`，启动器首页公告栏读的就是这个文件。
 > 同一个文件里的 `important` 字段就是「启动重要公告」：启动器启动时弹窗，官网与论坛每个页面打开时也会

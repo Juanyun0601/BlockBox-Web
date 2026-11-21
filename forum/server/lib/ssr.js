@@ -368,12 +368,39 @@ function renderThreadPage(params) {
   }
 
   if (thread.ts_id) {
-    const sizeMb = ((thread.ts_file_size || 0) / 1024 / 1024).toFixed(2);
+    // 一帖可以挂多份投影（主世界 / 下界…）：爬虫页面把每份的名字与大小都列出来
+    const rows = db
+      .prepare(
+        `SELECT label, file_name, file_size, downloads
+           FROM thread_schematic_files
+          WHERE thread_id = ?
+          ORDER BY sort_order, id`,
+      )
+      .all(thread.id);
+    const files = rows.length
+      ? rows
+      : [
+          {
+            label: thread.ts_name || '',
+            file_name: thread.ts_file_name || '',
+            file_size: thread.ts_file_size || 0,
+            downloads: thread.ts_downloads || 0,
+          },
+        ];
+    const fileList = files
+      .map((file) => {
+        const sizeMb = ((file.file_size || 0) / 1024 / 1024).toFixed(2);
+        const label = esc(file.label || file.file_name || '投影');
+        const name = file.file_name && file.file_name !== file.label ? `（${esc(file.file_name)}）` : '';
+        return `<li>${label}${name} · ${sizeMb} MB · 下载 ${file.downloads || 0} 次</li>`;
+      })
+      .join('');
     pluginCard = `<div class="card plugin">
   <h3>投影：${esc(thread.ts_name || thread.title)}</h3>
-  <div class="small">文件 ${esc(thread.ts_file_name || '—')} · ${sizeMb} MB · 下载 ${thread.ts_downloads || 0} 次</div>
+  <div class="small">共 ${files.length} 份投影 · 总下载 ${thread.ts_downloads || 0} 次</div>
+  <ul>${fileList}</ul>
   ${linksHtml}
-  <p class="small">在方块盒子启动器打开这条帖子，点「下载投影」即可保存；放进实例的 schematics 文件夹就能用 Litematica 加载。</p>
+  <p class="small">在方块盒子启动器打开这条帖子，选中想要的版本后点「下载投影」即可保存；放进实例的 schematics 文件夹就能用 Litematica 加载。</p>
 </div>`;
   }
 

@@ -38,6 +38,13 @@
         └── icon.ico      # 应用图标（源：C-BlockBox/Images/icon.ico），网站 favicon
 ```
 
+`assets/panorama/` 存放旋转背景的六面全景图（`<主题>/panorama_0.jpg` ～ `panorama_5.jpg`），
+启动器在用户选择全景主题时按需下载；新增或更新主题时同步这个目录。
+
+`assets/home-covers/` 存放启动器首页轮播的 8 张预设风景图（`preset_1.jpg` ～ `preset_8.jpg`，
+1920 宽、单张 200～450 KB），这些图不再打进安装包，由客户端首页的「下载预设图」按需下载到本机。
+换图时保持文件名和顺序不变（客户端按 `preset_1…8` 依次请求，8 张全部下到才算完成）；要加减张数则需同时改客户端。
+
 ## 搜索引擎优化
 
 `robots.txt`、`sitemap.xml`、四页的 canonical / Open Graph / JSON-LD 结构化数据、首页常见问题区块都已内置；

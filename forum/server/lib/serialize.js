@@ -62,6 +62,20 @@ export function threadOut(row, { withSnippet = true } = {}) {
     ...(row.ts_id ? { schematic: schematicOut(row) } : {}),
     // 教程帖：thread_tutorials 里有行就是；资料附件只在详情接口里给全
     ...(row.tut_id ? { tutorial: true } : {}),
+    // 有奖问答：托管中的赏金与结算状态（中奖人 / 能否采纳由详情接口补齐）
+    ...(row.tq_id
+      ? {
+          question: {
+            bounty: Number(row.tq_bounty) || 0,
+            status: row.tq_status || 'open',
+            deadline: row.tq_deadline || 0,
+            winner_post_id: row.tq_winner_post_id || null,
+            winner_user_id: row.tq_winner_user_id || null,
+            settle_source: row.tq_settle_source || '',
+            settled_at: row.tq_settled_at || 0,
+          },
+        }
+      : {}),
     // 资源帖 / 教程帖的评论数（楼层回复数仍在 reply_count 里，两者互不混算）
     comment_count: row.comment_count || 0,
     ...(withSnippet ? { snippet: snippetOf(row.first_post) } : {}),
@@ -109,6 +123,8 @@ export function schematicOut(row) {
     name: row.ts_name || '',
     file_name: row.ts_file_name || '',
     file_size: row.ts_file_size || 0,
+    // 一帖可以挂多份投影（主世界 / 下界…）：列表卡片只带份数，完整清单在详情接口
+    file_count: row.ts_file_count || 0,
     links: linksOut(row.ts_links),
     downloads: row.ts_downloads || 0,
   };

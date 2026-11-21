@@ -139,6 +139,47 @@ export function migrate() {
     console.log('[论坛] 数据库已升级：用户角色支持次级管理员（moderator）');
   }
 
+  // 有奖问答：积分流水多三种类型（托管 / 发放 / 退回）；方块充值再多一种（充值）。
+  // 老库的 CHECK 约束没有这几档，需要重建 point_transactions（没有别的表引用它，可以安全重建）。
+  const txSql =
+    db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'point_transactions'").get()?.sql || '';
+  if (txSql && !txSql.includes('recharge')) {
+    transaction(() => {
+      db.exec(
+        `CREATE TABLE point_transactions_new (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          amount     INTEGER NOT NULL,
+          kind       TEXT    NOT NULL DEFAULT 'checkin'
+                     CHECK (kind IN ('checkin', 'gift', 'admin', 'spend', 'recharge',
+                                     'bounty_lock', 'bounty_award', 'bounty_refund')),
+          note       TEXT    NOT NULL DEFAULT '',
+          created_at INTEGER NOT NULL
+        )`,
+      );
+      db.exec(
+        `INSERT INTO point_transactions_new (id, user_id, amount, kind, note, created_at)
+         SELECT id, user_id, amount, kind, note, created_at FROM point_transactions`,
+      );
+      db.exec('DROP TABLE point_transactions');
+      db.exec('ALTER TABLE point_transactions_new RENAME TO point_transactions');
+      db.exec(
+        'CREATE INDEX IF NOT EXISTS idx_point_transactions_user ON point_transactions(user_id, created_at DESC)',
+      );
+    });
+    console.log('[论坛] 数据库已升级：积分流水支持方块充值（recharge）');
+  }
+
+  // 有奖问答板块：和「插件分享 / 投影分享 / 教程分享」一样是固定板块，老库没有就补一个
+  const qaBoard = db.prepare("SELECT id FROM boards WHERE slug = 'qa'").get();
+  if (!qaBoard) {
+    db.prepare(
+      `INSERT INTO boards (slug, name, description, icon, sort_order, created_at)
+       VALUES ('qa', '有奖问答', '悬赏方块提问：问题作者提前支付赏金，采纳答案后当场到账，30 天没人采纳按点赞最高的回答自动发放。', '🎁', 48, ?)`,
+    ).run(Math.floor(Date.now() / 1000));
+    console.log('[论坛] 数据库已升级：新增「有奖问答」板块');
+  }
+
   // 禁言细化：禁止哪些内容、理由、操作人（放在最后，兼容上面重建 users 表的老库）
   const addedMuteScope = ensureColumn('users', 'mute_scope', "TEXT NOT NULL DEFAULT 'all'");
   if (addedMuteScope) console.log('[论坛] 数据库已升级：users 增加 mute_scope（禁言范围）');
@@ -195,6 +236,22 @@ export function migrate() {
   const addedSchematicLinks = ensureColumn('thread_schematics', 'links', "TEXT NOT NULL DEFAULT '[]'");
   if (addedPluginLinks || addedSchematicLinks) {
     console.log('[论坛] 数据库已升级：thread_plugins / thread_schematics 增加 links（相关链接）');
+  }
+
+  // 投影帖多版本：老帖的投影文件补进 thread_schematic_files（表由 schema.sql 建好）。
+  // 老帖只有一份文件，直接当第一份，名字留空表示用文件名。
+  const backfilled = db
+    .prepare(
+      `INSERT INTO thread_schematic_files
+         (thread_id, upload_id, label, file_name, file_size, file_hash, downloads, sort_order, created_at)
+       SELECT ts.thread_id, ts.upload_id, '', ts.file_name, ts.file_size, ts.file_hash, ts.downloads, 0, ts.created_at
+         FROM thread_schematics ts
+         LEFT JOIN thread_schematic_files f ON f.upload_id = ts.upload_id
+        WHERE f.id IS NULL`,
+    )
+    .run();
+  if (backfilled.changes > 0) {
+    console.log(`[论坛] 数据库已升级：${backfilled.changes} 个投影文件补进多版本清单`);
   }
 }
 

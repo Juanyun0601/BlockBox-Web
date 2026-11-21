@@ -7,6 +7,7 @@ BB.boot(async () => {
   const page = Math.max(1, Number(BB.param('page') || 1) || 1);
   const me = BB.state.me;
   let current = null;
+  let currentThread = null;
   let replyTarget = null;
   const postCache = new Map();
 
@@ -24,7 +25,65 @@ BB.boot(async () => {
   // 资源帖 / 教程帖共用一套平铺评论
   const isCommentThread = (thread) => isResourceThread(thread) || isTutorialThread(thread);
 
+  // 有奖问答：回复照常盖楼，赏金由服务端托管，作者采纳任意一层后当场发放
+  const isQuestionThread = (thread) => !!(thread && thread.question);
+
+  /** 当前登录用户能不能采纳这一层（只有提问者 / 管理员，且只能采纳别人的楼层） */
+  const canAcceptPost = (thread, post) =>
+    !!me &&
+    !!thread &&
+    !!thread.question &&
+    thread.question.status === 'open' &&
+    !!thread.question.can_accept &&
+    !post.deleted &&
+    post.floor > 1 &&
+    post.author &&
+    post.author.id !== thread.author.id;
+
   const canEditPost = (post) => !!me && !post.deleted && (me.id === post.author.id || BB.isAdmin());
+
+  /** 赏金卡的状态文案：托管中 / 已发放 / 已退回 */
+  function questionStateText(thread) {
+    const question = thread.question;
+    if (question.status === 'settled') {
+      const winner = question.winner;
+      const floorText = winner && winner.floor ? `${winner.floor} 楼` : '回答';
+      const name = winner && winner.user ? winner.user.display_name || winner.user.username : '回答者';
+      const source = question.settle_source === 'likes' ? ' · 到期按赞数自动发放' : '';
+      return `已发放给 ${floorText} ${BB.esc(name)}${source}`;
+    }
+    if (question.status === 'refunded') return '没有人回答，赏金已退回提问者';
+    const days = Math.max(0, Number(question.days_left) || 0);
+    if (days > 0) return `还剩 ${days} 天 · 到期后按点赞最高的回答自动发放`;
+    return '正在结算…';
+  }
+
+  function questionCardHtml(thread) {
+    const question = thread.question;
+    const state = ['settled', 'refunded'].includes(question.status) ? question.status : 'open';
+    const pillText = state === 'settled' ? '已发放' : state === 'refunded' ? '已退回' : '待采纳';
+    const authorHint =
+      question.status === 'open' && question.can_accept
+        ? '<p class="question-tip">在下面任意一层回答上点「采纳」，赏金会立刻打给对方。</p>'
+        : question.status === 'open'
+          ? '<p class="question-tip">提问者采纳回答后，赏金当场到账。</p>'
+          : '';
+    return `<div class="question-card ${state}">
+      <div class="question-main">
+        <span class="question-gift" aria-hidden="true">🎁</span>
+        <div class="question-text">
+          <div class="question-bounty-line">
+            <span class="question-bounty-label">悬赏</span>
+            <span class="question-bounty-value">${BB.num(question.bounty)}</span>
+            <span class="question-bounty-unit">方块</span>
+            <span class="question-pill ${state}">${pillText}</span>
+          </div>
+          <div class="question-state">${questionStateText(thread)}</div>
+        </div>
+      </div>
+      ${authorHint}
+    </div>`;
+  }
 
   // ---------------------------------------------------------------- 渲染
 
@@ -71,8 +130,17 @@ BB.boot(async () => {
     const hidden = children.slice(6);
     const hasHidden = hidden.length > 0;
     const isOp = post.floor === 1;
+    const question = currentThread ? currentThread.question : null;
+    const isWinner = !!question && question.winner_post_id === post.id;
+    const isAnswer = !!question && post.floor > 1;
+    // 「采纳」放在楼层右上角：这是问答里最该被看见的操作，不埋在操作行的小胶囊里
+    const acceptButton = canAcceptPost(currentThread, post)
+      ? `<button type="button" class="head-accept" data-act="accept" data-post="${post.id}" title="采纳这层回答，赏金立刻发给对方">采纳 · 发放 ${BB.num(
+          currentThread.question.bounty,
+        )} 方块</button>`
+      : '';
 
-    return `<article class="post${isOp ? ' is-op' : ''}" id="post-${post.id}" data-post-id="${post.id}">
+    return `<article class="post${isOp ? ' is-op' : ''}${isAnswer ? ' is-answer' : ''}${isWinner ? ' is-winner' : ''}" id="post-${post.id}" data-post-id="${post.id}">
       <div class="post-side">
         ${BB.avatar(author)}
         <a class="name" href="/user.html?id=${author.id}">${BB.esc(name)}</a>
@@ -85,9 +153,14 @@ BB.boot(async () => {
       <div class="post-body">
         <div class="post-head">
           ${isOp ? '<span class="chip chip-op">楼主</span>' : ''}
+          ${isAnswer ? '<span class="answer-tag">回答</span>' : ''}
+          ${isWinner ? `<span class="chip chip-bounty">🏆 赏金得主 +${BB.num(question.bounty)} 方块</span>` : ''}
           <span class="post-time" title="${BB.datetime(post.created_at)}">${BB.time(post.created_at)}</span>
           ${post.edit_count > 0 ? '<span class="edited">已编辑</span>' : ''}
-          <span class="floor">${post.floor} 楼</span>
+          <span class="post-head-right">
+            <span class="floor">${post.floor} 楼</span>
+            ${acceptButton}
+          </span>
         </div>
         <div class="post-content">${
           post.deleted ? '<span class="deleted">该楼层已被作者或管理员删除</span>' : BB.md(post.content)
@@ -320,6 +393,7 @@ BB.boot(async () => {
   }
 
   function renderHead(thread) {
+    // 有奖问答不再额外挂一个同名徽章：板块胶囊已经写着「有奖问答」，多一个反而重复
     const flags = `${thread.pinned ? '<span class="chip chip-warn">置顶</span>' : ''}${
       thread.locked ? '<span class="chip chip-grey">已锁定</span>' : ''
     }${thread.tutorial ? '<span class="chip chip-tutorial">教程</span>' : ''}`;
@@ -367,6 +441,7 @@ BB.boot(async () => {
         ${bookmark}
       </div>
       ${tags ? `<div class="post-tags">${tags}</div>` : ''}
+      ${isQuestionThread(thread) ? questionCardHtml(thread) : ''}
       ${adminActions}`;
 
     const head = document.getElementById('threadHead');
@@ -592,10 +667,11 @@ BB.boot(async () => {
 
   function renderComposer(thread) {
     const host = document.getElementById('composerHost');
+    const questionMode = !!thread.question;
     if (!me) {
       host.innerHTML = `<section class="card composer">
-        <h3>想参与讨论？</h3>
-        <p class="muted small" style="margin-bottom: 12px">登录后就能回复这个主题，也可以用同一账号在方块盒子论坛发帖。</p>
+        <h3>${questionMode ? '想回答这个问题？' : '想参与讨论？'}</h3>
+        <p class="muted small" style="margin-bottom: 12px">登录后就能${questionMode ? '回答' : '回复'}这个主题，也可以用同一账号在方块盒子论坛发帖。</p>
         <div class="composer-foot"><a class="btn btn-primary" href="${BB.loginLink()}">登录 / 注册</a></div>
       </section>`;
       return;
@@ -624,16 +700,20 @@ BB.boot(async () => {
     host.innerHTML = `<section class="card composer" id="composerCard">
       <div class="composer-head">
         ${BB.avatar(me, 'avatar-sm')}
-        <h3>回复主题</h3>
-        <span class="composer-hint">支持 Markdown · 可直接粘贴图片</span>
+        <h3>${questionMode ? '写回答' : '回复主题'}</h3>
+        <span class="composer-hint">${questionMode ? '你的回答会参与点赞与采纳' : '支持 Markdown · 可直接粘贴图片'}</span>
       </div>
       <div id="composerTarget">${replyTargetHtml()}</div>
       <div id="composerError"></div>
-      <textarea class="textarea" id="replyBox" placeholder="说点什么…支持 Markdown：**加粗**、\`代码\`、> 引用；输入 @ 可以选人，也能直接粘贴或拖入图片" style="min-height:140px"></textarea>
+      <textarea class="textarea" id="replyBox" placeholder="${
+        questionMode
+          ? '写下你的答案…支持 Markdown：**加粗**、`代码`、> 引用；输入 @ 可以选人，也能直接粘贴或拖入图片'
+          : '说点什么…支持 Markdown：**加粗**、`代码`、> 引用；输入 @ 可以选人，也能直接粘贴或拖入图片'
+      }" style="min-height:140px"></textarea>
       <div class="composer-foot">
-        <span class="muted small">以 ${BB.esc(me.display_name || me.username)} 的身份回复 · 草稿自动保存 · Ctrl + Enter 发送</span>
+        <span class="muted small">以 ${BB.esc(me.display_name || me.username)} 的身份${questionMode ? '回答' : '回复'} · 草稿自动保存 · Ctrl + Enter 发送</span>
         <span class="composer-count" id="replyCount">0 字</span>
-        <button class="btn btn-primary" id="replyBtn">发表回复</button>
+        <button class="btn btn-primary" id="replyBtn">${questionMode ? '发布回答' : '发表回复'}</button>
       </div>
     </section>`;
 
@@ -825,6 +905,16 @@ BB.boot(async () => {
             location.reload();
           } else if (action === 'report') {
             await BB.reportPost(postId);
+          } else if (action === 'accept') {
+            const question = currentThread && currentThread.question;
+            if (!question) return;
+            if (!confirm(`确定采纳这一层吗？采纳后 ${question.bounty} 方块会立刻发给对方，不能更改。`)) return;
+            await BB.api(`/api/threads/${threadId}/question/accept`, {
+              method: 'POST',
+              body: { post_id: postId },
+            });
+            BB.toast(`已采纳，${question.bounty} 方块赏金已发放`, 'ok');
+            location.reload();
           } else if (action === 'edit') {
             if (post) startEdit(postId);
           } else if (action === 'toggle-children') {
@@ -872,7 +962,12 @@ BB.boot(async () => {
   async function load() {
     const data = await BB.api(`/api/threads/${threadId}?page=${page}&per_page=20`);
     current = data;
+    currentThread = data.thread;
     const thread = data.thread;
+
+    // 问答帖的回帖区单独加点修饰（回答层左侧暖金细条等），普通帖子不受影响
+    const mainColumn = document.querySelector('.thread-main');
+    if (mainColumn) mainColumn.classList.toggle('qa-thread', !!thread.question);
 
     document.title = `${thread.title} · 方块盒子论坛`;
     document.getElementById('crumbs').innerHTML = `

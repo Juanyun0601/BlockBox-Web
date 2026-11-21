@@ -74,6 +74,68 @@ export function acceptedBetween(a, b) {
   return row && row.status === 'accepted' ? row : null;
 }
 
+/** 关注关系：单向，不需要对方同意（a 是否关注了 b） */
+export function isFollowing(a, b) {
+  if (!a || !b) return false;
+  return !!db
+    .prepare('SELECT 1 FROM user_follows WHERE follower_id = ? AND following_id = ?')
+    .get(a, b);
+}
+
+/** 粉丝数（关注我的人；被封禁的账号不计入） */
+export function countFollowers(userId) {
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS n
+         FROM user_follows f
+         JOIN users u ON u.id = f.follower_id
+        WHERE f.following_id = ? AND u.status != 'banned'`,
+    )
+    .get(userId).n;
+}
+
+/** 关注数（我关注的人；被封禁的账号不计入） */
+export function countFollowing(userId) {
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS n
+         FROM user_follows f
+         JOIN users u ON u.id = f.following_id
+        WHERE f.follower_id = ? AND u.status != 'banned'`,
+    )
+    .get(userId).n;
+}
+
+/**
+ * 关注 / 粉丝名单：direction = followers（谁关注了 userId）/ following（userId 关注了谁）。
+ * viewerId 用来标出「我是否也关注了这一行的用户」，网页 / 启动器据此显示按钮状态。
+ */
+export function listFollowUsers(userId, direction, viewerId, limit, offset) {
+  const followers = direction === 'followers';
+  const joinColumn = followers ? 'f.follower_id' : 'f.following_id';
+  const whereColumn = followers ? 'f.following_id' : 'f.follower_id';
+  const rows = db
+    .prepare(
+      `SELECT u.id, u.username, u.display_name, u.avatar, u.bio, u.role, u.last_seen_at,
+              EXISTS(
+                SELECT 1 FROM user_follows x
+                 WHERE x.follower_id = ? AND x.following_id = u.id
+              ) AS viewer_follows
+         FROM user_follows f
+         JOIN users u ON u.id = ${joinColumn}
+        WHERE ${whereColumn} = ? AND u.status != 'banned'
+        ORDER BY f.created_at DESC, u.id DESC
+        LIMIT ? OFFSET ?`,
+    )
+    .all(viewerId || 0, userId, limit, offset);
+  return rows.map((row) => ({
+    ...peerOut(row),
+    bio: row.bio || '',
+    role: row.role,
+    following: !!row.viewer_follows,
+  }));
+}
+
 /**
  * 好友列表：带未读私信数与最后一条私信，按最近联系排序。
  * 三条聚合查询替代逐个好友查两次，避免 N+1。

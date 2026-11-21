@@ -1,4 +1,4 @@
-/* 我的方块 —— 每日签到 / 签到记录 */
+/* 我的方块 —— 每日签到 / 签到记录 / 购买方块 */
 BB.boot(async () => {
   if (!BB.state.me) {
     location.replace(BB.loginLink('/points.html'));
@@ -23,8 +23,25 @@ BB.boot(async () => {
   const buyMakeupBtn = document.getElementById('buyMakeupBtn');
   const useMakeupBtn = document.getElementById('useMakeupBtn');
 
+  // 购买方块
+  const shopCard = document.getElementById('pointsShop');
+  const shopGrid = document.getElementById('shopGrid');
+  const shopHint = document.getElementById('shopHint');
+  const shopNote = document.getElementById('shopNote');
+  const shopPay = document.getElementById('shopPay');
+  const shopPayTitle = document.getElementById('shopPayTitle');
+  const shopPayText = document.getElementById('shopPayText');
+  const shopPayLink = document.getElementById('shopPayLink');
+  const shopPayCheck = document.getElementById('shopPayCheck');
+  const shopPayCancel = document.getElementById('shopPayCancel');
+
   let state = null;
   let busy = false;
+  let shop = null;
+  let paying = null; // { outTradeNo, points, packageName, timer, tries }
+  const RETURN_PARAM = new URLSearchParams(location.search).get('pay') || '';
+  /** 档位展示要用准确数字（BB.num 会把 3300 缩成 3.3k，买方块时看着容易误会） */
+  const exact = (value) => Number(value || 0).toLocaleString('zh-CN');
 
   async function load() {
     try {
@@ -188,5 +205,143 @@ BB.boot(async () => {
     }
   });
 
+  /* ── 购买方块 ─────────────────────────────────────────── */
+
+  function stopPayPoll() {
+    if (paying && paying.timer) {
+      clearInterval(paying.timer);
+      paying.timer = null;
+    }
+  }
+
+  function hidePayPanel() {
+    stopPayPoll();
+    paying = null;
+    if (shopPay) shopPay.hidden = true;
+  }
+
+  function renderShop(data) {
+    shop = data;
+    if (!shopCard) return;
+    const packages = data.packages || [];
+    shopCard.hidden = !data.enabled || packages.length === 0;
+    if (!data.enabled) {
+      if (shopNote) shopNote.textContent = data.note || '充值通道还没开通。';
+      return;
+    }
+    if (shopHint) shopHint.textContent = data.methods && data.methods.length ? '' : '支持支付宝 / 微信';
+    if (shopNote) shopNote.textContent = data.note || '';
+    shopGrid.innerHTML = packages
+      .map(
+        (item) => `<div class="shop-card" data-id="${BB.esc(item.id)}">
+          <span class="shop-name">${BB.esc(item.name)}</span>
+          <div class="shop-points"><b>${exact(item.points)}</b><span>方块</span></div>
+          <span class="shop-price">¥${BB.esc(item.price)}</span>
+          <button class="btn btn-primary shop-buy" type="button" data-id="${BB.esc(item.id)}">购买</button>
+        </div>`,
+      )
+      .join('');
+    shopGrid.querySelectorAll('.shop-buy').forEach((btn) => {
+      btn.addEventListener('click', () => buy(btn.dataset.id, btn));
+    });
+  }
+
+  async function loadShop() {
+    try {
+      renderShop(await BB.api('/api/points/shop'));
+    } catch (error) {
+      if (shopCard) shopCard.hidden = true;
+    }
+  }
+
+  async function buy(packageId, btn) {
+    if (busy || !shop || !shop.enabled) return;
+    busy = true;
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '正在下单…';
+    }
+    try {
+      const result = await BB.api('/api/points/shop/order', {
+        method: 'POST',
+        body: { package: packageId },
+      });
+      startPayPoll(result.order || {}, result.pay_url || '');
+      if (result.pay_url) window.open(result.pay_url, '_blank', 'noopener');
+    } catch (error) {
+      BB.toast(error.message || '下单失败，稍后再试', 'error');
+    } finally {
+      busy = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '购买';
+      }
+    }
+  }
+
+  function startPayPoll(order, payUrl) {
+    stopPayPoll();
+    paying = { outTradeNo: order.out_trade_no || '', points: order.points || 0, timer: null, tries: 0 };
+    if (!shopPay) return;
+    shopPay.hidden = false;
+    shopPayTitle.textContent = `${order.package_name || ''} ${exact(order.points)} 方块 · ¥${order.price || ''}`;
+    shopPayText.textContent = payUrl
+      ? '没弹出支付页的话可以点「打开支付页」；付款完成后方块自动到账。'
+      : '订单已创建，正在等待支付结果。';
+    shopPayLink.href = payUrl || '#';
+    shopPayLink.hidden = !payUrl;
+    shopPayCheck.disabled = false;
+    if (paying.outTradeNo) paying.timer = setInterval(checkPay, 3000);
+  }
+
+  async function checkPay(manual) {
+    if (!paying || !paying.outTradeNo) return;
+    const no = paying.outTradeNo;
+    paying.tries += 1;
+    try {
+      const result = await BB.api(`/api/points/shop/order/${encodeURIComponent(no)}`);
+      if (!paying || paying.outTradeNo !== no) return;
+      const order = result.order || {};
+      if (order.status === 'paid') {
+        const gained = Number(order.points) || paying.points || 0;
+        hidePayPanel();
+        BB.setPoints(result.points);
+        BB.toast(`支付成功：+${gained} 方块已到账`, 'ok');
+        await load();
+        return;
+      }
+      if (paying.tries >= 100) {
+        stopPayPoll();
+        if (shopPayText) shopPayText.textContent = '还没收到付款。支付页还开着就继续付，付完点「我已完成支付」。';
+        return;
+      }
+      if (manual) BB.toast('还没收到付款，稍等一下再试一次', 'error');
+    } catch (error) {
+      if (manual) BB.toast(error.message || '查询订单失败，稍后再试', 'error');
+    }
+  }
+
+  if (shopPayCheck) shopPayCheck.addEventListener('click', () => checkPay(true));
+  if (shopPayCancel) {
+    shopPayCancel.addEventListener('click', () => {
+      // 只收面板，轮询照旧：用户可能收起来之后才付款，付完照样提示到账
+      if (shopPay) shopPay.hidden = true;
+      BB.toast('已收起，付完款方块会自动到账', 'ok');
+    });
+  }
+
   await load();
+  await loadShop();
+
+  // 从支付页跳回来（?pay=订单号）：直接确认这笔订单，付过的当场到账
+  if (RETURN_PARAM) {
+    paying = { outTradeNo: RETURN_PARAM, points: 0, timer: null, tries: 0 };
+    if (shopPay) shopPay.hidden = false;
+    if (shopPayTitle) shopPayTitle.textContent = '正在确认支付结果…';
+    if (shopPayText) shopPayText.textContent = '稍等一下，确认到账后会自动刷新余额。';
+    if (shopPayLink) shopPayLink.hidden = true;
+    if (shopPayCheck) shopPayCheck.disabled = false;
+    await checkPay(false);
+    if (paying && !paying.timer) paying.timer = setInterval(checkPay, 3000);
+  }
 });

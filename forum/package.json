@@ -13,6 +13,7 @@
     "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
     "admin": "node --disable-warning=ExperimentalWarning scripts/set-admin.js",
     "backup": "node --disable-warning=ExperimentalWarning scripts/backup.js",
-    "smoke": "node --disable-warning=ExperimentalWarning scripts/smoke.js"
+    "smoke": "node --disable-warning=ExperimentalWarning scripts/smoke.js",
+    "pay:smoke": "node --disable-warning=ExperimentalWarning scripts/pay-smoke.js"
   }
 }

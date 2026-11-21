@@ -758,10 +758,17 @@
 
   /** 列表里的一行主题（首页 / 板块页 / 搜索页 / 用户页共用） */
   BB.threadRow = (thread, { showBoard = true, showSnippet = false } = {}) => {
+    const question = thread.question;
+    const bountyBadge = question
+      ? `<span class="chip chip-question">🎁 ${BB.num(question.bounty)} 方块${
+          question.status === 'settled' ? ' · 已发放' : question.status === 'refunded' ? ' · 已退回' : ''
+        }</span>`
+      : '';
     const badges = [
       thread.pinned ? '<span class="chip chip-warn">置顶</span>' : '',
       thread.locked ? '<span class="chip chip-grey">已锁定</span>' : '',
       thread.tutorial ? '<span class="chip chip-tutorial">教程</span>' : '',
+      bountyBadge,
     ]
       .filter(Boolean)
       .join('');

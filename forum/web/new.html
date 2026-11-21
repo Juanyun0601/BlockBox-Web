@@ -7,7 +7,7 @@
 <meta name="description" content="在方块盒子论坛发表新主题">
 <link rel="icon" href="/assets/img/icon.ico">
 <script src="/assets/i18n.js?v=20261119a"></script>
-<link rel="stylesheet" href="/assets/forum.css?v=20261120b">
+<link rel="stylesheet" href="/assets/forum.css?v=20261121c">
 <script>
   (function () {
     try {
@@ -32,11 +32,28 @@
         <div class="tabs composer-tabs" role="tablist" aria-label="发布类型">
           <a href="javascript:void 0" id="modePost" class="active" role="tab" aria-pressed="true">帖子</a>
           <a href="javascript:void 0" id="modeTutorial" role="tab" aria-pressed="false">教程</a>
+          <a href="javascript:void 0" id="modeQuestion" role="tab" aria-pressed="false">问答</a>
         </div>
         <p class="muted small composer-mode-hint" id="modeHint">交流讨论、求助提问、分享作品，选一个板块发布。</p>
         <div class="field" id="boardField">
           <label for="boardSelect">发到哪个板块 <span class="req">*</span></label>
           <select class="select" id="boardSelect"></select>
+        </div>
+        <div class="field hidden" id="bountyField">
+          <label for="bountyInput">悬赏方块 <span class="req">*</span></label>
+          <div class="bounty-field">
+            <span class="bounty-coin" aria-hidden="true"></span>
+            <input class="bounty-input" id="bountyInput" type="number" min="1" max="500" step="1" value="10" inputmode="numeric" aria-label="悬赏方块数量">
+            <span class="bounty-unit">方块</span>
+          </div>
+          <div class="bounty-presets" id="bountyPresets">
+            <span class="muted">快捷：</span>
+            <button type="button" class="bounty-preset" data-bounty="5">5</button>
+            <button type="button" class="bounty-preset active" data-bounty="10">10</button>
+            <button type="button" class="bounty-preset" data-bounty="20">20</button>
+            <button type="button" class="bounty-preset" data-bounty="50">50</button>
+          </div>
+          <div class="input-hint" id="bountyHint">悬赏 1–500 个方块。发布时先从你的余额里扣下来托管，不会出现「口头承诺不发奖」；采纳回答后当场到账，30 天没人采纳就按点赞最高的回答自动发放。</div>
         </div>
         <div class="field hidden" id="attachmentField">
           <label>资料附件（可选，最多 10 个，单个 ≤ 50MB）</label>
@@ -76,7 +93,7 @@
 </main>
 
 <footer class="footer" id="siteFooter"></footer>
-<script src="/assets/core.js?v=20261120c"></script>
-<script src="/assets/page-new.js?v=20261120b"></script>
+<script src="/assets/core.js?v=20261121a"></script>
+<script src="/assets/page-new.js?v=20261121c"></script>
 </body>
 </html>

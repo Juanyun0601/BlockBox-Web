@@ -18,7 +18,12 @@ const THREAD_SELECT = `
          ts.id AS ts_id, ts.upload_id AS ts_upload_id, ts.name AS ts_name,
          ts.file_name AS ts_file_name, ts.file_size AS ts_file_size,
          ts.links AS ts_links, ts.downloads AS ts_downloads,
+         (SELECT COUNT(*) FROM thread_schematic_files sf WHERE sf.thread_id = t.id) AS ts_file_count,
          tt.thread_id AS tut_id,
+         tq.thread_id AS tq_id, tq.bounty AS tq_bounty, tq.status AS tq_status,
+         tq.deadline AS tq_deadline, tq.winner_post_id AS tq_winner_post_id,
+         tq.winner_user_id AS tq_winner_user_id, tq.settle_source AS tq_settle_source,
+         tq.settled_at AS tq_settled_at,
          (SELECT COUNT(*) FROM thread_comments tc
            WHERE tc.thread_id = t.id AND tc.deleted = 0) AS comment_count
     FROM threads t
@@ -27,7 +32,8 @@ const THREAD_SELECT = `
     LEFT JOIN users lu ON lu.id = t.last_post_user_id
     LEFT JOIN thread_plugins tp ON tp.thread_id = t.id
     LEFT JOIN thread_schematics ts ON ts.thread_id = t.id
-    LEFT JOIN thread_tutorials tt ON tt.thread_id = t.id`;
+    LEFT JOIN thread_tutorials tt ON tt.thread_id = t.id
+    LEFT JOIN thread_questions tq ON tq.thread_id = t.id`;
 
 const THREAD_ORDER = {
   latest: 't.pinned DESC, t.last_post_at DESC',

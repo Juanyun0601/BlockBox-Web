@@ -20,6 +20,12 @@ import { badRequest } from './http.js';
 /** 允许的投影扩展名（小写，不含点） */
 const ALLOWED_EXTS = ['litematic', 'schem', 'schematic', 'nbt'];
 
+/** 一条投影帖最多挂几份投影（主世界 / 下界 / 不同版本…） */
+export const MAX_SCHEMATIC_FILES = 8;
+
+/** 版本名最长多少字（列表与下载框里要能一眼看清） */
+export const MAX_SCHEMATIC_LABEL = 20;
+
 /** 投影文件都是 NBT：gzip 魔数或裸 NBT 的 TAG_Compound(0x0a) */
 function looksLikeNbt(buffer) {
   if (!buffer || buffer.length < 8) return false;
@@ -43,6 +49,25 @@ export function cleanFileName(raw) {
 export function extOf(fileName) {
   const match = /\.([A-Za-z0-9]{1,12})$/.exec(String(fileName || ''));
   return match ? match[1].toLowerCase() : '';
+}
+
+/** 文件名的展示名（去掉扩展名），用于版本没起名时的兜底 */
+export function baseNameOf(fileName) {
+  const name = cleanFileName(fileName);
+  return name.replace(/\.[A-Za-z0-9]{1,12}$/, '') || name;
+}
+
+/**
+ * 版本名：主世界 / 下界 / 1.0 之类，用户自己填。
+ * 空名字不算错——直接退回文件名（去扩展名），下载框里也看得懂。
+ */
+export function cleanSchematicLabel(raw, fileName = '') {
+  const label = String(raw || '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_SCHEMATIC_LABEL);
+  return label || baseNameOf(fileName).slice(0, MAX_SCHEMATIC_LABEL) || '投影';
 }
 
 /**

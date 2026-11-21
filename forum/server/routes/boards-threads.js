@@ -5,10 +5,26 @@ import { enforce } from '../lib/rate-limit.js';
 import { bool, text } from '../lib/validate.js';
 import { boardOut, postOut, threadOut, snippetOf, attachmentOut } from '../lib/serialize.js';
 import { notifyThreadActivity } from '../lib/notify.js';
-import { cleanFileName } from '../lib/schematics.js';
+import {
+  baseNameOf,
+  cleanFileName,
+  cleanSchematicLabel,
+  MAX_SCHEMATIC_FILES,
+  MAX_SCHEMATIC_LABEL,
+} from '../lib/schematics.js';
 import { guardBannedWords } from '../lib/banned-words.js';
 import { cdnBase } from '../lib/cdn.js';
 import { config } from '../config.js';
+import {
+  acceptAnswer,
+  lockBounty,
+  normalizeBounty,
+  QUESTION_BOARD_SLUG,
+  questionOut,
+  questionRow,
+  refundQuestion,
+  settleQuestionIfDue,
+} from '../lib/questions.js';
 
 const pluginDownloadSeen = new Map();
 import {
@@ -46,6 +62,29 @@ function saveTags(threadId, tags) {
   db.prepare('DELETE FROM thread_tags WHERE thread_id = ?').run(threadId);
   const insert = db.prepare('INSERT OR IGNORE INTO thread_tags (thread_id, tag) VALUES (?, ?)');
   for (const tag of tags) insert.run(threadId, tag);
+}
+
+/**
+ * 一条投影帖的全部投影文件（按上传顺序）。
+ * 下载框、作者管理、SSR 页面都从这里取；label 为空（老帖）就退回文件名。
+ */
+function schematicFilesOf(threadId) {
+  return db
+    .prepare(
+      `SELECT id, upload_id, label, file_name, file_size, downloads
+         FROM thread_schematic_files
+        WHERE thread_id = ?
+        ORDER BY sort_order, id`,
+    )
+    .all(threadId)
+    .map((row) => ({
+      id: row.id,
+      upload_id: row.upload_id,
+      label: row.label || baseNameOf(row.file_name) || '投影',
+      file_name: row.file_name || '',
+      file_size: row.file_size || 0,
+      downloads: row.downloads || 0,
+    }));
 }
 
 /**
@@ -434,6 +473,14 @@ export default function register(router) {
     const threadId = Number(ctx.params.id);
     if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
 
+    // 有奖问答：到 30 天还没人采纳的，先按「点赞最多」把赏金发掉，再渲染页面。
+    // 定时任务也会跑同一套逻辑，这里只兜底「刚好卡在到期那一刻打开帖子」。
+    try {
+      settleQuestionIfDue(threadId);
+    } catch (error) {
+      console.error('[论坛] 有奖问答结算失败（不影响看帖）：', error.message);
+    }
+
     const thread = getThread(threadId);
     if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
 
@@ -484,6 +531,47 @@ export default function register(router) {
         .map(attachmentOut);
     }
 
+    // 有奖问答：补上剩余时间、中奖楼层与「能不能采纳」，客户端据此决定按钮显不显示
+    if (detail.question) {
+      const question = questionRow(threadId);
+      if (question) detail.question = questionOut(question);
+      const remaining = Math.max(0, Number(detail.question.deadline || 0) - now());
+      detail.question.remaining = remaining;
+      detail.question.days_left = Math.ceil(remaining / 86400);
+      detail.question.can_accept =
+        detail.question.status === 'open' &&
+        !!ctx.user &&
+        (ctx.user.id === thread.author_id || isAdminRole(ctx.user.role));
+      if (detail.question.winner_post_id) {
+        const winner = db
+          .prepare(
+            `SELECT p.id AS post_id, p.floor, u.id, u.username, u.display_name, u.avatar
+               FROM posts p LEFT JOIN users u ON u.id = p.author_id
+              WHERE p.id = ?`,
+          )
+          .get(detail.question.winner_post_id);
+        if (winner) {
+          detail.question.winner = {
+            post_id: winner.post_id,
+            floor: winner.floor,
+            user: winner.id
+              ? {
+                  id: winner.id,
+                  username: winner.username,
+                  display_name: winner.display_name || winner.username,
+                  avatar: winner.avatar || '',
+                }
+              : null,
+          };
+        }
+      }
+    }
+
+    // 投影帖：把全部投影版本一起带上（主世界 / 下界…），下载框按这份清单让用户挑
+    if (detail.schematic) {
+      detail.schematic.files = schematicFilesOf(threadId);
+    }
+
     const posts = rows.map((row) => {
       const item = postOut({ ...row, liked: liked.has(row.id) });
       const children = childrenByParent.get(row.id) || [];
@@ -507,7 +595,7 @@ export default function register(router) {
     enforce(`thread-ip:${ctx.ip}`, 12, 60 * 60 * 1000, '发帖太频繁');
 
     const body = await ctx.json();
-    const board = body.board
+    let board = body.board
       ? boardBySlug(String(body.board)) || boardById(Number(body.board))
       : boardBySlug('general');
     if (!board) throw badRequest('板块不存在');
@@ -555,34 +643,48 @@ export default function register(router) {
       }
     }
 
-    // 投影帖：带 schematic_upload_id 就把该上传绑定到这条主题（一帖一个，仅发帖时）。
+    // 投影帖：带 schematic_uploads（[{upload_id, label}]）或老的 schematic_upload_id，
+    // 就把这些上传绑定到这条主题。一帖最多 8 份 —— 同一个建筑经常要分维度发：
+    // 主世界一份、下界一份，甚至不同版本各一份，每份都可以自己命名。
     // 校验口径和插件帖一致：必须是本人上传、是投影类别、且还没绑给别的主题。
-    let schematicUpload = null;
-    const rawSchematicId = body.schematic_upload_id;
-    if (rawSchematicId !== undefined && rawSchematicId !== null && rawSchematicId !== '') {
-      const uploadId = Number(rawSchematicId);
+    const rawSchematicItems = Array.isArray(body.schematic_uploads)
+      ? body.schematic_uploads
+      : body.schematic_upload_id !== undefined &&
+          body.schematic_upload_id !== null &&
+          body.schematic_upload_id !== ''
+        ? [{ upload_id: body.schematic_upload_id, label: body.schematic_label }]
+        : [];
+    const schematicFiles = [];
+    const seenSchematicUploads = new Set();
+    const usedSchematicLabels = new Set();
+    for (const item of rawSchematicItems) {
+      const rawId = item && typeof item === 'object' ? item.upload_id : item;
+      const uploadId = Number(rawId);
       if (!Number.isInteger(uploadId) || uploadId <= 0) throw badRequest('投影上传记录不正确');
-      const upload = db.prepare('SELECT * FROM uploads WHERE id = ? AND user_id = ?').get(uploadId, user.id);
-      if (!upload || upload.deleted) throw notFound('投影上传不存在，请重新上传');
-      if (upload.kind !== 'schematic') throw badRequest('该上传不是投影文件', 'not_schematic_upload');
-      if (db.prepare('SELECT thread_id FROM thread_schematics WHERE upload_id = ?').get(uploadId)) {
-        throw badRequest('这个投影文件已经绑定在一条主题上了', 'schematic_upload_taken');
+      if (seenSchematicUploads.has(uploadId)) continue; // 同一个文件重复提交只当一份
+      seenSchematicUploads.add(uploadId);
+      if (schematicFiles.length >= MAX_SCHEMATIC_FILES) {
+        throw badRequest(`一条帖子最多挂 ${MAX_SCHEMATIC_FILES} 份投影`, 'schematic_limit');
       }
-      let meta = {};
-      try {
-        meta = JSON.parse(upload.meta || '{}');
-      } catch {
-        meta = {};
+      const taken = takeSchematicUpload(uploadId, user.id);
+      // 名字撞车时自动加序号（下载框里两项同名会挑错），不因为这点小事让整帖发不出去
+      let label = cleanSchematicLabel(item && typeof item === 'object' ? item.label : '', taken.fileName);
+      const baseLabel = label;
+      for (let index = 2; usedSchematicLabels.has(label); index += 1) {
+        const suffix = ` (${index})`;
+        label = `${baseLabel.slice(0, MAX_SCHEMATIC_LABEL - suffix.length)}${suffix}`;
       }
-      const fileName = cleanFileName(meta.file_name) || 'projection.litematic';
-      schematicUpload = {
-        id: upload.id,
-        size: upload.size,
-        name: fileName.replace(/\.[A-Za-z0-9]{1,12}$/, '') || fileName,
-        file_name: fileName,
-        file_hash: meta.file_hash || '',
-      };
+      usedSchematicLabels.add(label);
+      schematicFiles.push({
+        id: taken.upload.id,
+        size: taken.upload.size,
+        name: baseNameOf(taken.fileName),
+        file_name: taken.fileName,
+        file_hash: taken.meta.file_hash || '',
+        label,
+      });
     }
+    const schematicUpload = schematicFiles[0] || null;
 
     if (pluginUpload && schematicUpload) {
       throw badRequest('一条帖子只能挂一个资源：插件和投影请分开发布', 'resource_conflict');
@@ -626,6 +728,21 @@ export default function register(router) {
       }
     }
 
+    // 有奖问答：和帖子 / 资源 / 教程并列的第四个大类，固定发到「有奖问答」板块。
+    // 赏金必须当场从作者账户里托管，所以余额不够时整帖都发不出去（不会出现「先发帖再要钱」）。
+    const isQuestion = body.question === true || body.question === 1;
+    let bounty = 0;
+    if (isQuestion) {
+      if (pluginUpload || schematicUpload) {
+        throw badRequest('有奖问答不能同时挂插件或投影附件', 'resource_conflict');
+      }
+      if (isTutorial) throw badRequest('有奖问答和教程只能选一种发布', 'resource_conflict');
+      bounty = normalizeBounty(body.bounty);
+      const qaBoard = boardBySlug(QUESTION_BOARD_SLUG);
+      if (!qaBoard) throw badRequest('有奖问答板块暂未开放', 'question_board_missing');
+      board = qaBoard;
+    }
+
     const created = transaction(() => {
       const inserted = db
         .prepare(
@@ -661,6 +778,8 @@ export default function register(router) {
         );
       }
       saveTags(id, tags);
+      // 有奖问答：赏金和帖子在同一个事务里落地 —— 帖子没建成，方块也不会被扣走
+      if (isQuestion) lockBounty({ threadId: id, authorId: user.id, bounty, timestamp });
       if (isTutorial) {
         db.prepare('INSERT INTO thread_tutorials (thread_id, created_at) VALUES (?, ?)').run(id, timestamp);
         for (const attachment of tutorialAttachments) {
@@ -694,6 +813,24 @@ export default function register(router) {
           stringifyResourceLinks(links),
           timestamp,
         );
+        // 完整清单：第一份也在里面，顺序就是用户上传的顺序
+        for (let index = 0; index < schematicFiles.length; index += 1) {
+          const file = schematicFiles[index];
+          db.prepare(
+            `INSERT INTO thread_schematic_files
+               (thread_id, upload_id, label, file_name, file_size, file_hash, sort_order, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            id,
+            file.id,
+            file.label || '',
+            file.file_name || '',
+            file.size || 0,
+            file.file_hash || '',
+            index,
+            timestamp,
+          );
+        }
       }
       db.prepare('UPDATE users SET thread_count = thread_count + 1, post_count = post_count + 1 WHERE id = ?').run(
         user.id,
@@ -834,33 +971,210 @@ export default function register(router) {
     const thread = db.prepare('SELECT id, deleted FROM threads WHERE id = ?').get(threadId);
     if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
 
+    // file=版本 id：一帖多份投影时按下载框选中的那一份发文件；不传（或传 0）就发第一份（老客户端）
+    const rawFileId = ctx.url.searchParams.get('file');
+    const fileId = rawFileId === null || rawFileId === '' ? 0 : Number(rawFileId);
+    if (rawFileId !== null && rawFileId !== '' && (!Number.isInteger(fileId) || fileId < 0)) {
+      throw badRequest('投影版本不存在');
+    }
+
     const schematic = db
       .prepare(
-        `SELECT ts.id, ts.downloads, ts.file_name, u.url, u.size
-           FROM thread_schematics ts
-           JOIN uploads u ON u.id = ts.upload_id AND u.deleted = 0
-          WHERE ts.thread_id = ?`,
+        `SELECT f.id, f.downloads, f.file_name, f.label, u.url, u.size
+           FROM thread_schematic_files f
+           JOIN uploads u ON u.id = f.upload_id AND u.deleted = 0
+          WHERE f.thread_id = ? AND (? = 0 OR f.id = ?)
+          ORDER BY f.sort_order, f.id
+          LIMIT 1`,
       )
-      .get(threadId);
-    if (!schematic) throw notFound('这条主题没有挂投影');
+      .get(threadId, fileId, fileId);
+    // 老库刚升级、清单还没回填时退回 thread_schematics 那一行
+    const legacy = schematic
+      ? null
+      : fileId === 0
+        ? db
+            .prepare(
+              `SELECT ts.id, ts.downloads, ts.file_name, '' AS label, u.url, u.size
+                 FROM thread_schematics ts
+                 JOIN uploads u ON u.id = ts.upload_id AND u.deleted = 0
+                WHERE ts.thread_id = ?`,
+            )
+            .get(threadId)
+        : null;
+    const file = schematic || legacy;
+    if (!file) throw notFound('这条主题没有挂投影');
 
-    const key = `${ctx.ip}:sch:${schematic.id}`;
+    const key = `${ctx.ip}:sch:${file.id}`;
     const lastSeen = pluginDownloadSeen.get(key) || 0;
     if (Date.now() - lastSeen > 10 * 60 * 1000) {
       pluginDownloadSeen.set(key, Date.now());
-      db.prepare('UPDATE thread_schematics SET downloads = downloads + 1 WHERE id = ?').run(schematic.id);
+      if (schematic) {
+        db.prepare('UPDATE thread_schematic_files SET downloads = downloads + 1 WHERE id = ?').run(file.id);
+      }
+      // 帖子的总下载数（老客户端与列表卡片看这一个）
+      db.prepare('UPDATE thread_schematics SET downloads = downloads + 1 WHERE thread_id = ?').run(threadId);
       if (pluginDownloadSeen.size > 5000) pluginDownloadSeen.clear();
     }
 
-    const [, pathname] = schematic.url.match(/^\/uploads\/(.+)$/) || [];
-    const url = pathname ? `${cdnBase || config.publicOrigin || ''}/uploads/${pathname}` : schematic.url;
+    const [, pathname] = file.url.match(/^\/uploads\/(.+)$/) || [];
+    const url = pathname ? `${cdnBase || config.publicOrigin || ''}/uploads/${pathname}` : file.url;
     return {
       url,
-      size: schematic.size || 0,
+      size: file.size || 0,
       content_type: 'application/octet-stream',
-      filename: cleanFileName(schematic.file_name) || pathname || 'projection.litematic',
-      downloads: schematic.downloads,
+      filename: cleanFileName(file.file_name) || pathname || 'projection.litematic',
+      downloads: file.downloads,
+      file_id: schematic ? file.id : 0,
+      label: schematic ? file.label || baseNameOf(file.file_name) : '',
     };
+  });
+
+  // ---------------- 投影帖：作者给帖子补 / 改 / 删投影版本 ----------------
+  // 同一个建筑常见「先发主世界、后来又做了下界」：作者可以往已发布的帖子里追加，
+  // 下载框里就多一项，不用重发整贴；改个名字、删掉传错的版本也在这里。
+
+  /** 校验并取出要挂到帖子上的投影上传（必须在本人名下、是投影、没绑过别的帖子） */
+  function takeSchematicUpload(uploadId, userId) {
+    const upload = db.prepare('SELECT * FROM uploads WHERE id = ? AND user_id = ?').get(uploadId, userId);
+    if (!upload || upload.deleted) throw notFound('投影上传不存在，请重新上传');
+    if (upload.kind !== 'schematic') throw badRequest('该上传不是投影文件', 'not_schematic_upload');
+    if (
+      db.prepare('SELECT thread_id FROM thread_schematics WHERE upload_id = ?').get(uploadId) ||
+      db.prepare('SELECT thread_id FROM thread_schematic_files WHERE upload_id = ?').get(uploadId)
+    ) {
+      throw badRequest('这个投影文件已经绑定在一条主题上了', 'schematic_upload_taken');
+    }
+    let meta = {};
+    try {
+      meta = JSON.parse(upload.meta || '{}');
+    } catch {
+      meta = {};
+    }
+    return { upload, meta, fileName: cleanFileName(meta.file_name) || 'projection.litematic' };
+  }
+
+  router.post('/api/threads/:id/schematic/files', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const threadId = Number(ctx.params.id);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+    const thread = db.prepare('SELECT id, deleted, author_id FROM threads WHERE id = ?').get(threadId);
+    if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
+    if (thread.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能给自己的帖子加投影版本');
+    if (!db.prepare('SELECT 1 FROM thread_schematics WHERE thread_id = ?').get(threadId)) {
+      throw notFound('这条主题没有挂投影');
+    }
+    const count = db
+      .prepare('SELECT COUNT(*) AS n FROM thread_schematic_files WHERE thread_id = ?')
+      .get(threadId).n;
+    if (count >= MAX_SCHEMATIC_FILES) {
+      throw badRequest(`一条帖子最多挂 ${MAX_SCHEMATIC_FILES} 份投影`, 'schematic_limit');
+    }
+
+    const body = await ctx.json();
+    const uploadId = Number(body.upload_id);
+    if (!Number.isInteger(uploadId) || uploadId <= 0) throw badRequest('投影上传记录不正确');
+    // 同名版本提示一下：下载框里两项长得一模一样会挑错
+    const taken = takeSchematicUpload(uploadId, user.id);
+    const label = cleanSchematicLabel(body.label, taken.fileName);
+    const duplicate = db
+      .prepare('SELECT 1 FROM thread_schematic_files WHERE thread_id = ? AND label = ?')
+      .get(threadId, label);
+    if (duplicate) throw badRequest('这个帖子已经有同名版本了，换个名字', 'schematic_label_taken');
+
+    db.prepare(
+      `INSERT INTO thread_schematic_files
+         (thread_id, upload_id, label, file_name, file_size, file_hash, sort_order, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      threadId,
+      uploadId,
+      label,
+      taken.fileName,
+      taken.upload.size || 0,
+      taken.meta.file_hash || '',
+      count,
+      now(),
+    );
+    return { ok: true, files: schematicFilesOf(threadId) };
+  });
+
+  router.patch('/api/threads/:id/schematic/files/:fid', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const threadId = Number(ctx.params.id);
+    const fileId = Number(ctx.params.fid);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+    if (!Number.isInteger(fileId) || fileId <= 0) throw notFound('投影版本不存在');
+    const thread = db.prepare('SELECT id, deleted, author_id FROM threads WHERE id = ?').get(threadId);
+    if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
+    if (thread.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能改自己帖子的投影版本');
+
+    const file = db
+      .prepare('SELECT id, file_name FROM thread_schematic_files WHERE id = ? AND thread_id = ?')
+      .get(fileId, threadId);
+    if (!file) throw notFound('投影版本不存在');
+
+    const body = await ctx.json();
+    const label = cleanSchematicLabel(body.label, file.file_name);
+    const duplicate = db
+      .prepare('SELECT 1 FROM thread_schematic_files WHERE thread_id = ? AND label = ? AND id <> ?')
+      .get(threadId, label, fileId);
+    if (duplicate) throw badRequest('这个帖子已经有同名版本了，换个名字', 'schematic_label_taken');
+    db.prepare('UPDATE thread_schematic_files SET label = ? WHERE id = ?').run(label, fileId);
+    return { ok: true, files: schematicFilesOf(threadId) };
+  });
+
+  router.delete('/api/threads/:id/schematic/files/:fid', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const threadId = Number(ctx.params.id);
+    const fileId = Number(ctx.params.fid);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+    if (!Number.isInteger(fileId) || fileId <= 0) throw notFound('投影版本不存在');
+    const thread = db.prepare('SELECT id, deleted, author_id FROM threads WHERE id = ?').get(threadId);
+    if (!thread || thread.deleted) throw notFound('主题不存在或已被删除');
+    if (thread.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能删自己帖子的投影版本');
+
+    const file = db
+      .prepare('SELECT id, upload_id, file_name FROM thread_schematic_files WHERE id = ? AND thread_id = ?')
+      .get(fileId, threadId);
+    if (!file) throw notFound('投影版本不存在');
+    const count = db
+      .prepare('SELECT COUNT(*) AS n FROM thread_schematic_files WHERE thread_id = ?')
+      .get(threadId).n;
+    if (count <= 1) throw badRequest('帖子里至少要留一份投影，不能全删', 'schematic_last_file');
+
+    transaction(() => {
+      db.prepare('DELETE FROM thread_schematic_files WHERE id = ?').run(fileId);
+      // 文件跟着下架，地址不再可下载；其他帖子若引用同一上传本来就不可能（绑定时已查重）
+      db.prepare('UPDATE uploads SET deleted = 1 WHERE id = ?').run(file.upload_id);
+      // 删掉的正好是 thread_schematics 那第一份：把剩下的第一份顶上去，老客户端仍能下载
+      const primary = db.prepare('SELECT id, upload_id FROM thread_schematics WHERE thread_id = ?').get(threadId);
+      if (primary && primary.upload_id === file.upload_id) {
+        const next = db
+          .prepare(
+            `SELECT upload_id, file_name, file_size, file_hash
+               FROM thread_schematic_files
+              WHERE thread_id = ?
+              ORDER BY sort_order, id
+              LIMIT 1`,
+          )
+          .get(threadId);
+        if (next) {
+          db.prepare(
+            `UPDATE thread_schematics
+                SET upload_id = ?, name = ?, file_name = ?, file_size = ?, file_hash = ?
+              WHERE id = ?`,
+          ).run(
+            next.upload_id,
+            baseNameOf(next.file_name),
+            next.file_name,
+            next.file_size || 0,
+            next.file_hash || '',
+            primary.id,
+          );
+        }
+      }
+    });
+    return { ok: true, files: schematicFilesOf(threadId) };
   });
 
   // ---------------- 教程帖：资料附件下载地址 ----------------
@@ -1023,6 +1337,26 @@ export default function register(router) {
     return { ok: true };
   });
 
+  // ---------------- 有奖问答：采纳回答，赏金当场到账 ----------------
+
+  router.post('/api/threads/:id/question/accept', async (ctx) => {
+    const user = requireUser(ctx.user);
+    const threadId = Number(ctx.params.id);
+    if (!Number.isInteger(threadId) || threadId <= 0) throw notFound('主题不存在');
+
+    const body = await ctx.json();
+    const postId = Number(body.post_id);
+    if (!Number.isInteger(postId) || postId <= 0) throw badRequest('请选择要采纳的楼层', 'bad_accept_target');
+
+    const question = acceptAnswer({ threadId, postId, actor: user });
+    // 顺手刷新主题缓存里的问答状态，客户端拿到就能直接更新赏金卡
+    const thread = getThread(threadId);
+    return {
+      question: thread ? threadOut(thread).question || questionOut(question) : questionOut(question),
+      thread: thread ? threadOut(thread, { withSnippet: false }) : null,
+    };
+  });
+
   // ---------------- 修改主题 ----------------
 
   router.patch('/api/threads/:id', async (ctx) => {
@@ -1053,6 +1387,14 @@ export default function register(router) {
     const thread = getThread(Number(ctx.params.id));
     if (!thread || thread.deleted) throw notFound('主题不存在');
     if (thread.author_id !== user.id && !isAdminRole(user.role)) throw badRequest('只能删除自己的主题');
+    // 有奖问答：还没结算的赏金先原路退回作者，别跟着帖子一起「删没了」
+    if (questionRow(thread.id)) {
+      try {
+        refundQuestion(thread.id, 'thread_deleted');
+      } catch (error) {
+        console.error('[论坛] 有奖问答退款失败（不影响删帖）：', error.message);
+      }
+    }
     db.prepare('UPDATE threads SET deleted = 1 WHERE id = ?').run(thread.id);
     // 插件帖删了,包也别再让人下(同步软删 uploads 记录,下载接口会查它;历史版本一起下架)
     db.prepare(
@@ -1061,12 +1403,13 @@ export default function register(router) {
           AND (id IN (SELECT upload_id FROM thread_plugins WHERE thread_id = ?)
             OR id IN (SELECT upload_id FROM plugin_versions WHERE thread_id = ?))`,
     ).run(thread.id, thread.id);
-    // 投影帖同理：投影文件跟着下架，地址不再可下载
+    // 投影帖同理：帖子里每一份投影文件都跟着下架，地址不再可下载
     db.prepare(
       `UPDATE uploads SET deleted = 1
         WHERE deleted = 0 AND kind = 'schematic'
-          AND id IN (SELECT upload_id FROM thread_schematics WHERE thread_id = ?)`,
-    ).run(thread.id);
+          AND (id IN (SELECT upload_id FROM thread_schematics WHERE thread_id = ?)
+            OR id IN (SELECT upload_id FROM thread_schematic_files WHERE thread_id = ?))`,
+    ).run(thread.id, thread.id);
     // 教程帖同理：资料附件跟着下架，地址不再可下载
     db.prepare(
       `UPDATE uploads SET deleted = 1

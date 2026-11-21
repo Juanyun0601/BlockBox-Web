@@ -8,7 +8,9 @@ BB.boot(async () => {
 
   const isSelf = !!me && me.id === userId;
   const rawTab = BB.param('tab');
-  const tab = ['threads', 'replies', 'bookmarks', 'likes'].includes(rawTab) ? rawTab : 'threads';
+  const tab = ['threads', 'replies', 'bookmarks', 'likes', 'following', 'followers'].includes(rawTab)
+    ? rawTab
+    : 'threads';
   const page = Math.max(1, Number(BB.param('page') || 1) || 1);
   const data = await BB.api(`/api/users/${userId}`);
   const user = data.user;
@@ -62,7 +64,14 @@ BB.boot(async () => {
        </label>`
     : '';
 
-  /** 非自己的主页给出好友操作：按当前关系决定按钮（数据来自 /api/users/:id 的 friendship 字段） */
+  /** 非自己的主页给出关注 / 好友操作（关注是单向的，不用对方同意） */
+  const following = !!data.following;
+  const followActionHtml =
+    isSelf || user.status === 'banned'
+      ? ''
+      : `<button class="btn ${following ? 'btn-ghost' : 'btn-primary'} btn-sm" id="followBtn" data-following="${following ? 1 : 0}">${
+          following ? '✓ 已关注' : '＋ 关注'
+        }</button>`;
   const friendActionHtml =
     isSelf || user.status === 'banned'
       ? ''
@@ -84,6 +93,8 @@ BB.boot(async () => {
         <div class="bio">${user.bio ? BB.esc(user.bio) : '<span class="muted">这位玩家还没写简介</span>'}</div>
         ${muteNote}
         <div class="profile-stats">
+          <span><a href="/user.html?id=${userId}&tab=following"><b id="statFollowing">${BB.num(data.following_count || 0)}</b> 关注</a></span>
+          <span><a href="/user.html?id=${userId}&tab=followers"><b id="statFollowers">${BB.num(data.follower_count || 0)}</b> 粉丝</a></span>
           <span><b>${BB.num(user.thread_count)}</b> 主题</span>
           <span><b>${BB.num(user.post_count)}</b> 帖子</span>
           <span><b>${BB.num(user.points || 0)}</b> 方块</span>
@@ -92,6 +103,7 @@ BB.boot(async () => {
         </div>
       </div>
       <div class="profile-actions">
+        ${followActionHtml}
         ${friendActionHtml}
         ${isSelf ? '<a class="btn btn-ghost btn-sm" href="/points.html">我的方块</a>' : ''}
         ${isSelf ? '<a class="btn btn-ghost btn-sm" href="/gallery.html">我的相册</a>' : ''}
@@ -103,6 +115,31 @@ BB.boot(async () => {
   if (isSelf) bindCoverInput('coverInput');
 
   document.getElementById('profileCard').addEventListener('click', async (event) => {
+    const follow = event.target.closest('#followBtn');
+    if (follow) {
+      const wasFollowing = follow.dataset.following === '1';
+      follow.disabled = true;
+      try {
+        const res = await BB.api(`/api/users/${userId}/follow`, {
+          method: wasFollowing ? 'DELETE' : 'POST',
+        });
+        follow.dataset.following = res.following ? '1' : '0';
+        follow.textContent = res.following ? '✓ 已关注' : '＋ 关注';
+        follow.className = `btn ${res.following ? 'btn-ghost' : 'btn-primary'} btn-sm`;
+        const stat = document.getElementById('statFollowers');
+        if (stat) stat.textContent = BB.num(res.follower_count);
+        BB.toast(res.following ? '已关注' : '已取消关注', 'ok');
+      } catch (error) {
+        if (error.status === 401) {
+          location.href = BB.loginLink();
+          return;
+        }
+        BB.toast(error.message || '操作失败', 'error');
+      } finally {
+        follow.disabled = false;
+      }
+      return;
+    }
     const add = event.target.closest('#addFriendBtn');
     if (add) {
       add.disabled = true;
@@ -139,6 +176,8 @@ BB.boot(async () => {
   const tabs = [
     ['threads', `主题 ${data.thread_total}`],
     ['replies', '最近回复'],
+    ['following', `关注 ${data.following_count || 0}`],
+    ['followers', `粉丝 ${data.follower_count || 0}`],
   ];
   if (isSelf) tabs.push(['likes', '我赞过的'], ['bookmarks', '我的收藏']);
   document.getElementById('userTabs').innerHTML = tabs
@@ -151,8 +190,91 @@ BB.boot(async () => {
   if (isSelf) renderEditPanel(user);
   await renderList(tab, page, userId);
 
+  /** 关注 / 粉丝名单里的一行：头像 + 昵称 + 账号名 / 简介，右侧是关注按钮 */
+  function followUserRow(person) {
+    const name = person.display_name || person.username;
+    const roleChip =
+      person.role === 'admin'
+        ? '<span class="chip">管理员</span>'
+        : person.role === 'moderator'
+          ? '<span class="chip chip-grey">次级管理员</span>'
+          : '';
+    const toggle =
+      !me || me.id === person.id
+        ? ''
+        : `<button class="btn ${person.following ? 'btn-ghost' : 'btn-primary'} btn-sm"
+                   data-follow-toggle="${person.id}" data-following="${person.following ? 1 : 0}">${
+                     person.following ? '✓ 已关注' : '＋ 关注'
+                   }</button>`;
+    return `<div class="fr-row">
+      <a href="/user.html?id=${person.id}">${BB.avatar(person, 'avatar-sm')}</a>
+      <div class="fr-main">
+        <div class="fr-top">
+          <a class="fr-name" href="/user.html?id=${person.id}">${BB.esc(name)}</a>${roleChip}
+        </div>
+        <div class="fr-preview">@${BB.esc(person.username)}${
+          person.bio ? ` · ${BB.esc(person.bio)}` : ''
+        }</div>
+      </div>
+      <div class="fr-actions">${toggle}</div>
+    </div>`;
+  }
+
+  /** 名单里的关注 / 取关按钮：点完把同一用户的所有按钮一起换状态 */
+  function bindFollowButtons(root) {
+    root.querySelectorAll('[data-follow-toggle]').forEach((button) => {
+      button.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const targetId = Number(button.dataset.followToggle);
+        const wasFollowing = button.dataset.following === '1';
+        button.disabled = true;
+        try {
+          const res = await BB.api(`/api/users/${targetId}/follow`, {
+            method: wasFollowing ? 'DELETE' : 'POST',
+          });
+          document.querySelectorAll(`[data-follow-toggle="${targetId}"]`).forEach((other) => {
+            other.dataset.following = res.following ? '1' : '0';
+            other.textContent = res.following ? '✓ 已关注' : '＋ 关注';
+            other.className = `btn ${res.following ? 'btn-ghost' : 'btn-primary'} btn-sm`;
+            other.disabled = false;
+          });
+          BB.toast(res.following ? '已关注' : '已取消关注', 'ok');
+        } catch (error) {
+          button.disabled = false;
+          if (error.status === 401) {
+            location.href = BB.loginLink();
+            return;
+          }
+          BB.toast(error.message || '操作失败', 'error');
+        }
+      });
+    });
+  }
+
   async function renderList(which, targetPage, id) {
     const host = document.getElementById('userContent');
+    if (which === 'following' || which === 'followers') {
+      const list = await BB.api(`/api/users/${id}/${which}?page=${targetPage}&per_page=20`);
+      const emptyText =
+        which === 'following'
+          ? isSelf
+            ? '还没有关注任何人，在别人的主页点「关注」就会出现在这里'
+            : 'TA 还没有关注任何人'
+          : isSelf
+            ? '还没有粉丝，多发帖、多回复让大家认识你'
+            : 'TA 还没有粉丝';
+      host.innerHTML = list.users.length
+        ? `<div class="user-follow-list">${list.users.map(followUserRow).join('')}</div>`
+        : `<div class="empty">${emptyText}</div>`;
+      document.getElementById('listHint').textContent = `共 ${list.pagination.total} 人`;
+      document.getElementById('pager').innerHTML = BB.pagination(
+        list.pagination,
+        (target) => `/user.html?id=${id}&tab=${which}&page=${target}`,
+      );
+      bindFollowButtons(host);
+      return;
+    }
     if (which === 'likes') {
       const list = await BB.api(`/api/me/likes?page=${targetPage}&per_page=20`);
       host.innerHTML = list.likes.length
